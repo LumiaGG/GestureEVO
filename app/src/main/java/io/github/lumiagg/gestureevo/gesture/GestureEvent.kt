@@ -16,7 +16,8 @@ data class FreeTriggerEvent(
     val isConfig: Boolean,
     val configTrigger: FreeTriggerConfig? = null,
     val orientation: Int? = null,
-    val isEnable: Boolean? = null
+    val isEnable: Boolean? = null,
+    val reloadWheelTag: String? = null
 )
 
 data class ActionViewEvent(

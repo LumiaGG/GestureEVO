@@ -8,6 +8,13 @@ import java.util.Locale
 object SettingsSearchRegistry {
     private val entries = listOf(
         entry(
+            id = "root_settings_guide",
+            titleResId = R.string.guide_title,
+            pageTitleResId = R.string.settings_title,
+            targetActivity = SettingsGuideActivity::class.java,
+            keywords = listOf("引导", "入门", "权限", "guide", "setup", "onboarding")
+        ),
+        entry(
             id = "root_service",
             titleResId = R.string.settings_accessibility_off,
             pageTitleResId = R.string.settings_title,

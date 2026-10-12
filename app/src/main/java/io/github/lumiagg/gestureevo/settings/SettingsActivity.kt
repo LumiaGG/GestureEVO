@@ -104,6 +104,11 @@ class SettingsActivity : AppCompatActivity() {
                 PreferenceDataStoreAdapter(requireContext().settingsStore, lifecycleScope)
             setPreferencesFromResource(R.xml.root_preferences, rootKey)
 
+            findPreference<Preference>("preferenceSettingsGuide")?.setOnPreferenceClickListener {
+                startActivity(Intent(requireActivity(), SettingsGuideActivity::class.java))
+                true
+            }
+
             findPreference<Preference>("preferenceConfigTrigger")?.apply {
                 setOnPreferenceClickListener {
                     startActivity(

@@ -47,6 +47,9 @@
             android:exported="false"
             android:theme="@style/Theme.GestureEVO" />
         <activity
+            android:name=".settings.SettingsGuideActivity"
+            android:exported="false" />
+        <activity
             android:name=".search.QuickSearchActivity"
             android:exported="true"
             android:launchMode="singleInstance"

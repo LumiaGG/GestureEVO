@@ -72,6 +72,7 @@ class MainActionView : ActionView {
     var onHideRequestedCallback: () -> Unit = {}
     var onHiddenCallback: () -> Unit = {}
     var keepBackgroundBlurOnNextHide = false
+    internal var keepGuidePreviewVisible = false
     private var wheelBackgroundColor = DynamicColorUtils.surfaceContainerHighestColor
     private var wheelBackgroundFollowsTheme = true
     private var latestShowAnimEnabled = true
@@ -400,6 +401,15 @@ class MainActionView : ActionView {
         dragItemAction.updateRingItemsSize(false)
     }
 
+    internal fun layoutGuidePreview() {
+        visibility = VISIBLE
+        alpha = 1f
+        distributeItemsInRing()
+        refreshItemState()
+        background = null
+        clearViewBoundsCache()
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun show(
         showAnim: Boolean = true,
@@ -443,6 +453,7 @@ class MainActionView : ActionView {
 
     fun hide(force: Boolean = false) {
         postOnMain {
+            if (keepGuidePreviewVisible) return@postOnMain
             if (!force && isConfigMode) return@postOnMain
             onHideRequestedCallback.invoke()
             val keepBackgroundBlur = keepBackgroundBlurOnNextHide

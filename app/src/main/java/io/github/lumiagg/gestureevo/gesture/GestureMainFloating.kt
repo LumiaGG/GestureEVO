@@ -16,6 +16,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import androidx.core.view.isVisible
+import androidx.core.view.doOnLayout
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
 import io.github.lumiagg.gestureevo.gesture.GestureManager.Companion.TAG
@@ -42,10 +43,8 @@ import io.github.lumiagg.gestureevo.utils.GestureActionLink
 import io.github.lumiagg.gestureevo.utils.OverlaySurfaceBlur
 import io.github.lumiagg.gestureevo.utils.RecentAppsRecorder
 import io.github.lumiagg.gestureevo.utils.Rom
-import io.github.lumiagg.gestureevo.utils.ScreenUtil
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
-import io.github.lumiagg.gestureevo.utils.dp2px
 import io.github.lumiagg.gestureevo.utils.postOnMain
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
@@ -54,7 +53,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.max
 
 class GestureMainFloating(private val context: GestureService) :
     BaseFloatingWindow(context, context, TAG) {
@@ -66,6 +64,8 @@ class GestureMainFloating(private val context: GestureService) :
     private var backgroundBlurActive = false
     private var backgroundBlurAnimator: ValueAnimator? = null
     private var backgroundBlurRadius = 0
+    private var guidePreviewRevision = 0
+    private var guidePreview = false
     private val originOsSurfaceBlur = Rom.isOriginOS()
 
     init {
@@ -438,7 +438,53 @@ class GestureMainFloating(private val context: GestureService) :
     fun refreshTheme() {
         if (!actionView.isAttachedToWindow || !actionView.isVisible) return
         actionView.refreshTheme()
-        actionView.refreshWheelBackgroundForTheme()
+        if (guidePreview) actionView.background = null else actionView.refreshWheelBackgroundForTheme()
+    }
+
+    internal fun showGuidePreview(
+        config: ActionConfig,
+        items: List<GestureActionItem>,
+        trigger: FreeTriggerConfig,
+        onWheelSelection: ((Int) -> Unit)? = null,
+        onLayout: (() -> Unit)? = null,
+    ) {
+        guidePreview = true
+        val revision = ++guidePreviewRevision
+        actionView.backgroundBlurCallback = {}
+        actionView.keepGuidePreviewVisible = true
+        actionView.statusCallback = object : MainActionView.StatusCallback {
+            override fun executeAction(modelItem: ModelItem, isPress: Boolean, isUp: Boolean): Boolean {
+                if (!isUp || modelItem.type != ActionView.ItemType.NORMAL) return false
+                val index = actionView.modelList.indexOf(modelItem)
+                if (index < 0 || index >= items.size) return false
+                onWheelSelection?.invoke(index)
+                return onWheelSelection != null
+            }
+        }
+        setTouchEnabled(false)
+        actionView.config = config
+        actionView.state.itemsTag = config.tag
+        actionView.setModeList(items)
+        actionView.workMode = ActionView.WorkMode.ACTIVE
+        actionView.disableAllWheelVibrate = true
+        actionView.visibility = View.VISIBLE
+        ensureAttached()
+        actionView.doOnLayout {
+            if (revision == guidePreviewRevision && isAttachRequested(actionView)) {
+                val (x, y) = resolveTriggerCenter(trigger)
+                relayoutActionViewQuadrant(x, y)
+                actionView.relayoutSelectedIcon(enable = false)
+                actionView.layoutGuidePreview()
+                onLayout?.invoke()
+            }
+        }
+    }
+
+    internal fun destroyGuidePreview() {
+        guidePreviewRevision++
+        actionView.keepGuidePreviewVisible = false
+        actionView.release()
+        detachViewSafely(actionView)
     }
 
     private suspend fun showActionViewInternal(
@@ -473,22 +519,8 @@ class GestureMainFloating(private val context: GestureService) :
         triggerConfig: FreeTriggerConfig,
         isMirror: Boolean = false
     ): Pair<Float, Float> {
-        val screenWidth = ScreenUtil.getScreenRealWidth(context, false)
-        val screenHeight = ScreenUtil.getScreenRealHeight(context, false)
-        val triggerWidth = triggerConfig.width.dp2px.toInt().coerceAtMost(screenWidth)
-        val triggerHeight = triggerConfig.height.dp2px.toInt().coerceAtMost(screenHeight)
-        val triggerLeft = if (isMirror) {
-            screenWidth - (triggerConfig.xRelativeValue * screenWidth).toInt() - triggerWidth
-        } else {
-            (triggerConfig.xRelativeValue * screenWidth).toInt()
-        }
-            .coerceIn(0, max(0, screenWidth - triggerWidth))
-        val triggerTop = (triggerConfig.yRelativeValue * screenHeight).toInt()
-            .coerceIn(0, max(0, screenHeight - triggerHeight))
-        return Pair(
-            triggerLeft + triggerWidth / 2f,
-            triggerTop + triggerHeight / 2f
-        )
+        val bounds = freeTriggerBounds(context, triggerConfig, isMirror)
+        return Pair(bounds.exactCenterX(), bounds.exactCenterY())
     }
 
     fun hide() {

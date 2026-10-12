@@ -2,6 +2,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <Preference
+        android:icon="@drawable/baseline_check_24"
+        android:key="preferenceSettingsGuide"
+        android:layout="@layout/custom_preference_widget_layout"
+        app:title="@string/guide_title"
+        app:summary="@string/guide_entry_summary" />
+
+    <Preference
         android:icon="@drawable/icon_service"
         android:key="preferenceService"
         android:layout="@layout/custom_preference_widget_layout"
