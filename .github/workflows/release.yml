@@ -1,0 +1,132 @@
+name: Signed release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag, matching v<versionName>'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: bash
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: release
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+      - name: Validate version tag and repository
+        run: |
+          python tools/check_repository.py
+          python -m unittest discover -s tools/tests
+          python - <<'PY'
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+          tag = os.environ['RELEASE_TAG']
+          if not re.fullmatch(r'v[A-Za-z0-9][A-Za-z0-9.+_-]*', tag):
+              raise SystemExit('Invalid version tag')
+          commit = subprocess.check_output(['git', 'rev-parse', f'refs/tags/{tag}^{{commit}}'], text=True).strip()
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          if commit != head:
+              raise SystemExit('Checkout does not match the version tag')
+          content = Path('app/build.gradle.kts').read_text(encoding='utf-8')
+          version = re.search(r'versionName\s*=\s*"([^"]+)"', content)[1]
+          if tag != 'v' + version:
+              raise SystemExit('Tag must match versionName in app/build.gradle.kts')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              output.write(f'RELEASE_VERSION={version}\n')
+          PY
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - name: Install fixed Android toolchain
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.0.12077973' 'cmake;3.22.1'
+      - name: Build signed APK and run tests
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          GESTUREEVO_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          GESTUREEVO_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          GESTUREEVO_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for name in KEYSTORE_BASE64 GESTUREEVO_KEYSTORE_PASSWORD GESTUREEVO_KEY_ALIAS GESTUREEVO_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then echo "::error::Missing signing secret: $name"; exit 1; fi
+          done
+          export GESTUREEVO_KEYSTORE_FILE="$RUNNER_TEMP/gestureevo-release.jks"
+          trap 'rm -f -- "$GESTUREEVO_KEYSTORE_FILE"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$GESTUREEVO_KEYSTORE_FILE"
+          chmod 600 "$GESTUREEVO_KEYSTORE_FILE"
+          sh gradlew :app:testDebugUnitTest :app:assembleRelease --no-daemon --no-configuration-cache
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk > "$RUNNER_TEMP/signing-certificate.txt"
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+          report = (Path(os.environ['RUNNER_TEMP']) / 'signing-certificate.txt').read_text()
+          fingerprints = re.findall(r'Signer #\d+ certificate SHA-256 digest: ([0-9a-fA-F]+)', report)
+          expected = Path('signing/release-certificate.sha256').read_text().strip().lower()
+          if [value.lower() for value in fingerprints] != [expected]:
+              raise SystemExit('APK signing certificate does not match the published release identity')
+          PY
+      - name: Prepare APK, checksum and corresponding source
+        run: |
+          mkdir -p build/release-assets
+          cp app/build/outputs/apk/release/app-release.apk "build/release-assets/GestureEVO-${RELEASE_VERSION}.apk"
+          git archive --format=zip --prefix="GestureEVO-${RELEASE_VERSION}/" --output="build/release-assets/GestureEVO-${RELEASE_VERSION}-source.zip" HEAD
+          cp LICENSE NOTICE build/release-assets/
+          cp signing/release-certificate.pem signing/release-certificate.sha256 build/release-assets/
+          (cd build/release-assets && sha256sum *.apk *-source.zip > SHA256SUMS)
+      - name: Retain release build artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: GestureEVO-release-${{ env.RELEASE_VERSION }}
+          path: build/release-assets/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          release_id=$(gh api "repos/$GH_REPO/releases" --paginate --jq ".[] | select(.tag_name == env.RELEASE_TAG) | .id" | head -n 1)
+          if [[ -n "$release_id" ]]; then
+            is_draft=$(gh api "repos/$GH_REPO/releases/$release_id" --jq '.draft')
+            if [[ "$is_draft" != 'true' ]]; then echo '::error::Refusing to overwrite an already published release'; exit 1; fi
+            gh release upload "$RELEASE_TAG" build/release-assets/* --clobber
+          else
+            gh release create "$RELEASE_TAG" build/release-assets/* --verify-tag --draft --title "GestureEVO $RELEASE_VERSION" --generate-notes
+          fi
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-test-reports
+          path: |
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/test-results/testDebugUnitTest/
+          if-no-files-found: warn
+          retention-days: 14

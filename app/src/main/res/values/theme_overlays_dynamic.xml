@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- No-op overlay: keep system wallpaper generated colors -->
+    <style name="ThemeOverlay.GestureEVO.Dynamic.System" parent="" />
+
+    <style name="ThemeOverlay.GestureEVO.Dynamic.Forest" parent="">
+        <item name="colorPrimary">@color/forest_primary</item>
+        <item name="colorOnPrimary">@color/forest_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/forest_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/forest_onPrimaryContainer</item>
+        <item name="colorPrimaryInverse">@color/forest_primaryInverse</item>
+
+        <item name="colorSecondary">@color/forest_secondary</item>
+        <item name="colorOnSecondary">@color/forest_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/forest_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/forest_onSecondaryContainer</item>
+
+        <item name="colorTertiary">@color/forest_tertiary</item>
+        <item name="colorOnTertiary">@color/forest_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/forest_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/forest_onTertiaryContainer</item>
+
+        <item name="colorSurface">@color/forest_surface</item>
+        <item name="colorOnSurface">@color/forest_onSurface</item>
+        <item name="colorSurfaceVariant">@color/forest_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/forest_onSurfaceVariant</item>
+        <item name="colorOutline">@color/forest_outline</item>
+        <item name="colorSurfaceInverse">@color/forest_inverseSurface</item>
+        <item name="colorOnSurfaceInverse">@color/forest_inverseOnSurface</item>
+        <item name="colorSurfaceContainer">@color/forest_surfaceContainer</item>
+        <item name="colorSurfaceContainerLow">@color/forest_surfaceContainerLow</item>
+        <item name="colorSurfaceContainerHigh">@color/forest_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/forest_surfaceContainerHighest</item>
+        <item name="android:colorBackground">@color/forest_surface</item>
+        <item name="colorOnBackground">@color/forest_onSurface</item>
+    </style>
+
+    <style name="ThemeOverlay.GestureEVO.Dynamic.Coral" parent="">
+        <item name="colorPrimary">@color/coral_primary</item>
+        <item name="colorOnPrimary">@color/coral_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/coral_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/coral_onPrimaryContainer</item>
+        <item name="colorPrimaryInverse">@color/coral_primaryInverse</item>
+
+        <item name="colorSecondary">@color/coral_secondary</item>
+        <item name="colorOnSecondary">@color/coral_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/coral_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/coral_onSecondaryContainer</item>
+
+        <item name="colorTertiary">@color/coral_tertiary</item>
+        <item name="colorOnTertiary">@color/coral_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/coral_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/coral_onTertiaryContainer</item>
+
+        <item name="colorSurface">@color/coral_surface</item>
+        <item name="colorOnSurface">@color/coral_onSurface</item>
+        <item name="colorSurfaceVariant">@color/coral_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/coral_onSurfaceVariant</item>
+        <item name="colorOutline">@color/coral_outline</item>
+        <item name="colorSurfaceInverse">@color/coral_inverseSurface</item>
+        <item name="colorOnSurfaceInverse">@color/coral_inverseOnSurface</item>
+        <item name="colorSurfaceContainer">@color/coral_surfaceContainer</item>
+        <item name="colorSurfaceContainerLow">@color/coral_surfaceContainerLow</item>
+        <item name="colorSurfaceContainerHigh">@color/coral_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/coral_surfaceContainerHighest</item>
+        <item name="android:colorBackground">@color/coral_surface</item>
+        <item name="colorOnBackground">@color/coral_onSurface</item>
+    </style>
+
+    <style name="ThemeOverlay.GestureEVO.Dynamic.Ocean" parent="">
+        <item name="colorPrimary">@color/ocean_primary</item>
+        <item name="colorOnPrimary">@color/ocean_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/ocean_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/ocean_onPrimaryContainer</item>
+        <item name="colorPrimaryInverse">@color/ocean_primaryInverse</item>
+
+        <item name="colorSecondary">@color/ocean_secondary</item>
+        <item name="colorOnSecondary">@color/ocean_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/ocean_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/ocean_onSecondaryContainer</item>
+
+        <item name="colorTertiary">@color/ocean_tertiary</item>
+        <item name="colorOnTertiary">@color/ocean_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/ocean_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/ocean_onTertiaryContainer</item>
+
+        <item name="colorSurface">@color/ocean_surface</item>
+        <item name="colorOnSurface">@color/ocean_onSurface</item>
+        <item name="colorSurfaceVariant">@color/ocean_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/ocean_onSurfaceVariant</item>
+        <item name="colorOutline">@color/ocean_outline</item>
+        <item name="colorSurfaceInverse">@color/ocean_inverseSurface</item>
+        <item name="colorOnSurfaceInverse">@color/ocean_inverseOnSurface</item>
+        <item name="colorSurfaceContainer">@color/ocean_surfaceContainer</item>
+        <item name="colorSurfaceContainerLow">@color/ocean_surfaceContainerLow</item>
+        <item name="colorSurfaceContainerHigh">@color/ocean_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/ocean_surfaceContainerHighest</item>
+        <item name="android:colorBackground">@color/ocean_surface</item>
+        <item name="colorOnBackground">@color/ocean_onSurface</item>
+    </style>
+
+    <style name="ThemeOverlay.GestureEVO.Dynamic.Sunset" parent="">
+        <item name="colorPrimary">@color/sunset_primary</item>
+        <item name="colorOnPrimary">@color/sunset_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/sunset_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/sunset_onPrimaryContainer</item>
+        <item name="colorPrimaryInverse">@color/sunset_primaryInverse</item>
+
+        <item name="colorSecondary">@color/sunset_secondary</item>
+        <item name="colorOnSecondary">@color/sunset_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/sunset_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/sunset_onSecondaryContainer</item>
+
+        <item name="colorTertiary">@color/sunset_tertiary</item>
+        <item name="colorOnTertiary">@color/sunset_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/sunset_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/sunset_onTertiaryContainer</item>
+
+        <item name="colorSurface">@color/sunset_surface</item>
+        <item name="colorOnSurface">@color/sunset_onSurface</item>
+        <item name="colorSurfaceVariant">@color/sunset_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/sunset_onSurfaceVariant</item>
+        <item name="colorOutline">@color/sunset_outline</item>
+        <item name="colorSurfaceInverse">@color/sunset_inverseSurface</item>
+        <item name="colorOnSurfaceInverse">@color/sunset_inverseOnSurface</item>
+        <item name="colorSurfaceContainer">@color/sunset_surfaceContainer</item>
+        <item name="colorSurfaceContainerLow">@color/sunset_surfaceContainerLow</item>
+        <item name="colorSurfaceContainerHigh">@color/sunset_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/sunset_surfaceContainerHighest</item>
+        <item name="android:colorBackground">@color/sunset_surface</item>
+        <item name="colorOnBackground">@color/sunset_onSurface</item>
+    </style>
+
+    <style name="ThemeOverlay.GestureEVO.Dynamic.Midnight" parent="">
+        <item name="colorPrimary">@color/midnight_primary</item>
+        <item name="colorOnPrimary">@color/midnight_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/midnight_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/midnight_onPrimaryContainer</item>
+        <item name="colorPrimaryInverse">@color/midnight_primaryInverse</item>
+
+        <item name="colorSecondary">@color/midnight_secondary</item>
+        <item name="colorOnSecondary">@color/midnight_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/midnight_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/midnight_onSecondaryContainer</item>
+
+        <item name="colorTertiary">@color/midnight_tertiary</item>
+        <item name="colorOnTertiary">@color/midnight_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/midnight_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/midnight_onTertiaryContainer</item>
+
+        <item name="colorSurface">@color/midnight_surface</item>
+        <item name="colorOnSurface">@color/midnight_onSurface</item>
+        <item name="colorSurfaceVariant">@color/midnight_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/midnight_onSurfaceVariant</item>
+        <item name="colorOutline">@color/midnight_outline</item>
+        <item name="colorSurfaceInverse">@color/midnight_inverseSurface</item>
+        <item name="colorOnSurfaceInverse">@color/midnight_inverseOnSurface</item>
+        <item name="colorSurfaceContainer">@color/midnight_surfaceContainer</item>
+        <item name="colorSurfaceContainerLow">@color/midnight_surfaceContainerLow</item>
+        <item name="colorSurfaceContainerHigh">@color/midnight_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/midnight_surfaceContainerHighest</item>
+        <item name="android:colorBackground">@color/midnight_surface</item>
+        <item name="colorOnBackground">@color/midnight_onSurface</item>
+    </style>
+
+    <style name="ThemeOverlay.GestureEVO.Dynamic.Pink" parent="">
+        <item name="colorPrimary">@color/pink_primary</item>
+        <item name="colorOnPrimary">@color/pink_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/pink_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/pink_onPrimaryContainer</item>
+        <item name="colorPrimaryInverse">@color/pink_primaryInverse</item>
+
+        <item name="colorSecondary">@color/pink_secondary</item>
+        <item name="colorOnSecondary">@color/pink_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/pink_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/pink_onSecondaryContainer</item>
+
+        <item name="colorTertiary">@color/pink_tertiary</item>
+        <item name="colorOnTertiary">@color/pink_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/pink_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/pink_onTertiaryContainer</item>
+
+        <item name="colorSurface">@color/pink_surface</item>
+        <item name="colorOnSurface">@color/pink_onSurface</item>
+        <item name="colorSurfaceVariant">@color/pink_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/pink_onSurfaceVariant</item>
+        <item name="colorOutline">@color/pink_outline</item>
+        <item name="colorSurfaceInverse">@color/pink_inverseSurface</item>
+        <item name="colorOnSurfaceInverse">@color/pink_inverseOnSurface</item>
+        <item name="colorSurfaceContainer">@color/pink_surfaceContainer</item>
+        <item name="colorSurfaceContainerLow">@color/pink_surfaceContainerLow</item>
+        <item name="colorSurfaceContainerHigh">@color/pink_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/pink_surfaceContainerHighest</item>
+        <item name="android:colorBackground">@color/pink_surface</item>
+        <item name="colorOnBackground">@color/pink_onSurface</item>
+    </style>
+</resources>

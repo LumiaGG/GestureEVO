@@ -1,0 +1,70 @@
+[versions]
+agp = "8.13.2"
+kotlin = "2.1.20"
+ksp = "2.1.20-1.0.32"
+room = "2.8.4"
+junit = "4.13.2"
+kxml2 = "2.3.0"
+xz = "1.12"
+ahocorasick = "0.6.3"
+zxing = "3.5.3"
+sardine = "0.9"
+shizuku = "13.1.5"
+appiconloader = "1.5.0"
+hiddenapibypass = "6.1"
+brv = "1.6.1"
+moshi = "1.15.2"
+datastore = "1.2.1"
+androidx-core = "1.18.0"
+androidx-core-animation = "1.0.0"
+androidx-activity = "1.13.0"
+androidx-work = "2.11.2"
+androidx-documentfile = "1.1.0"
+androidx-browser = "1.10.0"
+androidx-appcompat = "1.7.1"
+material = "1.13.0"
+androidx-constraintlayout = "2.2.1"
+androidx-preference = "1.2.1"
+kotlinx-serialization = "1.8.1"
+
+[libraries]
+junit = { module = "junit:junit", version.ref = "junit" }
+kxml2 = { module = "net.sf.kxml:kxml2", version.ref = "kxml2" }
+xz = { module = "org.tukaani:xz", version.ref = "xz" }
+ahocorasick = { module = "org.ahocorasick:ahocorasick", version.ref = "ahocorasick" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+sardine-android = { module = "com.github.thegrizzlylabs:sardine-android", version.ref = "sardine" }
+shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
+shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
+appiconloader = { module = "me.zhanghai.android.appiconloader:appiconloader", version.ref = "appiconloader" }
+hiddenapibypass = { module = "org.lsposed.hiddenapibypass:hiddenapibypass", version.ref = "hiddenapibypass" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+brv = { module = "com.github.liangjingkanji:BRV", version.ref = "brv" }
+moshi-kotlin = { module = "com.squareup.moshi:moshi-kotlin", version.ref = "moshi" }
+moshi-codegen = { module = "com.squareup.moshi:moshi-kotlin-codegen", version.ref = "moshi" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
+androidx-core-animation = { module = "androidx.core:core-animation", version.ref = "androidx-core-animation" }
+androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "androidx-activity" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
+androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "androidx-documentfile" }
+androidx-browser = { module = "androidx.browser:browser", version.ref = "androidx-browser" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
+material = { module = "com.google.android.material:material", version.ref = "material" }
+androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "androidx-constraintlayout" }
+androidx-preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "androidx-preference" }
+kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinx-serialization" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+
+[bundles]
+room = ["androidx-room-runtime", "androidx-room-ktx"]
+shizuku = ["shizuku-api", "shizuku-provider"]
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+androidx-room = { id = "androidx.room", version.ref = "room" }

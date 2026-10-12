@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/triggerItem" style="?attr/materialCardViewFilledStyle" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="8dp" app:settingsCardExpanded="false">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/triggerEnableRow" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/free_trigger_item_enable_title" app:settingsRowSummary="@string/free_trigger_item_enable_summary">
+            <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/enableSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+        </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/editTriggerButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/free_trigger_item_edit_title" app:settingsRowSummary="@string/free_trigger_item_edit_summary" />
+    </LinearLayout>
+</io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>

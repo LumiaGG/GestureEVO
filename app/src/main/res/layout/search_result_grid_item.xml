@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/result_container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="@dimen/search_grid_card_margin"
+    android:background="?attr/selectableItemBackground"
+    android:baselineAligned="false"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="@dimen/search_grid_min_height"
+    android:orientation="horizontal"
+    android:paddingStart="@dimen/search_grid_padding_start"
+    android:paddingEnd="0dp">
+
+        <io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
+            android:id="@+id/icon"
+            android:layout_width="@dimen/search_grid_icon_size"
+            android:layout_height="@dimen/search_grid_icon_size" />
+
+        <LinearLayout
+            android:id="@+id/result_text_group"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/search_grid_icon_gap"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingVertical="6dp">
+
+            <TextView
+                android:id="@+id/result_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:includeFontPadding="false"
+                android:scrollHorizontally="false"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="@dimen/search_grid_text_size"
+                tools:text="设置" />
+
+            <TextView
+                android:id="@+id/result_subtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:includeFontPadding="false"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="@dimen/search_grid_subtitle_size"
+                android:visibility="gone" />
+        </LinearLayout>
+
+    <io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
+        android:id="@+id/function_icon"
+        android:layout_width="@dimen/search_grid_menu_size"
+        android:layout_height="@dimen/search_grid_menu_size"
+        android:contentDescription="@string/quick_search_result_options"
+        android:padding="8dp" />
+
+</LinearLayout>

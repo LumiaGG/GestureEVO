@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <!-- Optional secure-setting actions use an explicit user grant through ADB/Shizuku. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- App search, per-app gesture settings and activity selection require the full catalog. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <application
+        android:name=".EvoApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:enableOnBackInvokedCallback="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.GestureEVO"
+        tools:targetApi="34">
+        <activity
+            android:name=".utils.NotificationPermissionPromptActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@style/Theme.GestureEVO.transparent" />
+        <activity
+            android:name=".settings.SearchEngineSettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".settings.SearchEngineAddActivity"
+            android:exported="false" />
+        <activity
+            android:name=".settings.SettingsSearchActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GestureEVO" />
+        <activity
+            android:name=".search.QuickSearchActivity"
+            android:exported="true"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.GestureEVO.transparent"
+            android:windowSoftInputMode="adjustNothing|stateVisible" />
+        <activity
+            android:name=".pin.PinPoolFloating"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.GestureEVO.transparent" />
+        <activity
+            android:name=".ShareOpenAppProxyActivity"
+            android:clearTaskOnLaunch="true"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.GestureEVO.transparent">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="image/*" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".settings.BackgroundStabilityActivity"
+            android:exported="false" />
+        <activity
+            android:name=".quick.QuickStartActivity"
+            android:clearTaskOnLaunch="true"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.GestureEVO.transparent" />
+        <activity
+            android:name=".inspire.InspireContentActivity"
+            android:clearTaskOnLaunch="true"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.GestureEVO.transparent" />
+        <activity
+            android:name=".inspire.imageeditor.InspireImageEditorActivity"
+            android:excludeFromRecents="true"
+            android:exported="false" />
+        <activity
+            android:name=".settings.FreeTriggerSettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".settings.FreeTriggerConfigActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ExternalActionProxyActivity"
+            android:clearTaskOnLaunch="true"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="调用GestureEVO功能"
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.GestureEVO.transparent">
+            <intent-filter>
+                <data
+                    android:host="action"
+                    android:scheme="gesture-evo" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <action android:name="android.intent.action.VIEW" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".settings.InspireSettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".settings.DataBackActivity"
+            android:exported="false" />
+        <activity
+            android:name=".settings.ExternalActionSettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".settings.DataStatsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".settings.FreeFormSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GestureEVO" />
+        <activity
+            android:name=".settings.ActionViewSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GestureEVO" />
+        <activity
+            android:name=".settings.AppearanceSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GestureEVO" />
+        <activity
+            android:name=".MainActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:theme="@style/Theme.GestureEVO.Dispatcher">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".settings.SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GestureEVO" />
+        <activity
+            android:name=".settings.GestureAddActionActivity"
+            android:exported="false" />
+        <activity
+            android:name=".utils.CrashShowActivity"
+            android:label="Crash"
+            android:process=":exception_process"
+            android:taskAffinity="${applicationId}.TASK.ExceptionDisplay"
+            android:theme="@style/Theme.GestureEVO" />
+
+        <service
+            android:name=".gesture.GestureService"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service" />
+        </service>
+        <service
+            android:name=".notification.NotificationService"
+            android:enabled="true"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tile.GestureTileService"
+            android:exported="true"
+            android:icon="@drawable/baseline_gesture_24"
+            android:label="GestureEVO触发器"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tile.ScreenContentService"
+            android:exported="true"
+            android:icon="@drawable/outline_center_focus_weak_24"
+            android:label="GestureEVO屏幕内容"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+        <receiver
+            android:name=".utils.TempDndNotificationReceiver"
+            android:enabled="true"
+            android:exported="false" />
+    </application>
+
+</manifest>

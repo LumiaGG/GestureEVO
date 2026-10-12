@@ -1,0 +1,4 @@
+<resources>
+    <dimen name="quick_search_card_margin_top">8dp</dimen>
+    <dimen name="quick_search_card_margin_bottom">8dp</dimen>
+</resources>

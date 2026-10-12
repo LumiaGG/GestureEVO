@@ -1,0 +1,134 @@
+<androidx.constraintlayout.widget.ConstraintLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent">
+  <com.google.android.material.textview.MaterialTextView
+    android:id="@+id/inputPrompt"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_margin="5dp"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintBottom_toTopOf="@id/firstLine" />
+  <LinearLayout
+    android:id="@+id/firstLine"
+    android:layout_width="0dp"
+    android:layout_height="0dp"
+    android:orientation="horizontal"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/inputPrompt"
+    app:layout_constraintBottom_toTopOf="@id/secondLine"
+    app:layout_constraintVertical_weight="1">
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardLetterView
+      style="@style/Widget.DoubleKeyView"
+      app:leftLetterText="-"
+      app:topLetterText="1" />
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardLetterView
+      style="@style/Widget.DoubleKeyView"
+      app:leftLetterText="ABC"
+      app:topLetterText="2" />
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardLetterView
+      style="@style/Widget.DoubleKeyView"
+      app:leftLetterText="DEF"
+      app:topLetterText="3" />
+  </LinearLayout>
+  <LinearLayout
+    android:id="@+id/secondLine"
+    android:layout_width="0dp"
+    android:layout_height="0dp"
+    android:orientation="horizontal"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/firstLine"
+    app:layout_constraintBottom_toTopOf="@id/thirdLine"
+    app:layout_constraintVertical_weight="1">
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardLetterView
+      style="@style/Widget.DoubleKeyView"
+      app:leftLetterText="GHI"
+      app:topLetterText="4" />
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardLetterView
+      style="@style/Widget.DoubleKeyView"
+      app:leftLetterText="JKL"
+      app:topLetterText="5" />
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardLetterView
+      style="@style/Widget.DoubleKeyView"
+      app:leftLetterText="MNO"
+      app:topLetterText="6" />
+  </LinearLayout>
+  <LinearLayout
+    android:id="@+id/thirdLine"
+    android:layout_width="0dp"
+    android:layout_height="0dp"
+    android:orientation="horizontal"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/secondLine"
+    app:layout_constraintBottom_toTopOf="@id/fourthLine"
+    app:layout_constraintVertical_weight="1">
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardLetterView
+      style="@style/Widget.DoubleKeyView"
+      app:leftLetterText="PQRS"
+      app:topLetterText="7" />
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardLetterView
+      style="@style/Widget.DoubleKeyView"
+      app:leftLetterText="TUV"
+      app:topLetterText="8" />
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardLetterView
+      style="@style/Widget.DoubleKeyView"
+      app:leftLetterText="WXYZ"
+      app:topLetterText="9" />
+  </LinearLayout>
+  <LinearLayout
+    android:id="@+id/fourthLine"
+    android:layout_width="0dp"
+    android:layout_height="0dp"
+    android:orientation="horizontal"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/thirdLine"
+    app:layout_constraintBottom_toTopOf="@id/fiveLine"
+    app:layout_constraintVertical_weight="1">
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardFuncView
+      style="@style/Widget.DoubleKeyView"
+      android:scaleX="-1"
+      app:func="BACKSPACE"
+      app:icon="@drawable/baseline_backspace_24" />
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardLetterView
+      style="@style/Widget.DoubleKeyView"
+      app:leftLetterText="-"
+      app:topLetterText="0" />
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardFuncView
+      style="@style/Widget.DoubleKeyView"
+      app:func="BACKSPACE"
+      app:icon="@drawable/baseline_backspace_24" />
+  </LinearLayout>
+  <LinearLayout
+    android:id="@+id/fiveLine"
+    android:layout_width="0dp"
+    android:layout_height="0dp"
+    android:orientation="horizontal"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/fourthLine"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintVertical_weight="1">
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardFuncView
+      style="@style/Widget.DoubleKeyView"
+      android:layout_weight="0.3"
+      app:func="SETTINGS"
+      app:icon="@drawable/baseline_settings_24" />
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardLetterView
+      style="@style/Widget.DoubleKeyView"
+      android:layout_weight="1"
+      app:leftLetterText=" "
+      app:topLetterText=" " />
+    <io.github.lumiagg.gestureevo.quick.ui.KeyboardFuncView
+      style="@style/Widget.DoubleKeyView"
+      android:layout_weight="0.4"
+      app:func="ENTER"
+      app:icon="@drawable/baseline_arrow_right_alt_24" />
+  </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

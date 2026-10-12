@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/engine_container"
+    android:layout_width="42dp"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:layout_marginVertical="3dp">
+
+    <!-- 搜索引擎图标 -->
+    <io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
+        android:id="@+id/engine_icon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:gravity="center_horizontal" />
+
+    <!-- 搜索引擎名称 -->
+    <TextView
+        android:id="@+id/engine_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_horizontal"
+        android:maxLines="1"
+        android:minLines="1"
+        android:textSize="12sp"
+        tools:text="Google" />
+
+</LinearLayout>

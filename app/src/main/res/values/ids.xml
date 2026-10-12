@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 自定义的 tag key -->
+    <item name="fab_animating" type="id"/>
+
+    <item name="engineRecyclerItemsPerRow" type="id"/>
+    <item name="engineRecyclerItemSpacing" type="id"/>
+    <item name="engineRecyclerItemWidth" type="id"/>
+    <item name="engineRecyclerSpacingInstalled" type="id"/>
+</resources>

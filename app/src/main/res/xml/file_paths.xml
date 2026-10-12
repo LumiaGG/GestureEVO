@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <cache-path
+        name="shared_images"
+        path="images/"/>
+    <files-path
+        name="pin_pool"
+        path="pin_pool/"/>
+</paths>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="KeyboardLetterView">
+        <attr name="topLetterText" format="string" />
+        <attr name="leftLetterText" format="string" />
+        <attr name="rightLetterText" format="string" />
+    </declare-styleable>
+
+    <declare-styleable name="KeyboardFuncView">
+        <attr name="funcTopLetterText" format="string" />
+        <attr name="icon" format="reference" />
+        <attr name="func" format="string" />
+    </declare-styleable>
+
+    <declare-styleable name="BigBangLayout">
+        <attr name="itemSpace" format="dimension"/>
+        <attr name="lineSpace" format="dimension"/>
+        <attr name="textSize" format="dimension"/>
+    </declare-styleable>
+
+    <declare-styleable name="SettingsSectionCard">
+        <attr name="settingsCardTitle" format="string" />
+        <attr name="settingsCardSummary" format="string" />
+        <attr name="settingsCardExpanded" format="boolean" />
+        <attr name="settingsCardExpandable" format="boolean" />
+    </declare-styleable>
+
+    <attr name="settingsRowTitle" format="string" />
+    <attr name="settingsRowSummary" format="string" />
+    <attr name="settingsRowTrailingIcon" format="reference" />
+    <attr name="settingsRowSwatch" format="boolean" />
+
+    <declare-styleable name="SettingsNavRow">
+        <attr name="settingsRowTitle" />
+        <attr name="settingsRowSummary" />
+        <attr name="settingsRowTrailingIcon" />
+        <attr name="settingsRowSwatch" />
+    </declare-styleable>
+
+    <declare-styleable name="SettingsSwitchRow">
+        <attr name="settingsRowTitle" />
+        <attr name="settingsRowSummary" />
+    </declare-styleable>
+</resources>

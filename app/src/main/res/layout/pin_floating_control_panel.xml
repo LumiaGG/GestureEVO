@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/Theme.participleItemBg"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="15dp">
+
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="3dp">
+
+        <FrameLayout
+            android:layout_width="160dp"
+            android:layout_height="48dp">
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/transparencySlider"
+                android:layout_width="140dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:value="1.0"
+                android:valueFrom="0.1"
+                android:valueTo="1.0"
+                app:labelBehavior="gone"
+                app:thumbColor="@color/grey8"
+                app:trackColorActive="@color/grey8"
+                app:trackColorInactive="@color/grey8" />
+        </FrameLayout>
+
+        <androidx.constraintlayout.utils.widget.ImageFilterView
+            android:id="@+id/controlDivider"
+            style="@style/Theme.participleItem"
+            android:layout_width="2dp"
+            android:layout_height="28dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginHorizontal="4dp"
+            android:background="@color/grey8"
+            app:round="100dp" />
+
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <androidx.constraintlayout.utils.widget.ImageFilterView
+                android:id="@+id/rotateButton"
+                style="@style/Theme.participleItem"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginHorizontal="5dp"
+                android:layout_marginVertical="5dp"
+                android:contentDescription="@string/pin_action_rotate"
+                android:foreground="?attr/selectableItemBackground"
+                android:padding="5dp"
+                android:src="@drawable/ic_rotate_right"
+                android:tint="@color/grey8"
+                app:round="100dp" />
+
+            <androidx.constraintlayout.utils.widget.ImageFilterView
+                android:id="@+id/copyButton"
+                style="@style/Theme.participleItem"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginHorizontal="5dp"
+                android:layout_marginVertical="5dp"
+                android:foreground="?attr/selectableItemBackground"
+                android:padding="5dp"
+                android:src="@drawable/icon_copy"
+                android:tint="@color/grey8"
+                app:round="100dp" />
+
+            <androidx.constraintlayout.utils.widget.ImageFilterView
+                android:id="@+id/deleteButton"
+                style="@style/Theme.participleItem"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginHorizontal="5dp"
+                android:layout_marginVertical="5dp"
+                android:foreground="?attr/selectableItemBackground"
+                android:padding="5dp"
+                android:src="@drawable/ic_delete"
+                android:tint="@color/grey8"
+                app:round="100dp" />
+
+        </androidx.appcompat.widget.LinearLayoutCompat>
+
+    </androidx.appcompat.widget.LinearLayoutCompat>
+
+</androidx.cardview.widget.CardView>

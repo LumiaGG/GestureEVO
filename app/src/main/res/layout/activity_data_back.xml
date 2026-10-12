@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8'?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/main" android:layout_width="match_parent" android:layout_height="match_parent" android:fitsSystemWindows="true">
+    <com.google.android.material.appbar.AppBarLayout android:id="@+id/app_bar" android:layout_width="match_parent" android:layout_height="@dimen/app_bar_height">
+        <com.google.android.material.appbar.CollapsingToolbarLayout android:id="@+id/toolbar_layout" android:layout_width="match_parent" android:layout_height="match_parent" android:fitsSystemWindows="true" app:layout_scrollFlags="scroll|exitUntilCollapsed" app:toolbarId="@+id/toolbar">
+            <androidx.appcompat.widget.Toolbar android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="?attr/actionBarSize" app:layout_collapseMode="pin" app:title="@string/data_backup_title" />
+        </com.google.android.material.appbar.CollapsingToolbarLayout>
+    </com.google.android.material.appbar.AppBarLayout>
+    <androidx.core.widget.NestedScrollView android:id="@+id/dataBackScrollView" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="@dimen/settings_card_spacing" android:paddingVertical="16dp">
+            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/webdavCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/settings_card_spacing" app:settingsCardTitle="@string/data_backup_webdav_title" app:settingsCardSummary="@string/data_backup_webdav_description" app:settingsCardExpanded="false">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/data_backup_webdav_title" android:textSize="16sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/data_backup_webdav_description" android:textColor="?android:textColorSecondary" />
+                    <TextView android:id="@+id/webdavStatusText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/data_backup_webdav_status_disconnected" android:textColor="?android:textColorSecondary" />
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/configWebdavButton" android:enabled="false" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/data_backup_webdav_config" app:settingsRowSummary="@string/data_backup_webdav_config_summary" />
+                </LinearLayout>
+            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/backupCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/settings_card_spacing" app:settingsCardTitle="@string/data_backup_section_title" app:settingsCardSummary="@string/data_backup_section_description" app:settingsCardExpanded="false">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/data_backup_section_title" android:textSize="16sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/data_backup_section_description" android:textColor="?android:textColorSecondary" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/backupButton" android:enabled="false" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/data_backup_local" app:settingsRowSummary="@string/data_backup_local_summary" />
+                        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/backupToWebdavButton" android:enabled="false" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/data_backup_webdav" app:settingsRowSummary="@string/data_backup_webdav_summary" />
+                    </LinearLayout>
+                </LinearLayout>
+            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/restoreCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/settings_card_spacing" app:settingsCardTitle="@string/data_restore_section_title" app:settingsCardSummary="@string/data_restore_section_description" app:settingsCardExpanded="false">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/data_restore_section_title" android:textSize="16sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/data_restore_section_description" android:textColor="?android:textColorSecondary" />
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/restoreButton" android:enabled="false" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/data_restore_local" app:settingsRowSummary="@string/data_restore_local_summary" />
+                        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/restoreFromWebdavButton" android:enabled="false" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/data_restore_webdav" app:settingsRowSummary="@string/data_restore_webdav_summary" />
+                    </LinearLayout>
+                </LinearLayout>
+            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/dataStatsCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/settings_card_spacing" app:settingsCardTitle="@string/data_stats_entry_title" app:settingsCardSummary="@string/data_stats_entry_summary" app:settingsCardExpanded="false">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/data_stats_entry_title" android:textSize="16sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/data_stats_entry_description" android:textColor="?android:textColorSecondary" />
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/statsEntryButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/data_stats_entry_action" app:settingsRowSummary="@string/data_stats_entry_summary" />
+                </LinearLayout>
+            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/appAliasCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/settings_card_spacing" app:settingsCardTitle="@string/data_app_alias_title" app:settingsCardSummary="@string/data_app_alias_summary" app:settingsCardExpanded="false">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/data_app_alias_title" android:textSize="16sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/data_app_alias_description" android:textColor="?android:textColorSecondary" />
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/appAliasButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/data_app_alias_action" app:settingsRowSummary="@string/data_app_alias_summary" />
+                </LinearLayout>
+            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/rebuildDBCard" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsCardTitle="@string/data_rebuild_index_title" app:settingsCardSummary="@string/data_rebuild_index_summary" app:settingsCardExpanded="false">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/data_rebuild_index_title" android:textSize="16sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/data_rebuild_index_description" android:textColor="?android:textColorSecondary" />
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/rebuildDBButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/data_rebuild_index_action" app:settingsRowSummary="@string/data_rebuild_index_summary" />
+                    <com.google.android.material.progressindicator.LinearProgressIndicator android:id="@+id/rebuildDBProgress" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:indeterminate="true" android:visibility="invisible" />
+                </LinearLayout>
+            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

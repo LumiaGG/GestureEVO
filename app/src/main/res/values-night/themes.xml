@@ -1,0 +1,13 @@
+<resources>
+
+    <style name="Theme.participleItemBg" parent="Theme.Material3.Light.NoActionBar">
+        <item name="cardBackgroundColor">@color/cardColorOther_night</item>
+        <item name="android:textColor">@color/white</item>
+    </style>
+
+    <style name="Theme.participleItem" parent="Theme.Material3.Light.NoActionBar">
+        <item name="android:background">@color/grey_deep</item>
+        <item name="cardBackgroundColor">@color/grey_deep</item>
+        <item name="android:textColor">@color/grey8</item>
+    </style>
+</resources>

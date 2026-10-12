@@ -1,0 +1,129 @@
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:orientation="vertical"
+  android:padding="16dp">
+  <com.google.android.material.bottomsheet.BottomSheetDragHandleView
+    android:id="@+id/drag_handle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:layout_constraintTop_toTopOf="parent" />
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="16dp">
+    <androidx.constraintlayout.utils.widget.ImageFilterView
+      android:id="@+id/app_icon"
+      android:layout_width="72dp"
+      android:layout_height="72dp"
+      android:layout_marginBottom="16dp"
+      android:scaleType="centerCrop"
+      android:src="@mipmap/ic_launcher"
+      app:round="100dp" />
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="@string/app_name"
+      android:textAppearance="?attr/textAppearanceHeadline6"
+      android:textStyle="bold" />
+    <TextView
+      android:id="@+id/version_name"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:text="@string/about_version_default"
+      android:textAppearance="?attr/textAppearanceBody2" />
+  </LinearLayout>
+  <com.google.android.material.divider.MaterialDivider
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginVertical="16dp" />
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_settings_tile_quiet"
+    android:orientation="vertical"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="12dp">
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/about_developer"
+      android:textAppearance="?attr/textAppearanceTitleSmall"
+      android:textColor="?attr/colorOnSurface" />
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="2dp"
+      android:text="@string/about_developer_name"
+      android:textAppearance="?attr/textAppearanceBodySmall"
+      android:textColor="?attr/colorOnSurfaceVariant" />
+  </LinearLayout>
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:background="@drawable/bg_settings_tile_quiet"
+    android:orientation="vertical"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="12dp">
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/about_contributors"
+      android:textAppearance="?attr/textAppearanceTitleSmall"
+      android:textColor="?attr/colorOnSurface" />
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="2dp"
+      android:text="@string/about_contributors_detail"
+      android:textAppearance="?attr/textAppearanceBodySmall"
+      android:textColor="?attr/colorOnSurfaceVariant" />
+  </LinearLayout>
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:background="@drawable/bg_settings_tile_quiet"
+    android:orientation="vertical"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="12dp">
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/about_contact"
+      android:textAppearance="?attr/textAppearanceTitleSmall"
+      android:textColor="?attr/colorOnSurface" />
+    <TextView
+      android:id="@+id/project_feedback_entry"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="2dp"
+      android:text="@string/about_contact_detail"
+      android:textAppearance="?attr/textAppearanceBodyMedium"
+      android:textColor="?attr/colorPrimary" />
+  </LinearLayout>
+  <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+    android:id="@+id/privacy_policy_entry"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    app:settingsRowTitle="@string/about_privacy_policy" />
+  <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+    android:id="@+id/user_agreement_entry"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    app:settingsRowTitle="@string/about_user_agreement" />
+  <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+    android:id="@+id/open_source_licenses_entry"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    app:settingsRowTitle="@string/about_open_source_licenses" />
+</LinearLayout>

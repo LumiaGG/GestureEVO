@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <!-- Base application theme. -->
+  <style name="Base.Theme.GestureEVO" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar" />
+  <style name="Theme.GestureEVO" parent="Base.Theme.GestureEVO">
+    <!-- Transparent system bars for edge-to-edge. -->
+    <item name="android:navigationBarColor">@android:color/transparent</item>
+    <item name="android:statusBarColor">@android:color/transparent</item>
+    <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+  </style>
+  <style name="ThemeOverlay.BottomSheetDialog.Scrollable" parent="ThemeOverlay.Material3.BottomSheetDialog">
+    <item name="bottomSheetStyle">@style/Widget.Catalog.BottomSheet.Modal.Scrollable</item>
+  </style>
+  <style name="Widget.Catalog.BottomSheet.Modal.Scrollable" parent="Widget.Material3.BottomSheet.Modal">
+    <item name="paddingBottomSystemWindowInsets">false</item>
+    <item name="behavior_skipCollapsed">true</item>
+    <item name="behavior_fitToContents">true</item>
+    <item name="behavior_peekHeight">500dp</item>
+    <item name="behavior_hideable">true</item>
+  </style>
+  <style name="Widget.DoubleKeyView" parent="@style/Widget.Material3.CardView.Filled">
+    <item name="android:layout_width">0dp</item>
+    <item name="android:layout_height">match_parent</item>
+    <item name="android:layout_margin">3dp</item>
+    <item name="android:layout_weight">1</item>
+  </style>
+  <style name="Theme.participleItem" parent="Theme.Material3.Light.NoActionBar">
+    <item name="android:background">@color/white_grey_deep</item>
+    <item name="cardBackgroundColor">?attr/cardBackgroundColor</item>
+    <item name="android:textColor">@color/grey8</item>
+  </style>
+  <style name="Theme.participleItemBg" parent="Theme.Material3.Light.NoActionBar">
+    <item name="cardBackgroundColor">@color/cardColorOther_light</item>
+    <item name="android:textColor">@color/black</item>
+  </style>
+  <!-- 背景透明样式：保持透视，同时跳过系统窗口转场，避免桌面开启动画透出来。 -->
+  <style name="Theme.GestureEVO.transparent" parent="Theme.GestureEVO">
+    <item name="android:windowBackground">@color/transparent</item>
+    <item name="android:windowIsTranslucent">true</item>
+    <item name="android:backgroundDimEnabled">false</item>
+    <item name="android:windowAnimationStyle">@null</item>
+    <item name="android:windowDisablePreview">true</item>
+  </style>
+  <style name="Theme.GestureEVO.Dispatcher" parent="Theme.GestureEVO.transparent">
+    <item name="android:windowDisablePreview">true</item>
+    <item name="android:windowAnimationStyle">@null</item>
+  </style>
+  <style name="ShapeAppearance.App.TopRounded" parent="">
+    <item name="cornerFamily">rounded</item>
+    <item name="cornerSizeTopLeft">30dp</item>
+    <item name="cornerSizeTopRight">30dp</item>
+    <item name="cornerSizeBottomLeft">0dp</item>
+    <item name="cornerSizeBottomRight">0dp</item>
+  </style>
+</resources>

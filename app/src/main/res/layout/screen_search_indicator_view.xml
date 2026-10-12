@@ -1,0 +1,28 @@
+<com.google.android.material.card.MaterialCardView
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="48dp"
+  android:layout_height="48dp"
+  android:layout_gravity="center"
+  app:cardCornerRadius="24dp"
+  app:cardElevation="6dp">
+  <ProgressBar
+    android:id="@+id/indicatorSpinner"
+    style="?android:attr/progressBarStyleSmall"
+    android:layout_width="24dp"
+    android:layout_height="24dp"
+    android:layout_gravity="center"
+    android:contentDescription="@string/screen_search_title"
+    android:indeterminate="true"
+    android:indeterminateTint="?attr/colorPrimary"
+    android:indeterminateTintMode="src_in" />
+  <ImageView
+    android:id="@+id/indicatorOk"
+    android:layout_width="24dp"
+    android:layout_height="24dp"
+    android:layout_gravity="center"
+    android:contentDescription="@string/screen_search_title"
+    android:src="@drawable/baseline_check_24"
+    app:tint="?attr/colorPrimary"
+    android:visibility="gone" />
+</com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,22 @@
+GestureEVO
+Copyright (C) 2026 GestureEVO contributors
+Project license: GPL-3.0-only (see LICENSE).
+
+Third-party components retain their own copyright and license terms.
+Their original notices must be preserved when modifying or redistributing them.
+
+Detailed component and license inventory:
+  app/src/main/assets/licenses/open_source_notices.txt
+  app/src/main/assets/licenses/segmenter_licenses.txt
+  third_party/README.md
+
+LiteRT 2.1.0: Google LLC, Apache-2.0; third_party/litert.
+OCR integration: Copyright (C) 2025 Fleey, Apache-2.0;
+  app/src/main/java/me/fleey/ppocrv5 and identified native integration files.
+PaddleOCR models: Apache-2.0; app/src/main/modelAssets/models.
+Abseil 20250814.1: Apache-2.0; fetched by CMake.
+stb_image_write.h: public-domain/MIT options retained in its source header.
+TinyPinyin 2.0.3: Apache-2.0; app/libs/tinypinyin-2.0.3.jar.
+Generated dictionary: jieba and THUOCL MIT notices retained in assets/licenses.
+
+Local LiteRT adapters in app/src/main/cpp are not an unmodified upstream SDK.

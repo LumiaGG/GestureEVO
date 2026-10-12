@@ -1,0 +1,44 @@
+{
+  "files": [
+    {
+      "path": "gradle/wrapper/gradle-wrapper.jar",
+      "sizeBytes": 43705,
+      "sha256": "81a82aaea5abcc8ff68b3dfcb58b3c3c429378efd98e7433460610fecd7ae45f"
+    },
+    {
+      "path": "app/libs/tinypinyin-2.0.3.jar",
+      "sizeBytes": 96410,
+      "sha256": "083648e8a4412cecaa72d26c11c4116f49ec9c887cc046fabc21458c78c6cbf8"
+    },
+    {
+      "path": "third_party/litert/lib/arm64-v8a/libLiteRt.so",
+      "sizeBytes": 5104832,
+      "sha256": "21862bc799554e736e8c3d8f70210f213cd3bdcb9e111f20acf040327c140f37"
+    },
+    {
+      "path": "third_party/litert/lib/arm64-v8a/libLiteRtOpenClAccelerator.so",
+      "sizeBytes": 2675520,
+      "sha256": "26129f024f78708e7cbd0ae58a63317a1ed727ea6f9dd74a52d111563f7e55c2"
+    },
+    {
+      "path": "app/src/main/modelAssets/models/ocr_det_h1728_w768_fp16.tflite",
+      "sizeBytes": 2441744,
+      "sha256": "4e42c75a16aea1df2306416bc07b9a5ddf6c4e4692b4ceaff64cbd6e80d4d225"
+    },
+    {
+      "path": "app/src/main/modelAssets/models/ocr_rec_w320_fp32.tflite",
+      "sizeBytes": 16517436,
+      "sha256": "7d26ee3efed71c91acb6702c80899c848de225f91217f1fdc06eb62f4ef822d6"
+    },
+    {
+      "path": "app/src/main/modelAssets/models/ocr_rec_w640_fp32.tflite",
+      "sizeBytes": 16517436,
+      "sha256": "979281e95cb37d4c23abb461d6ea6f56175959fd409147c3da4cbfea710d2f88"
+    },
+    {
+      "path": "app/src/main/modelAssets/models/keys_v5.txt",
+      "sizeBytes": 74012,
+      "sha256": "d1979e9f794c464c0d2e0b70a7fe14dd978e9dc644c0e71f14158cdf8342af1b"
+    }
+  ]
+}

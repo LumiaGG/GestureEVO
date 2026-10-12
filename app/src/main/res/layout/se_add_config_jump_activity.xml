@@ -1,0 +1,100 @@
+<com.google.android.material.card.MaterialCardView
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:layout_marginBottom="10dp"
+  app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
+  app:cardCornerRadius="16dp"
+  app:cardElevation="0dp"
+  app:strokeColor="?attr/colorOutlineVariant"
+  app:strokeWidth="1dp">
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="14dp">
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginBottom="4dp"
+      android:text="@string/se_jump_activity_title"
+      android:textColor="?attr/colorOnSurface"
+      android:textSize="18sp"
+      android:textStyle="bold" />
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginBottom="10dp"
+      android:text="@string/se_jump_activity_description"
+      android:textColor="?attr/colorOnSurfaceVariant"
+      android:textSize="13sp" />
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/se_jump_activity_target_question"
+      android:textColor="?attr/colorOnSurfaceVariant"
+      android:textSize="13sp" />
+    <com.google.android.material.button.MaterialButton
+      android:id="@+id/jumpActivitySelectActivity"
+      style="@style/Widget.Material3.Button.OutlinedButton"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:text="@string/se_jump_activity_select_activity" />
+    <com.google.android.material.card.MaterialCardView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
+      app:cardCornerRadius="16dp"
+      app:cardElevation="0dp">
+      <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+        <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:text="@string/se_jump_activity_target_package_label"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:textSize="12sp" />
+        <TextView
+          android:id="@+id/jumpActivityTargetPackage"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="4dp"
+          android:text="@string/se_jump_activity_not_set"
+          android:textColor="?attr/colorOnSurface"
+          android:textSize="15sp" />
+        <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="10dp"
+          android:text="@string/se_jump_activity_target_activity_label"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:textSize="12sp" />
+        <TextView
+          android:id="@+id/jumpActivityTargetActivity"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="4dp"
+          android:layout_marginBottom="8dp"
+          android:text="@string/se_jump_activity_not_set"
+          android:textColor="?attr/colorOnSurface"
+          android:textSize="15sp" />
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          app:settingsRowTitle="@string/se_extern_jump_auto_enter">
+          <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/jumpActivityAutoInputEnter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+        </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+  </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

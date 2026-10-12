@@ -1,0 +1,111 @@
+<com.google.android.material.card.MaterialCardView
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
+  android:id="@+id/engine_container"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:layout_marginHorizontal="8dp"
+  android:layout_marginVertical="4dp"
+  app:cardBackgroundColor="?attr/colorSurfaceContainer"
+  app:cardCornerRadius="8dp"
+  app:cardElevation="0dp"
+  app:strokeColor="?attr/colorOutlineVariant"
+  app:strokeWidth="1dp">
+  <androidx.constraintlayout.widget.ConstraintLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="12dp">
+    <!-- 图标 -->
+    <io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
+      android:id="@+id/engine_icon"
+      android:layout_width="48dp"
+      android:layout_height="48dp"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toTopOf="parent"
+      tools:text="B" />
+    <!-- 内容区域 -->
+    <LinearLayout
+      android:id="@+id/content_area"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="12dp"
+      android:orientation="vertical"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintEnd_toStartOf="@id/action_area"
+      app:layout_constraintStart_toEndOf="@id/engine_icon"
+      app:layout_constraintTop_toTopOf="parent">
+      <!-- 引擎名称和默认标记 -->
+      <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView
+          android:id="@+id/engine_name"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:ellipsize="end"
+          android:maxLines="1"
+          android:textColor="?attr/colorOnSurface"
+          android:textSize="16sp"
+          android:textStyle="bold"
+          tools:text="Google搜索" />
+      </LinearLayout>
+      <!-- 引擎类型 -->
+      <TextView
+        android:id="@+id/engine_type"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp"
+        tools:text="直接链接" />
+    </LinearLayout>
+    <!-- 操作按钮区域 -->
+    <LinearLayout
+      android:id="@+id/action_area"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintTop_toTopOf="parent">
+      <com.google.android.material.chip.Chip
+        android:id="@+id/default_badge"
+        style="@style/Widget.Material3.Chip.Assist.Elevated"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/search_engine_badge_default"
+        android:textSize="11sp"
+        android:visibility="gone"
+        app:chipMinHeight="24dp"
+        android:layout_marginEnd="10dp"
+        tools:visibility="visible" />
+      <com.google.android.material.chip.Chip
+        android:id="@+id/hide_badge"
+        style="@style/Widget.Material3.Chip.Assist.Elevated"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/search_engine_badge_hidden"
+        android:textSize="11sp"
+        android:visibility="gone"
+        app:chipMinHeight="24dp"
+        android:layout_marginEnd="10dp"
+        tools:visibility="visible" />
+      <!-- 拖动手柄 -->
+      <ImageView
+        android:id="@+id/drag_handle"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:contentDescription="@string/search_engine_drag_reorder"
+        android:padding="8dp"
+        android:src="@drawable/drag_handle_24px"
+        app:tint="?attr/colorOnSurfaceVariant" />
+    </LinearLayout>
+  </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>

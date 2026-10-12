@@ -1,0 +1,33 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:autoMirrored="true"
+    android:height="24dp"
+    android:viewportHeight="24"
+    android:viewportWidth="24"
+    android:width="24dp">
+
+    <!-- 左上角 -->
+    <path
+        android:fillColor="#B8CDD6"
+        android:pathData="M5,5h4L9,3L5,3c-1.1,0 -2,0.9 -2,2v4h2L5,5z"/>
+
+    <!-- 右上角 -->
+    <path
+        android:fillColor="#B8CDD6"
+        android:pathData="M19,3h-4v2h4v4h2L21,5c0,-1.1 -0.9,-2 -2,-2z"/>
+
+    <!-- 左下角 -->
+    <path
+        android:fillColor="#B8CDD6"
+        android:pathData="M5,15L3,15v4c0,1.1 0.9,2 2,2h4v-2L5,19v-4z"/>
+
+    <!-- 右下角 -->
+    <path
+        android:fillColor="#B8CDD6"
+        android:pathData="M19,19h-4v2h4c1.1,0 2,-0.9 2,-2v-4h-2v4z"/>
+
+    <!-- 中心圆环 -->
+    <path
+        android:fillColor="@color/theme_color"
+        android:pathData="M12,8c-2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4 -1.79,-4 -4,-4zM12,14c-1.1,0 -2,-0.9 -2,-2s0.9,-2 2,-2 2,0.9 2,2 -0.9,2 -2,2z"/>
+
+</vector>

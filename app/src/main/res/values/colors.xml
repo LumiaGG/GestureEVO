@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="gray">#DC5C5C5C</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="blue">#4CD1CC</color>
+    <color name="transparent">#00000000</color>
+
+    <color name="theme_color">#26A69A</color>
+    <!-- repository. -->
+
+    <!-- theme. -->
+
+    <!-- widget. -->
+
+    <!-- material 3. -->
+
+    <!-- search evo -->
+    <color name="grey8">#888888</color>
+    <color name="grey_deep">#333333</color>
+    <color name="white_grey_deep">#EDEDED</color>
+    <color name="transparent_night">#99000000</color>
+    <color name="cardColorOther_night">#28282D</color>
+    <color name="cardColorOther_light">#FEFEFE</color>
+
+    <color name="bigbangSelectBg_light">#B8CDD6</color>
+</resources>

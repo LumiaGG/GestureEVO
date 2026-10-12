@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp">
+
+        <TextView
+            android:id="@+id/title_accessibility"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="12dp"
+            android:text="@string/clipboard_action_select_title"
+            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/btn_action_pin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:tag="pin"
+            app:settingsRowTitle="@string/clipboard_action_select_pin" />
+
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/btn_action_search"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:tag="search"
+            app:settingsRowTitle="@string/clipboard_action_select_search" />
+
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/btn_action_translate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:tag="translate"
+            app:settingsRowTitle="@string/clipboard_action_select_translate" />
+
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:tag="inspire"
+            app:settingsRowTitle="@string/clipboard_action_select_share_inspire" />
+
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/btn_action_clip_to_gallery"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:tag="saveImage"
+            app:settingsRowTitle="@string/clipboard_action_select_save_image" />
+
+    </LinearLayout>
+</ScrollView>

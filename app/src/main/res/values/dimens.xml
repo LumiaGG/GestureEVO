@@ -1,0 +1,8 @@
+<resources>
+    <dimen name="app_bar_height">140dp</dimen>
+    <dimen name="slide_offset">64dp</dimen>
+    <dimen name="quick_search_motion_offset_medium">56dp</dimen>
+    <dimen name="quick_search_motion_offset_large">72dp</dimen>
+    <dimen name="settings_card_spacing">8dp</dimen>
+    <dimen name="settings_card_corner_radius">16dp</dimen>
+</resources>

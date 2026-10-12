@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/gesture_item"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="4dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="2dp"
+        android:paddingBottom="4dp">
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/gesture_select_checkbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/gesture_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="?attr/colorOnSurface"
+            tools:text="向右滑动" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/phase_lock_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="2dp"
+        android:paddingBottom="4dp"
+        android:text="@string/gesture_type_phase_locked"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+    <LinearLayout
+        android:id="@+id/phase_buttons_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/btn_phase_td"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:settingsRowTitle="@string/gesture_phase_trigger">
+
+            <TextView
+                android:id="@+id/btn_phase_td_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="显示轮盘" />
+        </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/btn_phase_sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/gesture_phase_pause">
+
+            <TextView
+                android:id="@+id/btn_phase_sp_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="未设置" />
+        </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/btn_phase_rd"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/gesture_phase_release">
+
+            <TextView
+                android:id="@+id/btn_phase_rd_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="显示轮盘" />
+        </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/btn_phase_back"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/gesture_phase_return">
+
+            <TextView
+                android:id="@+id/btn_phase_back_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="未设置" />
+        </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+    </LinearLayout>
+</LinearLayout>

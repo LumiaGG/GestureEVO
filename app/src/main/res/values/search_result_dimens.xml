@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="quick_search_card_gap">8dp</dimen>
+    <dimen name="search_result_row_min_height">56dp</dimen>
+    <dimen name="search_result_image_card_height">148dp</dimen>
+    <dimen name="search_result_image_row_height">160dp</dimen>
+    <dimen name="search_grid_card_margin">4dp</dimen>
+    <dimen name="search_grid_padding_start">8dp</dimen>
+    <dimen name="search_grid_icon_size">28dp</dimen>
+    <dimen name="search_grid_icon_gap">8dp</dimen>
+    <dimen name="search_grid_menu_size">32dp</dimen>
+    <dimen name="search_grid_min_height">56dp</dimen>
+    <dimen name="search_grid_text_size">15sp</dimen>
+    <dimen name="search_grid_url_text_size">14sp</dimen>
+    <dimen name="search_grid_subtitle_size">13sp</dimen>
+    <dimen name="quick_search_card_max_width">440dp</dimen>
+    <dimen name="quick_search_drag_bar_width">48dp</dimen>
+    <dimen name="quick_search_drag_bar_height">4dp</dimen>
+    <dimen name="quick_search_card_margin_top">32dp</dimen>
+    <dimen name="quick_search_card_margin_bottom">16dp</dimen>
+</resources>

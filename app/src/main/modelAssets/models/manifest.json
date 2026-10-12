@@ -1,0 +1,80 @@
+{
+  "version": 5,
+  "models": [
+    {
+      "name": "ocr_detection",
+      "type": "tflite",
+      "assetPath": "models/ocr_det_h1728_w768_fp16.tflite",
+      "targetPath": "ocr_det_h1728_w768_fp16.tflite",
+      "sha256": "4e42c75a16aea1df2306416bc07b9a5ddf6c4e4692b4ceaff64cbd6e80d4d225",
+      "sizeBytes": 2441744,
+      "required": true,
+      "description": "PP-OCRv5 text detection model, 768x1728 tall input (FP16)",
+      "source": "https://github.com/PaddlePaddle/PaddleOCR",
+      "inputShape": [
+        1,
+        1728,
+        768,
+        3
+      ],
+      "quantization": "FP16"
+    },
+    {
+      "name": "ocr_recognition",
+      "type": "tflite",
+      "assetPath": "models/ocr_rec_w320_fp32.tflite",
+      "targetPath": "ocr_rec_w320_fp32.tflite",
+      "sha256": "7d26ee3efed71c91acb6702c80899c848de225f91217f1fdc06eb62f4ef822d6",
+      "sizeBytes": 16517436,
+      "required": true,
+      "description": "PP-OCRv5 text recognition model, width 320 input (FP32)",
+      "source": "https://github.com/PaddlePaddle/PaddleOCR",
+      "inputShape": [
+        1,
+        48,
+        320,
+        3
+      ],
+      "outputShape": [
+        1,
+        40,
+        18385
+      ],
+      "quantization": "FP32"
+    },
+    {
+      "name": "ocr_recognition_w640",
+      "type": "tflite",
+      "assetPath": "models/ocr_rec_w640_fp32.tflite",
+      "targetPath": "ocr_rec_w640_fp32.tflite",
+      "sha256": "979281e95cb37d4c23abb461d6ea6f56175959fd409147c3da4cbfea710d2f88",
+      "sizeBytes": 16517436,
+      "required": true,
+      "description": "PP-OCRv5 text recognition model, wide input (FP32)",
+      "source": "https://github.com/PaddlePaddle/PaddleOCR",
+      "inputShape": [
+        1,
+        48,
+        640,
+        3
+      ],
+      "outputShape": [
+        1,
+        80,
+        18385
+      ],
+      "quantization": "FP32"
+    },
+    {
+      "name": "ocr_dictionary",
+      "type": "dictionary",
+      "assetPath": "models/keys_v5.txt",
+      "targetPath": "keys_v5.txt",
+      "sha256": "d1979e9f794c464c0d2e0b70a7fe14dd978e9dc644c0e71f14158cdf8342af1b",
+      "sizeBytes": 74012,
+      "required": true,
+      "description": "Character dictionary for CTC decoding (18383 chars)",
+      "source": "https://github.com/PaddlePaddle/PaddleOCR"
+    }
+  ]
+}
