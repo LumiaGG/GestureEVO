@@ -99,7 +99,7 @@ jobs:
           git archive --format=zip --prefix="GestureEVO-${RELEASE_VERSION}/" --output="build/release-assets/GestureEVO-${RELEASE_VERSION}-source.zip" HEAD
           cp LICENSE NOTICE build/release-assets/
           cp signing/release-certificate.pem signing/release-certificate.sha256 build/release-assets/
-          (cd build/release-assets && sha256sum *.apk *-source.zip > SHA256SUMS)
+          (cd build/release-assets && sha256sum -- *.apk *-source.zip > SHA256SUMS)
       - name: Retain release build artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
