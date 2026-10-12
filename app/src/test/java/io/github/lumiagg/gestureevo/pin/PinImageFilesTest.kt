@@ -2,6 +2,7 @@ package io.github.lumiagg.gestureevo.pin
 
 import io.github.lumiagg.gestureevo.utils.rebaseBackupFilePaths
 import org.junit.Assert.*
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -47,6 +48,15 @@ class PinImageFilesTest {
         val outside = temporary.newFile("private-data").apply { writeText("keep") }
         val link = File(directory, "pin_link.png")
         Files.createSymbolicLink(link.toPath(), outside.toPath())
+
+        // Older Windows JVMs do not resolve symlinks through File.canonicalFile.
+        // Android and the Linux CI runner must still exercise the full assertion.
+        if (File.separatorChar == '\\') {
+            assumeTrue(
+                "This Windows JVM does not resolve symbolic links through File.canonicalFile",
+                link.canonicalFile == outside.canonicalFile,
+            )
+        }
 
         assertRejected(directory, link.path)
         assertFalse(deletePinImageFile(directory, link.path))
