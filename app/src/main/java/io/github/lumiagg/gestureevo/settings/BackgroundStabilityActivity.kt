@@ -94,36 +94,7 @@ class BackgroundStabilityActivity : AppCompatActivity() {
 
     private fun openAutoStartSettings() {
         try {
-            val intent = Intent()
-            val manufacturer = android.os.Build.MANUFACTURER.lowercase()
-            when {
-                manufacturer.contains("xiaomi") -> {
-                    intent.component = android.content.ComponentName(
-                        "com.miui.securitycenter",
-                        "com.miui.permcenter.autostart.AutoStartManagementActivity"
-                    )
-                }
-
-                manufacturer.contains("oppo") -> {
-                    intent.component = android.content.ComponentName(
-                        "com.coloros.safecenter",
-                        "com.coloros.safecenter.permission.startup.StartupAppListActivity"
-                    )
-                }
-
-                manufacturer.contains("vivo") -> {
-                    intent.component = android.content.ComponentName(
-                        "com.vivo.permissionmanager",
-                        "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"
-                    )
-                }
-
-                else -> {
-                    intent.action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-                    intent.data = Uri.fromParts("package", packageName, null)
-                }
-            }
-            startActivity(intent)
+            startActivity(backgroundAutoStartIntent(this))
         } catch (e: Exception) {
             showErrorDialog(
                 getString(R.string.background_autostart_open_failed_title),
@@ -149,4 +120,22 @@ class BackgroundStabilityActivity : AppCompatActivity() {
             .setPositiveButton(R.string.background_dialog_ok, null)
             .show()
     }
+}
+
+internal fun backgroundAutoStartIntent(context: Context): Intent {
+    val manufacturer = android.os.Build.MANUFACTURER.lowercase(java.util.Locale.ROOT)
+    val component = when {
+        manufacturer.contains("xiaomi") -> android.content.ComponentName(
+            "com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"
+        )
+        manufacturer.contains("oppo") -> android.content.ComponentName(
+            "com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity"
+        )
+        manufacturer.contains("vivo") -> android.content.ComponentName(
+            "com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"
+        )
+        else -> null
+    }
+    return if (component != null) Intent().setComponent(component)
+    else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
 }

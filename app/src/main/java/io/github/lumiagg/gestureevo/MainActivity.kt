@@ -10,6 +10,8 @@ import io.github.lumiagg.gestureevo.search.config.SearchEngineDataManager
 import io.github.lumiagg.gestureevo.settings.BackgroundStabilityActivity
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity.Companion.KEY_DEFAULT_SEARCH_PAGE
 import io.github.lumiagg.gestureevo.settings.SettingsActivity
+import io.github.lumiagg.gestureevo.settings.SettingsGuideActivity
+import io.github.lumiagg.gestureevo.settings.guide.SettingsGuideState
 import io.github.lumiagg.gestureevo.utils.app.syncAppCatalog
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
 import io.github.lumiagg.gestureevo.utils.readKey
@@ -17,6 +19,7 @@ import io.github.lumiagg.gestureevo.utils.settingsStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
@@ -25,23 +28,38 @@ class MainActivity : AppCompatActivity() {
 
 
         lifecycleScope.launch(Dispatchers.Default) {
+            val showGuide = SettingsGuideState.shouldShowOnLaunch(applicationContext)
             SearchEngineDataManager.ensureDefaultEngines(applicationContext)
             val openSearchByDefault = settingsStore.readKey(KEY_DEFAULT_SEARCH_PAGE, false)
-            if (openSearchByDefault) {
-                QuickSearchActivity.start(applicationContext)
+            if (!showGuide && openSearchByDefault) {
+                withContext(Dispatchers.Main) {
+                    QuickSearchActivity.start(applicationContext)
+                }
             } else {
-                val intent = Intent(applicationContext, SettingsActivity::class.java)
+                val destination = if (showGuide) {
+                    SettingsGuideActivity::class.java
+                } else {
+                    SettingsActivity::class.java
+                }
+                val intent = Intent(applicationContext, destination)
+                if (showGuide) {
+                    intent.putExtra(SettingsGuideActivity.EXTRA_FROM_LAUNCHER, true)
+                }
                 if (!settingsStore.readKey(BackgroundStabilityActivity.HIDE_TASK, true)) {
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT
                 }
-                startActivity(intent)
+                withContext(Dispatchers.Main) {
+                    startActivity(intent)
+                }
             }
 
             delay(300)
             IconHelper.initIconConfig(applicationContext)
             syncAppCatalog(applicationContext)
             SettingsShortcutSearchHelper.syncShortcutsToDatabase(applicationContext)
-            finish()
+            withContext(Dispatchers.Main) {
+                finish()
+            }
         }
     }
 

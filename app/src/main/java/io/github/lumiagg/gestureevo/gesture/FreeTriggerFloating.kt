@@ -3,6 +3,7 @@ package io.github.lumiagg.gestureevo.gesture
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Rect
 import android.util.Log
 import android.view.View
 import android.view.ViewTreeObserver
@@ -67,12 +68,7 @@ class FreeTriggerFloating(
     private var triggers = listOf<FreeTriggerConfig>()
     private var lastPackageName: String? = context.packageName
     private var lastOrientation: Int = Configuration.ORIENTATION_UNDEFINED
-    private val screenWidth: Int
-        get() = ScreenUtil.getScreenRealWidth(context, false)
-
-    private val screenHeight: Int
-        get() = ScreenUtil.getScreenRealHeight(context, false)
-
+    private var guidePreviewActive = false
     init {
         context.launch {
             reloadTriggers()
@@ -185,6 +181,7 @@ class FreeTriggerFloating(
             this.isMirror = isMirror
             val color = context.getColor(R.color.transparent)
             setBackgroundColor(color)
+            if (guidePreviewActive) visibility = View.GONE
         }
 
         addViewSafely(view, layoutParams)
@@ -196,8 +193,7 @@ class FreeTriggerFloating(
         isMirror: Boolean
     ): WindowManager.LayoutParams {
         // Ensure view dimensions remain within screen bounds
-        val adjustedWidth = min(config.width.dp2px.toInt(), screenWidth)
-        val adjustedHeight = min(config.height.dp2px.toInt(), screenHeight)
+        val bounds = freeTriggerBounds(context, config, isMirror)
 
         return WindowManager.LayoutParams().apply {
             var windowFlags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -211,8 +207,8 @@ class FreeTriggerFloating(
 
             configureAccessibilityOverlay(
                 windowFlags,
-                width = adjustedWidth,
-                height = adjustedHeight,
+                width = bounds.width(),
+                height = bounds.height(),
                 title = if (isMirror) {
                     "GestureEVO:FreeTriggerFloating:Mirror:${config.tag}"
                 } else {
@@ -220,24 +216,18 @@ class FreeTriggerFloating(
                 },
             )
 
-            // Calculate initial position
-            var initialX = if (isMirror) {
-                screenWidth - (config.xRelativeValue * screenWidth).toInt() - adjustedWidth
-            } else {
-                (config.xRelativeValue * screenWidth).toInt()
-            }
-
-            var initialY = (config.yRelativeValue * screenHeight).toInt()
-
-            // Ensure view stays within screen boundaries
-            x = max(0, min(initialX, screenWidth - adjustedWidth))
-            y = max(0, min(initialY, screenHeight - adjustedHeight))
+            x = bounds.left
+            y = bounds.top
         }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     suspend fun setVisibility(tag: String, isVisible: Boolean): Boolean =
         withContext(Dispatchers.Main) {
+            if (guidePreviewActive) {
+                triggerViews[tag]?.getAllViews()?.forEach { it.visibility = View.GONE }
+                return@withContext triggerViews.containsKey(tag)
+            }
             if (isVisible) realTriggerIsEnable = true
             val viewGroup = triggerViews[tag] ?: return@withContext false
             val targetVisible = if (isVisible) View.VISIBLE else View.GONE
@@ -277,6 +267,18 @@ class FreeTriggerFloating(
             }
         } else {
             setVisibility(triggerView.triggerConfig.tag, false)
+        }
+    }
+
+    suspend fun setGuidePreviewActive(active: Boolean) = withContext(Dispatchers.Main) {
+        if (guidePreviewActive == active) return@withContext
+        guidePreviewActive = active
+        if (active) {
+            triggerViews.values.forEach { group ->
+                group.getAllViews().forEach { it.visibility = View.GONE }
+            }
+        } else {
+            refreshTriggerVisibility()
         }
     }
 
@@ -441,4 +443,23 @@ class FreeTriggerFloating(
         }
         triggerViews.clear()
     }
+}
+
+internal fun freeTriggerBounds(
+    context: Context,
+    config: FreeTriggerConfig,
+    isMirror: Boolean = false,
+): Rect {
+    val screenWidth = ScreenUtil.getScreenRealWidth(context, false)
+    val screenHeight = ScreenUtil.getScreenRealHeight(context, false)
+    val width = min(config.width.dp2px.toInt(), screenWidth)
+    val height = min(config.height.dp2px.toInt(), screenHeight)
+    val initialX = if (isMirror) {
+        screenWidth - (config.xRelativeValue * screenWidth).toInt() - width
+    } else {
+        (config.xRelativeValue * screenWidth).toInt()
+    }
+    val x = initialX.coerceIn(0, max(0, screenWidth - width))
+    val y = (config.yRelativeValue * screenHeight).toInt().coerceIn(0, max(0, screenHeight - height))
+    return Rect(x, y, x + width, y + height)
 }
