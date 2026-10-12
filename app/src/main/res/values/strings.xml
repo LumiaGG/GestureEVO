@@ -1162,4 +1162,7 @@
     <string name="quick_practice_applied">这套手势与轮盘已自动保存。</string>
     <string name="quick_practice_next">下一项</string>
     <string name="quick_practice_done">完成</string>
+    <string name="quick_setup_edit_wheel">编辑轮盘</string>
+    <string name="quick_setup_edit_hint">点击项目编辑动作，长按删除，点击加号添加。</string>
+    <string name="quick_setup_minimum_items">轮盘至少保留两个项目。</string>
 </resources>

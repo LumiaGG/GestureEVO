@@ -200,6 +200,13 @@ internal fun buildQuickSetupTriggers(config: QuickSetupConfig, name: String): Li
             setState(FreeTriggerConfig.FLAG_PORTRAIT, true)
             setState(FreeTriggerConfig.FLAG_LANDSCAPE, true)
             setState(FreeTriggerConfig.FLAG_WHEEL_FOLLOW_TRIGGER_POINT, false)
+            val quadrant = when {
+                side == QuickSetupSide.LEFT && config.verticalPercent < 50 -> 3
+                side == QuickSetupSide.LEFT -> 0
+                config.verticalPercent < 50 -> 2
+                else -> 1
+            }
+            setQuadrant(List(4) { it == quadrant })
         }
     }
 }

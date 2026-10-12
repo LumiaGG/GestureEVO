@@ -9,14 +9,18 @@ import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+import android.graphics.Rect
 import android.os.Build
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
+import android.view.WindowInsets
 import android.view.animation.LinearInterpolator
 import androidx.core.view.isVisible
 import androidx.core.view.doOnLayout
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
 import io.github.lumiagg.gestureevo.gesture.GestureManager.Companion.TAG
@@ -38,17 +42,20 @@ import io.github.lumiagg.gestureevo.settings.ActionViewSettingsActivity.Companio
 import io.github.lumiagg.gestureevo.settings.ActionViewSettingsActivity.Companion.KEY_SELECTED_HINT_ICON
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_WHEEL_BACKGROUND_BLUR
 import io.github.lumiagg.gestureevo.settings.GestureAddActionActivity
+import io.github.lumiagg.gestureevo.settings.guide.QuickSetupRepository
 import io.github.lumiagg.gestureevo.utils.ActionProxy
 import io.github.lumiagg.gestureevo.utils.GestureActionLink
 import io.github.lumiagg.gestureevo.utils.OverlaySurfaceBlur
 import io.github.lumiagg.gestureevo.utils.RecentAppsRecorder
 import io.github.lumiagg.gestureevo.utils.Rom
+import io.github.lumiagg.gestureevo.utils.ScreenUtil
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.postOnMain
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import io.github.lumiagg.gestureevo.utils.toGestureActionType
+import io.github.lumiagg.gestureevo.utils.dp2px
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -445,6 +452,7 @@ class GestureMainFloating(private val context: GestureService) :
         config: ActionConfig,
         items: List<GestureActionItem>,
         trigger: FreeTriggerConfig,
+        editable: Boolean = false,
         onWheelSelection: ((Int) -> Unit)? = null,
         onLayout: (() -> Unit)? = null,
     ) {
@@ -465,14 +473,15 @@ class GestureMainFloating(private val context: GestureService) :
         actionView.config = config
         actionView.state.itemsTag = config.tag
         actionView.setModeList(items)
-        actionView.workMode = ActionView.WorkMode.ACTIVE
+        actionView.workMode = if (editable) ActionView.WorkMode.CONFIG_MAIN else ActionView.WorkMode.ACTIVE
         actionView.disableAllWheelVibrate = true
         actionView.visibility = View.VISIBLE
         ensureAttached()
         actionView.doOnLayout {
             if (revision == guidePreviewRevision && isAttachRequested(actionView)) {
                 val (x, y) = resolveTriggerCenter(trigger)
-                relayoutActionViewQuadrant(x, y)
+                if (trigger.quadrantValue == 0) relayoutActionViewQuadrant(x, y)
+                else relayoutActionViewQuadrantByTrigger(trigger, x, y)
                 actionView.relayoutSelectedIcon(enable = false)
                 actionView.layoutGuidePreview()
                 onLayout?.invoke()
@@ -707,6 +716,7 @@ class GestureMainFloating(private val context: GestureService) :
         viewHeight: Int = actionView.height
     ) {
         Log.d(TAG, "relayoutActionViewItem: $downX, $downY, width:$viewWidth, height:$viewHeight")
+        actionView.restoreGuideWheelScreenFit()
 
         val actionConfig = actionView.config
         val actionState = actionView.state
@@ -811,14 +821,49 @@ class GestureMainFloating(private val context: GestureService) :
         viewWidth: Int = actionView.width,
         isMirror: Boolean = false
     ) {
+        actionView.restoreGuideWheelScreenFit()
         actionView.state.mirror = downX <= viewWidth / 2
-        actionView.state.centerX = downX.toInt() + actionView.config.actionOffsetX.toInt()
-        actionView.state.centerY = downY.toInt() + actionView.config.actionOffsetY.toInt()
+        val guideTrigger = triggerConfig.tag == QuickSetupRepository.LEFT_TRIGGER_TAG ||
+            triggerConfig.tag == QuickSetupRepository.RIGHT_TRIGGER_TAG
+        if (guideTrigger) {
+            val halfCenter = actionView.config.initRadius / 2
+            val insetX = actionView.config.actionOffsetX
+            val centerX = if (actionView.state.mirror) downX + insetX else downX - insetX
+            actionView.state.centerX = centerX.coerceIn(halfCenter, (viewWidth - halfCenter).coerceAtLeast(halfCenter)).toInt()
+            actionView.state.centerY = downY.coerceIn(halfCenter, (actionView.height - halfCenter).coerceAtLeast(halfCenter)).toInt()
+        } else {
+            actionView.state.centerX = downX.toInt() + actionView.config.actionOffsetX.toInt()
+            actionView.state.centerY = downY.toInt() + actionView.config.actionOffsetY.toInt()
+        }
         if (!actionView.config.rectangleLayoutEnabled && triggerConfig.quadrantValue == 15) {
             actionView.state.mirror = false
         }
         val quadrant = triggerConfig.getQuadrant(isMirror)
         actionView.state.setAngleByQuadrant(quadrant)
+        if (guideTrigger) actionView.fitGuideWheelToScreen(guideWheelScreenBounds(viewWidth, actionView.height))
+    }
+
+    @SuppressLint("InternalInsetResource", "DiscouragedApi")
+    private fun guideWheelScreenBounds(viewWidth: Int, viewHeight: Int): Rect {
+        val insets = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            windowManager.maximumWindowMetrics.windowInsets.getInsetsIgnoringVisibility(
+                WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout()
+            ).let { androidx.core.graphics.Insets.of(it.left, it.top, it.right, it.bottom) }
+        } else {
+            ViewCompat.getRootWindowInsets(actionView)?.getInsetsIgnoringVisibility(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            ) ?: run {
+                val resourceId = context.resources.getIdentifier("navigation_bar_height", "dimen", "android")
+                val bottom = if (resourceId > 0) context.resources.getDimensionPixelSize(resourceId) else 0
+                androidx.core.graphics.Insets.of(0, ScreenUtil.getStatusBarHeight(context, false), 0, bottom)
+            }
+        }
+        val left = insets.left.coerceAtMost((viewWidth - 3).coerceAtLeast(0))
+        val top = (insets.top + 136f.dp2px.toInt()).coerceAtMost((viewHeight - 3).coerceAtLeast(0))
+        return Rect(
+            left, top, (viewWidth - insets.right).coerceAtLeast(left + 3),
+            (viewHeight - insets.bottom).coerceAtLeast(top + 3)
+        )
     }
 
     private fun actionViewAnchor(): TriggerSide.Point {

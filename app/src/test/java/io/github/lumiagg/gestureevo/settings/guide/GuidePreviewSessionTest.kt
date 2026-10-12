@@ -7,10 +7,43 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class GuidePreviewSessionTest {
+    @Test
+    fun wheelIsHiddenOutsideEditingAdjustmentsAndSelection() {
+        val config = QuickSetupConfig.default()
+        assertFalse(GuidePreviewRequest("guide", config).showsWheel)
+        assertFalse(GuidePreviewRequest("guide", config, QuickGesture.TAP, "tap").showsWheel)
+        assertTrue(GuidePreviewRequest("guide", config, wheelMode = GuideWheelMode.PREVIEW).showsWheel)
+        assertTrue(GuidePreviewRequest("guide", config, wheelMode = GuideWheelMode.EDIT).showsWheel)
+        assertFalse(GuidePreviewRequest("guide", config, wheelMode = GuideWheelMode.EDIT, wheelInputEnabled = false).showsWheel)
+        assertTrue(GuidePreviewRequest("guide", config, wheelSelection = true).showsWheel)
+    }
+
+    @Test
+    fun editEventsRequireCurrentEditableWheelAndValidItem() = runBlocking {
+        val config = QuickSetupConfig.default()
+        GuidePreviewSession.show("guide", config)
+        val hidden = requireNotNull(GuidePreviewSession.current.value)
+        GuidePreviewSession.show("guide", config, wheelMode = GuideWheelMode.EDIT, wheelInputEnabled = false)
+        val blocked = requireNotNull(GuidePreviewSession.current.value)
+        GuidePreviewSession.show("guide", config, wheelMode = GuideWheelMode.EDIT)
+        val editing = requireNotNull(GuidePreviewSession.current.value)
+        val result = async(start = CoroutineStart.UNDISPATCHED) {
+            withTimeout(1000) { GuidePreviewSession.wheelEdits.first() }
+        }
+        GuidePreviewSession.reportWheelEdit(hidden, GuideWheelEditAction.EDIT, 0)
+        GuidePreviewSession.reportWheelEdit(blocked, GuideWheelEditAction.REMOVE, 0)
+        GuidePreviewSession.reportWheelEdit(editing, GuideWheelEditAction.EDIT, -1)
+        GuidePreviewSession.reportWheelEdit(editing, GuideWheelEditAction.ADD, 0)
+        GuidePreviewSession.reportWheelEdit(editing, GuideWheelEditAction.ADD, config.wheelItems.size)
+        assertEquals(GuideWheelEdit("guide", GuideWheelEditAction.ADD, config.wheelItems.size, config), result.await())
+    }
+
     @After
     fun clearSession() {
         GuidePreviewSession.current.value?.owner?.let(GuidePreviewSession::clear)
