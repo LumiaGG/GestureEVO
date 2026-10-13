@@ -14,8 +14,12 @@ import io.github.lumiagg.gestureevo.gesture.ui.GestureType
 import io.github.lumiagg.gestureevo.gesture.ui.GestureTypeEvent
 import io.github.lumiagg.gestureevo.gesture.ui.TriggerCallBack
 import io.github.lumiagg.gestureevo.gesture.ui.TriggerView
+import io.github.lumiagg.gestureevo.gesture.ui.ActionView
 import io.github.lumiagg.gestureevo.settings.guide.GuidePreviewRequest
 import io.github.lumiagg.gestureevo.settings.guide.GuidePreviewSession
+import io.github.lumiagg.gestureevo.settings.guide.GuideWheelMode
+import io.github.lumiagg.gestureevo.settings.guide.GuideWheelEditAction
+import io.github.lumiagg.gestureevo.settings.guide.QuickSetupConfig
 import io.github.lumiagg.gestureevo.settings.guide.QuickSetupRepository
 import io.github.lumiagg.gestureevo.settings.guide.QuickSetupSide
 import io.github.lumiagg.gestureevo.settings.guide.buildQuickSetupTriggers
@@ -85,7 +89,8 @@ class GuidePreviewFloating(private val context: GestureService) :
         val expectedTags = triggers.map { it.tag }.toSet()
         val wheelTag = if (wheelSide == QuickSetupSide.LEFT) QuickSetupRepository.LEFT_TRIGGER_TAG
             else QuickSetupRepository.RIGHT_TRIGGER_TAG
-        (wheels.keys - wheelTag).toList().forEach { tag ->
+        val expectedWheels = if (request.showsWheel) setOf(wheelTag) else emptySet()
+        (wheels.keys - expectedWheels).toList().forEach { tag ->
             removeWheelTouchViews(tag)
             wheels.remove(tag)?.destroyGuidePreview()
         }
@@ -111,24 +116,28 @@ class GuidePreviewFloating(private val context: GestureService) :
                 addViewSafely(view, params)
             }
             removeWheelTouchViews(config.tag)
-            if (config.tag != wheelTag) return@forEach
+            if (config.tag !in expectedWheels) return@forEach
             val wheel = wheels.getOrPut(config.tag) { GestureMainFloating(context) }
             wheel.showGuidePreview(
                 buildQuickSetupWheelConfig(request.config),
                 buildQuickSetupWheelItems(request.config),
                 config,
+                editable = request.wheelMode == GuideWheelMode.EDIT,
                 onWheelSelection = if (request.wheelSelection) {
                     { index -> reportWheelSelection(request, index) }
                 } else {
                     null
                 },
                 onLayout = {
-                    if (this.request == request && request.wheelSelection &&
-                        reportedWheelPracticeId != request.practiceId
-                    ) {
-                        addWheelTouchViews(config.tag, wheel)
+                    if (request.wheelMode == GuideWheelMode.EDIT && request.config.wheelItems.size >= QuickSetupConfig.MAX_WHEEL_ITEMS) {
+                        wheel.actionView.modelList.firstOrNull { it.type == ActionView.ItemType.WHITEBOARD }?.view?.visibility = View.GONE
                     }
-                    wheel.actionView.alpha = if (request.practice == null) 0.45f else 1f
+                    if (this.request == request && request.wheelInputEnabled &&
+                        (request.wheelMode == GuideWheelMode.EDIT ||
+                            (request.wheelSelection && reportedWheelPracticeId != request.practiceId))) {
+                        addWheelTouchViews(config.tag, wheel, request)
+                    }
+                    wheel.actionView.alpha = if (request.wheelMode == GuideWheelMode.PREVIEW) 0.65f else 1f
                 },
             )
         }
@@ -162,7 +171,7 @@ class GuidePreviewFloating(private val context: GestureService) :
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun addWheelTouchViews(tag: String, wheel: GestureMainFloating) {
+    private fun addWheelTouchViews(tag: String, wheel: GestureMainFloating, current: GuidePreviewRequest) {
         removeWheelTouchViews(tag)
         val views = mutableListOf<View>()
         wheel.actionView.modelList.forEachIndexed { index, item ->
@@ -183,11 +192,28 @@ class GuidePreviewFloating(private val context: GestureService) :
             }
             // Route only the visible item bounds to the existing wheel selection logic.
             val view = View(context).apply {
-                setOnTouchListener { _, event ->
-                    if (request?.wheelSelection == true && reportedWheelPracticeId != request?.practiceId) {
-                        wheel.actionView.onTouchEvent(event)
+                if (current.wheelMode == GuideWheelMode.EDIT) {
+                    contentDescription = if (item.type == ActionView.ItemType.WHITEBOARD) {
+                        context.getString(R.string.quick_setup_add)
+                    } else {
+                        current.config.wheelItems[index].let { it.appName ?: it.type.name }
                     }
-                    true
+                    setOnClickListener {
+                        val action = if (item.type == ActionView.ItemType.WHITEBOARD) GuideWheelEditAction.ADD
+                            else GuideWheelEditAction.EDIT
+                        GuidePreviewSession.reportWheelEdit(current, action, index)
+                    }
+                    if (item.type != ActionView.ItemType.WHITEBOARD) setOnLongClickListener {
+                        GuidePreviewSession.reportWheelEdit(current, GuideWheelEditAction.REMOVE, index)
+                        true
+                    }
+                } else {
+                    setOnTouchListener { _, event ->
+                        if (request?.wheelSelection == true && reportedWheelPracticeId != request?.practiceId) {
+                            wheel.actionView.onTouchEvent(event)
+                        }
+                        true
+                    }
                 }
             }
             views.add(view)

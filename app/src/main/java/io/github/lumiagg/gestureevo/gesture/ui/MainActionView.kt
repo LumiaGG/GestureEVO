@@ -23,6 +23,7 @@ import androidx.core.view.doOnNextLayout
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionItem
 import io.github.lumiagg.gestureevo.ui.ActionTextMenuItem
 import io.github.lumiagg.gestureevo.gesture.config.IconType
@@ -79,6 +80,8 @@ class MainActionView : ActionView {
     private val dragTouchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
     private val dragLongPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
     private var configTarget = ConfigTarget.MAIN
+    private var guideSourceConfig: ActionConfig? = null
+    private var guideFittedConfig: ActionConfig? = null
 
     private val isConfigMode: Boolean
         get() = workMode.isConfig
@@ -407,7 +410,69 @@ class MainActionView : ActionView {
         distributeItemsInRing()
         refreshItemState()
         background = null
+        configPromptView.hidePrompt()
         clearViewBoundsCache()
+    }
+
+    internal fun fitGuideWheelToScreen(screenBounds: Rect) {
+        val viewWidth = screenBounds.width()
+        val viewHeight = screenBounds.height()
+        if (viewWidth <= 2 || viewHeight <= 2 || modelList.isEmpty() || config.rectangleLayoutEnabled) return
+        val source = if (config === guideFittedConfig) guideSourceConfig ?: config else config
+        config = source
+        guideSourceConfig = source
+        updateGuideWheelItemSizes()
+        distributeItemsInRing()
+        val sizes = { modelList.map { it.view.layoutParams.width } }
+        var bounds = guideWheelBounds(ringsFlatten, sizes())
+        val scale = guideWheelScale(bounds, viewWidth, viewHeight)
+        if (scale < 1f) {
+            // Keep the persisted configuration intact; only the display geometry is fitted.
+            config = ActionConfig().apply {
+                tag = source.tag
+                itemDiameter = source.itemDiameter * scale
+                initRadius = source.initRadius * scale
+                itemWarpOffset = source.itemWarpOffset * scale
+                iconPadding = source.iconPadding * scale
+                iconCornerRadius = source.iconCornerRadius * scale
+                iconImageRoundPercent = source.iconImageRoundPercent
+                actionOffsetX = source.actionOffsetX
+                actionOffsetY = source.actionOffsetY
+                subActionFollowConfig = source.subActionFollowConfig
+                transparentIconBackground = source.transparentIconBackground
+                rectangleLayoutEnabled = source.rectangleLayoutEnabled
+                rectangleColumns = source.rectangleColumns
+            }
+            updateGuideWheelItemSizes()
+            distributeItemsInRing()
+            bounds = guideWheelBounds(ringsFlatten, sizes())
+        }
+        guideFittedConfig = config
+        val (centerX, centerY) = guideWheelCenter(
+            bounds.relativeTo(state.centerX, state.centerY), viewWidth, viewHeight,
+            state.centerX - screenBounds.left, state.centerY - screenBounds.top
+        )
+        state.centerX = centerX + screenBounds.left
+        state.centerY = centerY + screenBounds.top
+        distributeItemsInRing()
+        clearViewBoundsCache()
+    }
+
+    internal fun restoreGuideWheelScreenFit() {
+        if (config === guideFittedConfig) {
+            guideSourceConfig?.let { config = it }
+            updateGuideWheelItemSizes()
+        }
+        guideSourceConfig = null
+        guideFittedConfig = null
+    }
+
+    private fun updateGuideWheelItemSizes() {
+        dragItemAction.updateRingItemsSize(showAnim = false)
+        modelList.forEach {
+            it.view.setImagePadding(config.iconPadding.toInt())
+            it.view.setCornerRadius(config.iconCornerRadius)
+        }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

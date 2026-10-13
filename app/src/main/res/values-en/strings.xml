@@ -1159,4 +1159,7 @@
     <string name="quick_practice_applied">Your gestures and wheel have been saved automatically.</string>
     <string name="quick_practice_next">Next</string>
     <string name="quick_practice_done">Done</string>
+    <string name="quick_setup_edit_wheel">Edit wheel</string>
+    <string name="quick_setup_edit_hint">Tap an item to edit, hold to delete, or tap the plus to add.</string>
+    <string name="quick_setup_minimum_items">Keep at least two wheel items.</string>
 </resources>

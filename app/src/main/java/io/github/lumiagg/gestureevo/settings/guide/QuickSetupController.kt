@@ -1,11 +1,11 @@
 package io.github.lumiagg.gestureevo.settings.guide
 
 import android.content.res.ColorStateList
+import android.app.Dialog
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageButton
@@ -18,13 +18,14 @@ import io.github.lumiagg.gestureevo.databinding.GuideQuickSetupBinding
 import io.github.lumiagg.gestureevo.db.APPModel
 import io.github.lumiagg.gestureevo.settings.ui.DefaultSelectAPPBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.SelectAPPCallBack
-import io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
 import io.github.lumiagg.gestureevo.utils.CurrentPackageProvider
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.app.syncAppCatalog
 import io.github.lumiagg.gestureevo.utils.dp2px
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import com.google.android.material.slider.Slider
 import kotlin.math.roundToInt
 import java.util.UUID
 
@@ -38,11 +39,17 @@ internal class QuickSetupController(
     private var savedConfig: QuickSetupConfig? = null
     private var loading = true
     private var updatingViews = false
-    private val preview = GuideWheelPreview(activity)
     private val practiced = mutableSetOf<QuickGesture>()
     private val previewOwner = UUID.randomUUID().toString()
     private var previewActive = false
     private var previewFinished = false
+    private var wheelMode = GuideWheelMode.HIDDEN
+    private var wheelInputEnabled = true
+    private var wheelEditor: Dialog? = null
+    private var wheelEditorSession = 0
+    private var wheelPickerJob: Job? = null
+    private var wheelPicker: DefaultSelectAPPBottomSheet? = null
+    private var wheelActionDialog: Dialog? = null
     val hasUnsavedChanges: Boolean get() = !loading && config != savedConfig
     val isSaved: Boolean get() = !loading && savedConfig != null && !hasUnsavedChanges
 
@@ -72,9 +79,19 @@ internal class QuickSetupController(
         binding.heightSlider.setLabelFormatter { activity.getString(R.string.quick_setup_dp, it.roundToInt()) }
         binding.wheelInsetSlider.setLabelFormatter { activity.getString(R.string.quick_setup_dp, it.roundToInt()) }
         binding.wheelRadiusSlider.setLabelFormatter { activity.getString(R.string.quick_setup_dp, it.roundToInt()) }
-        binding.addWheelItemButton.setOnClickListener {
-            chooseAction(wheel = true) { update(config.copy(wheelItems = config.wheelItems + it)) }
-        }
+        listOf(binding.positionSlider, binding.heightSlider, binding.wheelInsetSlider, binding.wheelRadiusSlider)
+            .forEach { slider ->
+                slider.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+                    override fun onStartTrackingTouch(slider: Slider) {
+                        wheelMode = GuideWheelMode.PREVIEW
+                        refreshPreview()
+                    }
+                    override fun onStopTrackingTouch(slider: Slider) {
+                        wheelMode = GuideWheelMode.HIDDEN
+                        refreshPreview()
+                    }
+                })
+            }
         binding.resetDefaultsButton.setOnClickListener {
             MaterialAlertDialogBuilder(activity)
                 .setTitle(R.string.quick_setup_reset)
@@ -86,7 +103,17 @@ internal class QuickSetupController(
         binding.applyQuickSetupButton.setText(R.string.quick_practice_start)
         binding.applyQuickSetupButton.setIconResource(R.drawable.baseline_gesture_24)
         binding.applyQuickSetupButton.setOnClickListener { practiceSequence(0) }
-        binding.previewWheelButton.setOnClickListener { refreshPreview() }
+        binding.editWheelButton.setOnClickListener { editWheel() }
+        activity.lifecycleScope.launch {
+            GuidePreviewSession.wheelEdits.collect { edit ->
+                if (edit.owner != previewOwner || edit.config != config || wheelEditor?.isShowing != true) return@collect
+                when (edit.action) {
+                    GuideWheelEditAction.EDIT -> editWheelItem(edit.itemIndex)
+                    GuideWheelEditAction.REMOVE -> removeWheelItem(edit.itemIndex)
+                    GuideWheelEditAction.ADD -> chooseWheelAction { update(config.copy(wheelItems = config.wheelItems + it)) }
+                }
+            }
+        }
         activity.lifecycleScope.launch {
             try {
                 savedConfig = QuickSetupRepository.load(activity)
@@ -126,6 +153,7 @@ internal class QuickSetupController(
 
     fun finishPreview() {
         previewFinished = true
+        wheelEditor?.dismiss()
         suspendPreview()
     }
 
@@ -136,7 +164,8 @@ internal class QuickSetupController(
             previewOwner, config,
             current?.takeIf { it.owner == previewOwner }?.practice,
             current?.takeIf { it.owner == previewOwner }?.practiceId,
-            current?.takeIf { it.owner == previewOwner }?.wheelSelection == true
+            current?.takeIf { it.owner == previewOwner }?.wheelSelection == true,
+            wheelMode, wheelInputEnabled
         )
     }
 
@@ -162,7 +191,6 @@ internal class QuickSetupController(
         binding.wheelRadiusSlider.value = config.wheelRadiusDp.toFloat()
         updatingViews = false
         renderGestures()
-        renderWheel()
         renderState()
         refreshPreview()
     }
@@ -178,8 +206,7 @@ internal class QuickSetupController(
             else -> R.string.quick_setup_saved
         })
         binding.applyQuickSetupButton.isEnabled = !loading
-        binding.addWheelItemButton.isEnabled = !loading && config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS
-        binding.previewWheelButton.isEnabled = !loading
+        binding.editWheelButton.isEnabled = !loading
         binding.resetDefaultsButton.isEnabled = !loading
         binding.sideGroup.isEnabled = !loading
         for (index in 0 until binding.sideGroup.childCount) binding.sideGroup.getChildAt(index).isEnabled = !loading
@@ -230,73 +257,135 @@ internal class QuickSetupController(
         }
     }
 
-    private fun renderWheel() {
-        binding.wheelRows.removeAllViews()
-        (preview.parent as? ViewGroup)?.removeView(preview)
-        preview.setItems(config.wheelItems) { index -> editWheelItem(index) }
-        binding.wheelRows.addView(preview, LinearLayout.LayoutParams(-1, dp(250)))
-        config.wheelItems.forEachIndexed { index, action ->
-            val row = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
-            row.addView(SettingsNavRow(activity).apply {
-                setTitle(activity.getString(R.string.quick_setup_item, index + 1, action.label(activity)))
-                setOnClickListener { editWheelItem(index) }
-            }, LinearLayout.LayoutParams(-1, -2))
-            val tools = LinearLayout(activity).apply { gravity = Gravity.END }
-            tools.addView(iconButton(R.drawable.baseline_arrow_upward_24, activity.getString(R.string.quick_setup_move_up)) {
-                moveItem(index, index - 1)
-            }.apply { isEnabled = index > 0 })
-            tools.addView(iconButton(R.drawable.baseline_arrow_downward_24, activity.getString(R.string.quick_setup_move_down)) {
-                moveItem(index, index + 1)
-            }.apply { isEnabled = index < config.wheelItems.lastIndex })
-            tools.addView(iconButton(R.drawable.ic_delete, activity.getString(R.string.quick_setup_remove)) {
-                update(config.copy(wheelItems = config.wheelItems.filterIndexed { i, _ -> i != index }))
-            }.apply { isEnabled = config.wheelItems.size > 2 })
-            row.addView(tools, LinearLayout.LayoutParams(-1, -2))
-            binding.wheelRows.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+    private fun editWheel() {
+        if (loading || wheelEditor?.isShowing == true) return
+        if (CurrentPackageProvider.accessibilityService() == null) {
+            binding.quickSetupMessage.setText(R.string.quick_setup_preview_permission)
+            return
         }
+        wheelPickerJob?.cancel()
+        wheelPickerJob = null
+        val session = ++wheelEditorSession
+        wheelMode = GuideWheelMode.EDIT
+        wheelEditor = showGuideWheelEditor(activity) {
+            if (session != wheelEditorSession) return@showGuideWheelEditor
+            wheelPickerJob?.cancel()
+            wheelPickerJob = null
+            wheelEditorSession++
+            wheelPicker?.dismiss()
+            wheelPicker = null
+            wheelActionDialog?.dismiss()
+            wheelActionDialog = null
+            wheelMode = GuideWheelMode.HIDDEN
+            wheelInputEnabled = true
+            wheelEditor = null
+            refreshPreview()
+        }
+        refreshPreview()
     }
 
     private fun editWheelItem(index: Int) {
-        chooseAction(wheel = true) { action ->
+        if (wheelEditor?.isShowing != true || index !in config.wheelItems.indices) return
+        chooseWheelAction { action ->
+            if (wheelEditor?.isShowing != true || index !in config.wheelItems.indices) return@chooseWheelAction
             update(config.copy(wheelItems = config.wheelItems.toMutableList().apply { this[index] = action }))
         }
     }
 
-    private fun moveItem(index: Int, target: Int) {
-        if (target !in config.wheelItems.indices) return
-        update(config.copy(wheelItems = config.wheelItems.toMutableList().apply { add(target, removeAt(index)) }))
+    private fun chooseWheelAction(selected: (QuickAction) -> Unit) {
+        if (wheelEditor?.isShowing != true) return
+        val session = wheelEditorSession
+        val draft = config
+        wheelInputEnabled = false
+        refreshPreview()
+        chooseAction(wheel = true, onFinished = {
+            if (session != wheelEditorSession) return@chooseAction
+            wheelInputEnabled = true
+            refreshPreview()
+        }, selected = {
+            if (session == wheelEditorSession && config == draft && wheelEditor?.isShowing == true) selected(it)
+        })
     }
 
-    private fun chooseAction(wheel: Boolean, selected: (QuickAction) -> Unit) {
+    private fun removeWheelItem(index: Int) {
+        if (wheelEditor?.isShowing != true || index !in config.wheelItems.indices) return
+        val session = wheelEditorSession
+        val draft = config
+        wheelInputEnabled = false
+        refreshPreview()
+        val dialog = MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.action_view_item_menu_delete)
+            .setMessage(if (config.wheelItems.size > 2) config.wheelItems[index].label(activity)
+                else activity.getString(R.string.quick_setup_minimum_items))
+            .setNegativeButton(android.R.string.cancel, null)
+        if (config.wheelItems.size > 2) dialog.setPositiveButton(R.string.action_view_item_menu_delete) { _, _ ->
+            if (session == wheelEditorSession && config == draft && wheelEditor?.isShowing == true) {
+                update(config.copy(wheelItems = config.wheelItems.filterIndexed { i, _ -> i != index }))
+            }
+        }
+        wheelActionDialog = dialog.setOnDismissListener {
+            if (session != wheelEditorSession) return@setOnDismissListener
+            wheelActionDialog = null
+            wheelInputEnabled = true
+            refreshPreview()
+        }.show()
+    }
+
+    private fun chooseAction(wheel: Boolean, onFinished: () -> Unit = {}, selected: (QuickAction) -> Unit) {
         if (loading) return
+        val editorSession = wheelEditorSession
         val types = QuickActionType.entries.filter {
             (!wheel || it !in listOf(QuickActionType.NONE, QuickActionType.WHEEL)) &&
                 (it != QuickActionType.SCREENSHOT || Build.VERSION.SDK_INT >= 28)
         }
         val labels = types.map { QuickAction(it).label(activity) }.toTypedArray()
-        MaterialAlertDialogBuilder(activity)
+        var selectingApp = false
+        val dialog = MaterialAlertDialogBuilder(activity)
             .setTitle(R.string.quick_setup_choose_action)
             .setItems(labels) { _, index ->
                 val type = types[index]
                 if (type != QuickActionType.OPEN_APP) selected(QuickAction(type))
-                else activity.lifecycleScope.launch {
-                    try {
-                        syncAppCatalog(activity.applicationContext)
-                        DefaultSelectAPPBottomSheet(activity, activity.lifecycleScope, object : SelectAPPCallBack {
-                            override fun selectCompleted(model: APPModel) {
-                                selected(QuickAction(QuickActionType.OPEN_APP, model.pkgName, model.name, model.userId))
-                            }
-                        }).show()
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        android.util.Log.w("QuickSetup", "Unable to load app picker", e)
-                        binding.quickSetupMessage.setText(R.string.guide_load_failed)
+                else {
+                    selectingApp = true
+                    val job = activity.lifecycleScope.launch {
+                        try {
+                            syncAppCatalog(activity.applicationContext)
+                            if (wheel && (editorSession != wheelEditorSession || wheelEditor?.isShowing != true)) return@launch
+                            val picker = DefaultSelectAPPBottomSheet(activity, activity.lifecycleScope, object : SelectAPPCallBack {
+                                override fun selectCompleted(model: APPModel) {
+                                    if (wheel && (editorSession != wheelEditorSession || wheelEditor?.isShowing != true)) return
+                                    selected(QuickAction(QuickActionType.OPEN_APP, model.pkgName, model.name, model.userId))
+                                }
+                            }, onDismiss = {
+                                if (!wheel || editorSession == wheelEditorSession) {
+                                    if (wheel) wheelPicker = null
+                                    onFinished()
+                                }
+                            })
+                            if (wheel) wheelPicker = picker
+                            picker.show()
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            android.util.Log.w("QuickSetup", "Unable to load app picker", e)
+                            binding.quickSetupMessage.setText(R.string.guide_load_failed)
+                            onFinished()
+                        } finally {
+                            if (wheel && editorSession == wheelEditorSession) wheelPickerJob = null
+                        }
                     }
+                    if (wheel) wheelPickerJob = job
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
+            .setOnDismissListener {
+                if (!wheel || editorSession == wheelEditorSession) {
+                    if (wheel) wheelActionDialog = null
+                    if (!selectingApp) onFinished()
+                }
+            }
             .show()
+        if (wheel) wheelActionDialog = dialog
     }
 
     private fun practiceSequence(index: Int) {

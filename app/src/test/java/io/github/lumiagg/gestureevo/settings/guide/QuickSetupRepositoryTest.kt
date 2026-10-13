@@ -2,6 +2,7 @@ package io.github.lumiagg.gestureevo.settings.guide
 
 import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
 import io.github.lumiagg.gestureevo.gesture.config.ActionItemsTag
+import io.github.lumiagg.gestureevo.gesture.config.ActionViewState
 import io.github.lumiagg.gestureevo.gesture.config.FreeTriggerConfig
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionType
 import io.github.lumiagg.gestureevo.gesture.ui.GestureType
@@ -50,6 +51,25 @@ class QuickSetupRepositoryTest {
         }
         assertEquals(GestureType.SWIPE_RIGHT, quickGestureType(QuickGesture.SWIPE_IN, QuickSetupSide.LEFT))
         assertEquals(GestureType.SWIPE_LEFT, quickGestureType(QuickGesture.SWIPE_IN, QuickSetupSide.RIGHT))
+    }
+
+    @Test
+    fun wheelsUseOneInwardQuadrantAboveAndBelowTheScreenCenter() {
+        listOf(20, 49, 50, 80).forEach { verticalPercent ->
+            val triggers = buildQuickSetupTriggers(
+                QuickSetupConfig.default().copy(side = QuickSetupSide.BOTH, verticalPercent = verticalPercent),
+                "Guide"
+            )
+            val expectedQuadrants = if (verticalPercent < 50) listOf(3, 2) else listOf(0, 1)
+            triggers.zip(expectedQuadrants).forEach { (trigger, expectedQuadrant) ->
+                val quadrant = trigger.getQuadrant()
+                assertEquals(1, quadrant.count { it })
+                assertEquals(expectedQuadrant, quadrant.indexOf(true))
+                val state = ActionViewState().apply { setAngleByQuadrant(quadrant) }
+                assertEquals(90f, state.sweepAngle, 0f)
+                assertEquals(expectedQuadrant * 90f, state.startAngle, 0f)
+            }
+        }
     }
 
     @Test

@@ -160,29 +160,15 @@
     android:layout_marginTop="16dp"
     android:text="@string/quick_setup_wheel"
     android:textAppearance="?attr/textAppearanceTitleSmall" />
-  <LinearLayout
-    android:id="@+id/wheelRows"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="8dp"
-    android:orientation="vertical" />
   <com.google.android.material.button.MaterialButton
-    android:id="@+id/addWheelItemButton"
+    android:id="@+id/editWheelButton"
     style="?attr/materialButtonOutlinedStyle"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginTop="8dp"
     android:minHeight="48dp"
-    android:text="@string/quick_setup_add"
-    app:icon="@drawable/baseline_add_24" />
-  <com.google.android.material.button.MaterialButton
-    android:id="@+id/previewWheelButton"
-    style="?attr/materialButtonOutlinedStyle"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="8dp"
-    android:minHeight="48dp"
-    android:text="@string/quick_setup_preview" />
+    android:text="@string/quick_setup_edit_wheel"
+    app:icon="@drawable/baseline_pie_chart_24" />
   <com.google.android.material.button.MaterialButton
     android:id="@+id/resetDefaultsButton"
     style="@style/Widget.Material3.Button.TextButton"
