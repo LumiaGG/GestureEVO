@@ -54,8 +54,13 @@ internal class QuickSetupController(
     val isSaved: Boolean get() = !loading && savedConfig != null && !hasUnsavedChanges
 
     init {
+        gestureBinding.positionSlider.valueFrom = 10f
         gestureBinding.positionSlider.valueTo = 90f
+        gestureBinding.positionSlider.stepSize = 1f
+
+        gestureBinding.heightSlider.valueFrom = 40f
         gestureBinding.heightSlider.valueTo = 200f
+        gestureBinding.heightSlider.stepSize = 1f
 
         gestureBinding.sideGroup.addOnButtonCheckedListener { _, id, checked ->
             if (checked && !updatingViews) update(config.copy(side = when (id) {
@@ -183,13 +188,25 @@ internal class QuickSetupController(
             QuickSetupSide.BOTH -> R.id.sideBoth
             QuickSetupSide.RIGHT -> R.id.sideRight
         })
-        gestureBinding.positionSlider.value = config.verticalPercent.toFloat()
-        gestureBinding.heightSlider.value = config.triggerHeightDp.toFloat()
+        gestureBinding.positionSlider.setSafeValue(config.verticalPercent.toFloat())
+        gestureBinding.heightSlider.setSafeValue(config.triggerHeightDp.toFloat())
         updatingViews = false
         renderGestures()
         renderWheelItems()
         renderState()
         refreshPreview()
+    }
+
+    private fun Slider.setSafeValue(target: Float) {
+        val clamped = target.coerceIn(valueFrom, valueTo)
+        val step = stepSize
+        val safeValue = if (step > 0f) {
+            val steps = ((clamped - valueFrom) / step).roundToInt()
+            (valueFrom + steps * step).coerceIn(valueFrom, valueTo)
+        } else {
+            clamped
+        }
+        value = safeValue
     }
 
     private fun renderState() {
