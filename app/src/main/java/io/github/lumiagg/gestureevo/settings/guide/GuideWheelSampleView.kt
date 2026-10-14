@@ -24,19 +24,21 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.graphics.ColorUtils
 import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.gesture.ui.Ring
+import io.github.lumiagg.gestureevo.gesture.ui.RingItem
+import io.github.lumiagg.gestureevo.gesture.ui.guideWheelBounds
 import io.github.lumiagg.gestureevo.ui.ActionTextMenuItem
 import io.github.lumiagg.gestureevo.ui.ActionTextMenuPopup
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
-import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
- * Built-in interactive wheel sample view that matches the real wheel's adaptive shape
- * (quadrants 0..3 based on trigger side and vertical position), drag-to-reorder, and add icon.
+ * Built-in interactive wheel sample view that matches the real wheel's internal layout:
+ * - Center item (slot 0) positioned at the quadrant origin
+ * - Concentric radial rings for subsequent items (Ring 1, Ring 2, etc.) matching MainActionView
+ * - Automatic scale-to-fit within the section card
+ * - Drag-to-reorder, tap to edit/delete, and add action icon at the end
  */
 class GuideWheelSampleView @JvmOverloads constructor(
     context: Context,
@@ -53,22 +55,6 @@ class GuideWheelSampleView @JvmOverloads constructor(
     // For BOTH sides, allows toggling preview between left and right
     private var previewSideOverride: Boolean? = null
 
-    private val originMargin = 16f.dp2px
-    private val itemRadius = 185f.dp2px
-    private val fanRadius = 225f.dp2px
-    private var currentBubbleSize = 42f.dp2px.toInt()
-
-    private fun getEffectiveBubbleSize(itemCount: Int): Int {
-        val count = itemCount.coerceAtLeast(1)
-        val sweepAngle = 90.0
-        val stepAngle = sweepAngle / count
-        // Chord distance between adjacent items on the arc
-        val chordDistance = 2.0 * itemRadius * sin(Math.toRadians(stepAngle / 2.0))
-        // Leave at least 4dp gap between bubbles, clamp between 24dp and 42dp
-        val desiredSize = (chordDistance - 4f.dp2px).toFloat()
-        return desiredSize.coerceIn(24f.dp2px, 42f.dp2px).toInt()
-    }
-
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
@@ -81,7 +67,7 @@ class GuideWheelSampleView @JvmOverloads constructor(
     private val guideArcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1.5f.dp2px
-        pathEffect = DashPathEffect(floatArrayOf(6f.dp2px, 6f.dp2px), 0f)
+        pathEffect = DashPathEffect(floatArrayOf(5f.dp2px, 5f.dp2px), 0f)
     }
 
     private val triggerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -99,6 +85,9 @@ class GuideWheelSampleView @JvmOverloads constructor(
     private val actionViews = mutableListOf<View>()
     private var addView: View? = null
 
+    // Cached layout geometry
+    private var currentLayout: WheelLayout? = null
+
     // Drag-to-reorder state
     private var activeTouchIndex = -1
     private var activeTouchView: View? = null
@@ -108,6 +97,28 @@ class GuideWheelSampleView @JvmOverloads constructor(
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
     private val longPressTimeout = 260L
     private var longPressRunnable: Runnable? = null
+
+    data class SlotInfo(
+        val index: Int,
+        val x: Float,
+        val y: Float,
+        val size: Float,
+        val centerX: Float,
+        val centerY: Float,
+        val isCenterItem: Boolean
+    )
+
+    data class WheelLayout(
+        val cx: Float,
+        val cy: Float,
+        val startAngle: Float,
+        val sweepAngle: Float,
+        val isLeft: Boolean,
+        val isUpper: Boolean,
+        val slots: List<SlotInfo>,
+        val ringRadii: List<Float>,
+        val maxRadius: Float
+    )
 
     init {
         setWillNotDraw(false)
@@ -199,29 +210,134 @@ class GuideWheelSampleView @JvmOverloads constructor(
         QuickSetupSide.BOTH -> previewSideOverride ?: false
     }
 
-    private fun getOriginAndAngles(w: Float, h: Float): OriginAngles {
-        val isLeft = isEffectiveLeft()
-        val isUpper = config.verticalPercent < 50
-        val cx = if (isLeft) originMargin else w - originMargin
-        val cy = if (isUpper) originMargin else h - originMargin
-
-        // Android screen coordinate angles (0° = Right, 90° = Down, 180° = Left, 270° = Up)
-        val (startAngle, sweepAngle) = when {
-            isLeft && isUpper -> 0f to 90f      // Quadrant 3: Right to Down
-            isLeft && !isUpper -> 270f to 90f   // Quadrant 0: Up to Right
-            !isLeft && isUpper -> 90f to 90f    // Quadrant 2: Down to Left
-            else -> 180f to 90f                 // Quadrant 1: Left to Up
-        }
-        return OriginAngles(cx, cy, startAngle, sweepAngle, isLeft)
+    private fun allDisplayViews(): List<View> {
+        val list = mutableListOf<View>()
+        list.addAll(actionViews)
+        addView?.let { list.add(it) }
+        return list
     }
 
-    private data class OriginAngles(
-        val cx: Float,
-        val cy: Float,
-        val startAngle: Float,
-        val sweepAngle: Float,
-        val mirror: Boolean
-    )
+    /**
+     * Calculates the wheel layout matching MainActionView:
+     * - Slot 0: Center item at quadrant origin
+     * - Slots 1..N: Concentric rings (Ring 1, Ring 2, etc.) via Ring class
+     * - Auto-scales to fit comfortably inside view bounds
+     */
+    private fun calculateWheelLayout(w: Float, h: Float, totalItems: Int): WheelLayout {
+        val isLeft = isEffectiveLeft()
+        val isUpper = config.verticalPercent < 50
+
+        // Quadrants: 0 = Right & Up, 1 = Left & Up, 2 = Left & Down, 3 = Right & Down
+        val quadrant = when {
+            isLeft && isUpper -> 3
+            isLeft && !isUpper -> 0
+            !isLeft && isUpper -> 2
+            else -> 1
+        }
+        val mirror = isLeft
+        val startAngle = quadrant * 90f
+        val sweepAngle = 90f
+
+        // Base geometry dimensions (scaled down proportionally if needed)
+        val baseRadius = 78f.dp2px
+        val baseItemDiameter = 38f.dp2px
+        val baseItemWarpOffset = 5f.dp2px
+
+        // Step 1: Compute unscaled relative slot positions relative to quadrant origin (0, 0)
+        val relativePositions = mutableListOf<RingItem>()
+        val relativeSizes = mutableListOf<Float>()
+        val unscaledRadii = mutableListOf<Float>()
+
+        // Slot 0: Center item
+        relativePositions.add(RingItem(-baseRadius / 2f, -baseRadius / 2f))
+        relativeSizes.add(baseRadius)
+
+        var remaining = (totalItems - 1).coerceAtLeast(0)
+        var ringRadius = baseRadius
+        var reverse = false
+
+        while (remaining > 0) {
+            val ring = Ring(
+                startAngle = startAngle,
+                sweepAngle = sweepAngle,
+                radius = ringRadius,
+                reverse = reverse,
+                itemDiameter = baseItemDiameter,
+                itemWarpOffset = baseItemWarpOffset
+            )
+            if (mirror) {
+                ring.items.reverse()
+            }
+            unscaledRadii.add(ringRadius)
+            val takeCount = minOf(remaining, ring.items.size)
+            for (i in 0 until takeCount) {
+                val item = ring.items[i]
+                relativePositions.add(RingItem(item.x - baseItemDiameter / 2f, item.y - baseItemDiameter / 2f))
+                relativeSizes.add(baseItemDiameter)
+            }
+            remaining -= takeCount
+            ringRadius += (baseItemDiameter * 1.3f)
+            reverse = !reverse
+        }
+
+        // Step 2: Calculate bounding box and scale to fit inside card
+        val bounds = guideWheelBounds(relativePositions, relativeSizes.map { it.toInt() })
+        val margin = 16f.dp2px
+        val usableW = (w - 2f * margin).coerceAtLeast(100f)
+        val usableH = (h - 2f * margin).coerceAtLeast(100f)
+        val boundsW = (bounds.right - bounds.left).coerceAtLeast(1f)
+        val boundsH = (bounds.bottom - bounds.top).coerceAtLeast(1f)
+        val scale = minOf(1f, usableW / boundsW, usableH / boundsH)
+
+        // Step 3: Determine quadrant origin (cx, cy)
+        val scaledLeft = bounds.left * scale
+        val scaledTop = bounds.top * scale
+        val scaledRight = bounds.right * scale
+        val scaledBottom = bounds.bottom * scale
+
+        val cx = if (isLeft) {
+            margin - scaledLeft
+        } else {
+            w - margin - scaledRight
+        }
+
+        val cy = if (isUpper) {
+            margin - scaledTop
+        } else {
+            h - margin - scaledBottom
+        }
+
+        // Step 4: Generate final slots
+        val slots = relativePositions.indices.map { i ->
+            val size = relativeSizes[i] * scale
+            val slotX = cx + relativePositions[i].x * scale
+            val slotY = cy + relativePositions[i].y * scale
+            SlotInfo(
+                index = i,
+                x = slotX,
+                y = slotY,
+                size = size,
+                centerX = slotX + size / 2f,
+                centerY = slotY + size / 2f,
+                isCenterItem = (i == 0)
+            )
+        }
+
+        val scaledRadii = unscaledRadii.map { it * scale }
+        val maxRadius = (unscaledRadii.lastOrNull() ?: baseRadius) * scale + (baseItemDiameter * scale * 0.8f)
+
+        return WheelLayout(
+            cx = cx,
+            cy = cy,
+            startAngle = startAngle,
+            sweepAngle = sweepAngle,
+            isLeft = isLeft,
+            isUpper = isUpper,
+            slots = slots,
+            ringRadii = scaledRadii,
+            maxRadius = maxRadius
+        )
+    }
 
     private fun rebuildViews(animate: Boolean) {
         actionViews.forEach { removeView(it) }
@@ -230,17 +346,23 @@ class GuideWheelSampleView @JvmOverloads constructor(
         addView = null
 
         val totalCount = config.wheelItems.size + 1
-        currentBubbleSize = getEffectiveBubbleSize(totalCount)
+        val w = width.toFloat().takeIf { it > 0 } ?: 360f.dp2px
+        val h = height.toFloat().takeIf { it > 0 } ?: 280f.dp2px
+        val layout = calculateWheelLayout(w, h, totalCount)
+        currentLayout = layout
 
-        // 1. Build action item bubble views (clean circular bubbles, no text underneath)
+        // 1. Build action item views (Center item + Ring items)
         config.wheelItems.forEachIndexed { index, action ->
-            val itemView = createActionItemView(index, action)
+            val isCenter = (index == 0)
+            val size = if (index < layout.slots.size) layout.slots[index].size else 38f.dp2px
+            val itemView = createActionItemView(index, action, isCenter, size)
             actionViews.add(itemView)
             addView(itemView)
         }
 
-        // 2. Build Add item ("+") - always available at the end (matches real wheel edit mode)
-        val addBtn = createAddButtonView()
+        // 2. Build Add item ("+") at the end of the outer ring
+        val addSize = layout.slots.lastOrNull()?.size ?: 38f.dp2px
+        val addBtn = createAddButtonView(addSize)
         addView = addBtn
         addView(addBtn)
 
@@ -248,28 +370,36 @@ class GuideWheelSampleView @JvmOverloads constructor(
         updatePromptPosition()
     }
 
-    private fun createActionItemView(index: Int, action: QuickAction): View {
+    private fun createActionItemView(index: Int, action: QuickAction, isCenterItem: Boolean, size: Float): View {
+        val sizeInt = size.toInt().coerceAtLeast(1)
         return ImageView(context).apply {
-            layoutParams = LayoutParams(currentBubbleSize, currentBubbleSize)
-            val pad = (currentBubbleSize * 0.22f).toInt().coerceAtLeast(4f.dp2px.toInt())
+            layoutParams = LayoutParams(sizeInt, sizeInt)
+            val pad = (size * 0.22f).toInt().coerceAtLeast(4f.dp2px.toInt())
             setPadding(pad, pad, pad, pad)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(DynamicColorUtils.secondaryContainerColor)
+                setColor(
+                    if (isCenterItem) DynamicColorUtils.primaryFixedColor
+                    else DynamicColorUtils.secondaryContainerColor
+                )
             }
-            elevation = 3f.dp2px
+            elevation = if (isCenterItem) 4f.dp2px else 3f.dp2px
             setImageDrawable(action.icon(context))
             scaleType = ImageView.ScaleType.FIT_CENTER
             if (action.type != QuickActionType.OPEN_APP || action.packageName == null) {
-                imageTintList = ColorStateList.valueOf(DynamicColorUtils.primaryColor)
+                imageTintList = ColorStateList.valueOf(
+                    if (isCenterItem) DynamicColorUtils.onPrimaryContainerColor
+                    else DynamicColorUtils.primaryColor
+                )
             }
         }
     }
 
-    private fun createAddButtonView(): View {
+    private fun createAddButtonView(size: Float): View {
+        val sizeInt = size.toInt().coerceAtLeast(1)
         return ImageView(context).apply {
-            layoutParams = LayoutParams(currentBubbleSize, currentBubbleSize)
-            val pad = (currentBubbleSize * 0.22f).toInt().coerceAtLeast(4f.dp2px.toInt())
+            layoutParams = LayoutParams(sizeInt, sizeInt)
+            val pad = (size * 0.22f).toInt().coerceAtLeast(4f.dp2px.toInt())
             setPadding(pad, pad, pad, pad)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
@@ -283,45 +413,32 @@ class GuideWheelSampleView @JvmOverloads constructor(
         }
     }
 
-    private fun allDisplayViews(): List<View> {
-        val list = mutableListOf<View>()
-        list.addAll(actionViews)
-        addView?.let { list.add(it) }
-        return list
-    }
-
-    private fun calculateSlotAngles(w: Float, h: Float): List<Float> {
-        val (cx, cy, startAngle, sweepAngle, mirror) = getOriginAndAngles(w, h)
-        val count = allDisplayViews().size.coerceAtLeast(1)
-        val step = sweepAngle / count
-        val offset = step / 2f
-        return (0 until count).map { i ->
-            val sliceIndex = if (mirror) (count - 1 - i) else i
-            startAngle + offset + sliceIndex * step
-        }
-    }
-
     private fun positionItemViews(animate: Boolean) {
         val w = width.toFloat().takeIf { it > 0 } ?: return
         val h = height.toFloat().takeIf { it > 0 } ?: return
-        val (cx, cy) = getOriginAndAngles(w, h)
-        val angles = calculateSlotAngles(w, h)
         val views = allDisplayViews()
+        val layout = calculateWheelLayout(w, h, views.size)
+        currentLayout = layout
 
         val animators = mutableListOf<ObjectAnimator>()
 
         views.forEachIndexed { i, view ->
-            if (i >= angles.size) return@forEachIndexed
+            if (i >= layout.slots.size) return@forEachIndexed
             if (isDragging && view == activeTouchView) return@forEachIndexed
 
-            val angle = angles[i]
-            val rad = Math.toRadians(angle.toDouble())
+            val slot = layout.slots[i]
+            val slotSizeInt = slot.size.toInt().coerceAtLeast(1)
 
-            val targetCenterX = cx + itemRadius * cos(rad).toFloat()
-            val targetCenterY = cy + itemRadius * sin(rad).toFloat()
+            if (view.layoutParams.width != slotSizeInt || view.layoutParams.height != slotSizeInt) {
+                view.layoutParams.width = slotSizeInt
+                view.layoutParams.height = slotSizeInt
+                val pad = (slot.size * 0.22f).toInt().coerceAtLeast(4f.dp2px.toInt())
+                view.setPadding(pad, pad, pad, pad)
+                view.requestLayout()
+            }
 
-            val targetX = targetCenterX - currentBubbleSize / 2f
-            val targetY = targetCenterY - currentBubbleSize / 2f
+            val targetX = slot.x
+            val targetY = slot.y
 
             if (animate && view.x != 0f && view.y != 0f) {
                 animators.add(ObjectAnimator.ofFloat(view, "x", view.x, targetX))
@@ -352,6 +469,13 @@ class GuideWheelSampleView @JvmOverloads constructor(
         val gravityV = if (isUpper) Gravity.BOTTOM else Gravity.TOP
         lp.gravity = gravityH or gravityV
         promptView.layoutParams = lp
+
+        // Side toggle chip positioned away from the active quadrant corner
+        val chipLp = sideToggleChip.layoutParams as LayoutParams
+        chipLp.gravity = (if (isUpper) Gravity.BOTTOM else Gravity.TOP) or Gravity.CENTER_HORIZONTAL
+        chipLp.bottomMargin = if (isUpper) 10f.dp2px.toInt() else 0
+        chipLp.topMargin = if (!isUpper) 10f.dp2px.toInt() else 0
+        sideToggleChip.layoutParams = chipLp
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -381,15 +505,16 @@ class GuideWheelSampleView @JvmOverloads constructor(
         downY = event.y
 
         val views = allDisplayViews()
-        val hitRadius = currentBubbleSize / 2f + 12f.dp2px
+        val layout = currentLayout ?: calculateWheelLayout(width.toFloat(), height.toFloat(), views.size)
         activeTouchIndex = -1
         activeTouchView = null
 
         views.forEachIndexed { i, view ->
-            val vcx = view.x + currentBubbleSize / 2f
-            val vcy = view.y + currentBubbleSize / 2f
-            val dx = event.x - vcx
-            val dy = event.y - vcy
+            if (i >= layout.slots.size) return@forEachIndexed
+            val slot = layout.slots[i]
+            val dx = event.x - slot.centerX
+            val dy = event.y - slot.centerY
+            val hitRadius = slot.size / 2f + 10f.dp2px
             if (dx * dx + dy * dy <= hitRadius * hitRadius) {
                 activeTouchIndex = i
                 activeTouchView = view
@@ -432,8 +557,8 @@ class GuideWheelSampleView @JvmOverloads constructor(
         // Dragging in progress: follow finger
         parent?.requestDisallowInterceptTouchEvent(true)
         activeTouchView?.let { view ->
-            view.x = event.x - currentBubbleSize / 2f
-            view.y = event.y - currentBubbleSize / 2f
+            view.x = event.x - view.width / 2f
+            view.y = event.y - view.height / 2f
         }
     }
 
@@ -452,8 +577,24 @@ class GuideWheelSampleView @JvmOverloads constructor(
         touchedView.animate().scaleX(1.0f).scaleY(1.0f).translationZ(0f).setDuration(150).start()
 
         if (wasDragging && touchedIdx in config.wheelItems.indices) {
-            // Calculate nearest slot among action items (exclude Add button)
-            val targetSlot = findNearestSlotIndex(event.x, event.y, maxSlot = config.wheelItems.size - 1)
+            val views = allDisplayViews()
+            val layout = currentLayout ?: calculateWheelLayout(width.toFloat(), height.toFloat(), views.size)
+
+            // Find nearest slot among ACTION slots (excluding Add button)
+            var targetSlot = touchedIdx
+            var minDistSq = Float.MAX_VALUE
+            for (i in 0 until config.wheelItems.size) {
+                if (i >= layout.slots.size) break
+                val slot = layout.slots[i]
+                val dx = event.x - slot.centerX
+                val dy = event.y - slot.centerY
+                val distSq = dx * dx + dy * dy
+                if (distSq < minDistSq) {
+                    minDistSq = distSq
+                    targetSlot = i
+                }
+            }
+
             if (targetSlot in config.wheelItems.indices && targetSlot != touchedIdx) {
                 val newItems = config.wheelItems.toMutableList()
                 val moved = newItems.removeAt(touchedIdx)
@@ -508,32 +649,6 @@ class GuideWheelSampleView @JvmOverloads constructor(
         promptView.setTextColor(DynamicColorUtils.onSurfaceVariantColor)
     }
 
-    private fun findNearestSlotIndex(touchX: Float, touchY: Float, maxSlot: Int): Int {
-        val w = width.toFloat().takeIf { it > 0 } ?: return 0
-        val h = height.toFloat().takeIf { it > 0 } ?: return 0
-        val (cx, cy) = getOriginAndAngles(w, h)
-        val angles = calculateSlotAngles(w, h)
-        if (angles.isEmpty()) return 0
-
-        val touchAngleRad = atan2((touchY - cy).toDouble(), (touchX - cx).toDouble())
-        var touchAngleDeg = Math.toDegrees(touchAngleRad).toFloat()
-        if (touchAngleDeg < 0) touchAngleDeg += 360f
-
-        var nearestIndex = 0
-        var minDiff = Float.MAX_VALUE
-
-        val limit = maxSlot.coerceAtMost(angles.lastIndex)
-        for (i in 0..limit) {
-            var diff = abs(touchAngleDeg - angles[i]) % 360f
-            if (diff > 180f) diff = 360f - diff
-            if (diff < minDiff) {
-                minDiff = diff
-                nearestIndex = i
-            }
-        }
-        return nearestIndex
-    }
-
     private fun showItemMenu(anchorView: View, index: Int) {
         val popup = ActionTextMenuPopup(context, hostView = this)
         val menuItems = mutableListOf<ActionTextMenuItem>()
@@ -574,10 +689,14 @@ class GuideWheelSampleView @JvmOverloads constructor(
         borderPaint.color = ColorUtils.setAlphaComponent(DynamicColorUtils.outlineColor, 60)
         canvas.drawRoundRect(cardRect, corner, corner, borderPaint)
 
-        // 2. Calculate origin & angles
-        val (cx, cy, startAngle, sweepAngle, isLeft) = getOriginAndAngles(w, h)
+        val layout = currentLayout ?: calculateWheelLayout(w, h, allDisplayViews().size)
+        val cx = layout.cx
+        val cy = layout.cy
+        val startAngle = layout.startAngle
+        val sweepAngle = layout.sweepAngle
 
-        // 3. Draw fan sector background
+        // 2. Draw fan sector radial gradient background
+        val fanRadius = layout.maxRadius.coerceAtLeast(100f.dp2px)
         fanRect.set(cx - fanRadius, cy - fanRadius, cx + fanRadius, cy + fanRadius)
         fanPath.reset()
         fanPath.moveTo(cx, cy)
@@ -599,15 +718,17 @@ class GuideWheelSampleView @JvmOverloads constructor(
         canvas.drawPath(fanPath, bgPaint)
         bgPaint.shader = null
 
-        // 4. Draw guide arc guideline
+        // 3. Draw guideline dashed arcs for EACH ring
         guideArcPaint.color = ColorUtils.setAlphaComponent(primaryColor, 55)
-        val arcRect = RectF(cx - itemRadius, cy - itemRadius, cx + itemRadius, cy + itemRadius)
-        canvas.drawArc(arcRect, startAngle, sweepAngle, false, guideArcPaint)
+        layout.ringRadii.forEach { radius ->
+            val arcRect = RectF(cx - radius, cy - radius, cx + radius, cy + radius)
+            canvas.drawArc(arcRect, startAngle, sweepAngle, false, guideArcPaint)
+        }
 
-        // 5. Draw trigger edge indicator pill at (cx, cy)
+        // 4. Draw trigger edge indicator pill at the edge
         val triggerWidth = 5f.dp2px
         val triggerHeight = 44f.dp2px
-        val triggerLeft = if (isLeft) 4f.dp2px else w - 4f.dp2px - triggerWidth
+        val triggerLeft = if (layout.isLeft) 4f.dp2px else w - 4f.dp2px - triggerWidth
         val triggerTop = (cy - triggerHeight / 2f).coerceIn(4f.dp2px, h - triggerHeight - 4f.dp2px)
         val triggerRect = RectF(triggerLeft, triggerTop, triggerLeft + triggerWidth, triggerTop + triggerHeight)
 
