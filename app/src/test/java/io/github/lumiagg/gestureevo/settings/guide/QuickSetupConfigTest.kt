@@ -53,7 +53,7 @@ class QuickSetupConfigTest {
     }
 
     @Test
-    fun wheelRequiresExecutableItemsAndAnOpeningGesture() {
+    fun wheelRequiresExecutableItemsAndAllGesturesAssigned() {
         val config = QuickSetupConfig.default()
         assertInvalid(config.copy(wheelItems = emptyList()))
         assertInvalid(config.copy(wheelItems = listOf(QuickAction(QuickActionType.HOME))))
@@ -61,7 +61,8 @@ class QuickSetupConfigTest {
         assertInvalid(config.copy(wheelItems = listOf(QuickAction(QuickActionType.NONE))))
         assertInvalid(config.copy(wheelItems = listOf(QuickAction(QuickActionType.WHEEL))))
         assertInvalid(config.copy(gestures = config.gestures - QuickGesture.TAP))
-        assertInvalid(config.copy(gestures = config.gestures + (QuickGesture.SWIPE_IN to QuickAction(QuickActionType.BACK))))
+        // Non-wheel gesture replacement is now valid
+        config.copy(gestures = config.gestures + (QuickGesture.SWIPE_IN to QuickAction(QuickActionType.BACK))).validate(24)
     }
 
     @Test

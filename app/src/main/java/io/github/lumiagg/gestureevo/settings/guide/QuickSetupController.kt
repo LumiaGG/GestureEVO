@@ -110,9 +110,13 @@ internal class QuickSetupController(
                 .show()
         }
 
-        gestureBinding.applyQuickSetupButton.setText(R.string.quick_practice_start)
-        gestureBinding.applyQuickSetupButton.setIconResource(R.drawable.baseline_gesture_24)
-        gestureBinding.applyQuickSetupButton.setOnClickListener { practiceSequence() }
+        gestureBinding.applyQuickSetupButton.setText(R.string.quick_setup_save_button)
+        gestureBinding.applyQuickSetupButton.setIconResource(R.drawable.baseline_save_24)
+        gestureBinding.applyQuickSetupButton.setOnClickListener { saveConfig() }
+
+        gestureBinding.practiceQuickSetupButton.setText(R.string.quick_setup_practice_button)
+        gestureBinding.practiceQuickSetupButton.setIconResource(R.drawable.baseline_gesture_24)
+        gestureBinding.practiceQuickSetupButton.setOnClickListener { practiceSequence() }
 
         activity.lifecycleScope.launch {
             try {
@@ -218,6 +222,7 @@ internal class QuickSetupController(
             else -> R.string.quick_setup_saved
         })
         gestureBinding.applyQuickSetupButton.isEnabled = !loading
+        gestureBinding.practiceQuickSetupButton.isEnabled = !loading
         wheelBinding.resetDefaultsButton.isEnabled = !loading
         gestureBinding.sideGroup.isEnabled = !loading
         for (index in 0 until gestureBinding.sideGroup.childCount) gestureBinding.sideGroup.getChildAt(index).isEnabled = !loading
@@ -355,6 +360,50 @@ internal class QuickSetupController(
                 onFinished()
             }
         )
+    }
+
+    fun saveConfig() {
+        if (loading) return
+        try {
+            config.validate(Build.VERSION.SDK_INT)
+        } catch (_: IllegalArgumentException) {
+            wheelBinding.quickSetupMessage.setText(R.string.quick_setup_invalid)
+            return
+        }
+        val draft = config
+        activity.lifecycleScope.launch {
+            try {
+                wheelBinding.quickSetupMessage.setText(R.string.quick_setup_saving)
+                QuickSetupRepository.apply(activity, draft)
+                savedConfig = draft
+                wheelBinding.quickSetupMessage.setText(R.string.quick_setup_saved)
+                renderState()
+                onChanged()
+                android.widget.Toast.makeText(activity, R.string.quick_setup_saved_toast, android.widget.Toast.LENGTH_SHORT).show()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("QuickSetup", "Failed to save quick setup", e)
+                wheelBinding.quickSetupMessage.setText(R.string.quick_setup_save_failed)
+            }
+        }
+    }
+
+    suspend fun save(): Boolean {
+        if (loading) return false
+        return try {
+            config.validate(Build.VERSION.SDK_INT)
+            QuickSetupRepository.apply(activity, config)
+            savedConfig = config
+            renderState()
+            onChanged()
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.e("QuickSetup", "Failed to save quick setup", e)
+            false
+        }
     }
 
     private fun practiceSequence() {

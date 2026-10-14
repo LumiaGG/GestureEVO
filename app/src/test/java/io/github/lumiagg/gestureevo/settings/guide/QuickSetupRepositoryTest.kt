@@ -194,6 +194,18 @@ class QuickSetupRepositoryTest {
         assertEquals("org.test.app", parsedApp.packageName)
         assertEquals("Test App", parsedApp.appName)
         assertEquals(10, parsedApp.userId)
+
+        val recentAppItem = QuickSetupRepository.buildActionItem(QuickAction(QuickActionType.RECENT_APP), "tag5")
+        assertEquals(QuickActionType.RECENT_APP, parseQuickAction(recentAppItem).type)
+
+        val customItem = QuickSetupRepository.buildActionItem(
+            QuickAction(QuickActionType.CUSTOM, appName = "My Action", customLink = "gesture-evo://action/OTHER_SHORTCUT?foo=bar"),
+            "tag6"
+        )
+        val parsedCustom = parseQuickAction(customItem)
+        assertEquals(QuickActionType.CUSTOM, parsedCustom.type)
+        assertEquals("My Action", parsedCustom.appName)
+        assertEquals("gesture-evo://action/OTHER_SHORTCUT?foo=bar", parsedCustom.customLink)
     }
 
     @Test
@@ -246,5 +258,35 @@ class QuickSetupRepositoryTest {
         applyDefaultTriggerConfig(trigger, config, defaultTriggerName)
         assertEquals(134, trigger.height)
         assertEquals(0.57f, trigger.yRelativeValue, 0.001f)
+    }
+
+    @Test
+    fun mergeTriggerActionsPreservesNonQuickGestures() {
+        val customDoubleTapKey = GestureTypeEvent(GestureType.DOUBLE_CLICK, GesturePhase.TD).toActionKey()
+        val customItem = GestureActionItem().apply {
+            tag = customDoubleTapKey
+            name = "Double Tap Action"
+            firstStageLink = "gesture-evo://action/SEARCH"
+        }
+        val oldSwipeUpKey = GestureTypeEvent(GestureType.SWIPE_UP, GesturePhase.TD).toActionKey()
+        val oldSwipeUpItem = GestureActionItem().apply {
+            tag = oldSwipeUpKey
+            name = "Old Action"
+            firstStageLink = "gesture-evo://action/SEARCH"
+        }
+        val existing = listOf(customItem, oldSwipeUpItem)
+        val config = QuickSetupConfig.default().copy(
+            side = QuickSetupSide.RIGHT,
+            gestures = QuickSetupConfig.default().gestures + (QuickGesture.SWIPE_UP to QuickAction(QuickActionType.HOME))
+        )
+        val merged = QuickSetupRepository.mergeTriggerActions(existing, config, QuickSetupSide.RIGHT)
+
+        val preservedDoubleTap = merged.find { it.tag == customDoubleTapKey }
+        assertNotNull(preservedDoubleTap)
+        assertEquals("Double Tap Action", preservedDoubleTap?.name)
+
+        val updatedSwipeUp = merged.find { it.tag == oldSwipeUpKey }
+        assertNotNull(updatedSwipeUp)
+        assertEquals(QuickActionType.HOME, parseQuickAction(requireNotNull(updatedSwipeUp)).type)
     }
 }
