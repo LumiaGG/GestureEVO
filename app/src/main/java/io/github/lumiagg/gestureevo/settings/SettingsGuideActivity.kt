@@ -63,7 +63,12 @@ class SettingsGuideActivity : AppCompatActivity() {
         binding = ActivitySettingsGuideBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setupInsets()
-        quickSetup = QuickSetupController(this, binding.quickSetup, savedInstanceState) {
+        quickSetup = QuickSetupController(
+            this,
+            binding.gestureSetup,
+            binding.wheelSetup,
+            savedInstanceState
+        ) {
             lifecycleScope.launch { refreshStatus() }
         }
         setupNavigation()

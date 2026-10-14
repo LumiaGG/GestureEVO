@@ -8,6 +8,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.isVisible
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
+import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
 import io.github.lumiagg.gestureevo.gesture.config.FreeTriggerConfig
 import io.github.lumiagg.gestureevo.gesture.ui.GesturePhase
 import io.github.lumiagg.gestureevo.gesture.ui.GestureType
@@ -49,7 +50,7 @@ class GuidePreviewFloating(private val context: GestureService) :
         ) {
             val current = request ?: return
             if (GuidePreviewSession.current.value != current) return
-            val side = if (triggerView.triggerConfig.tag == QuickSetupRepository.LEFT_TRIGGER_TAG) {
+            val side = if (triggerView.triggerConfig.tag == QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG) {
                 QuickSetupSide.LEFT
             } else {
                 QuickSetupSide.RIGHT
@@ -87,8 +88,8 @@ class GuidePreviewFloating(private val context: GestureService) :
         this.request = request
         val triggers = buildQuickSetupTriggers(request.config, context.getString(R.string.guide_title))
         val expectedTags = triggers.map { it.tag }.toSet()
-        val wheelTag = if (wheelSide == QuickSetupSide.LEFT) QuickSetupRepository.LEFT_TRIGGER_TAG
-            else QuickSetupRepository.RIGHT_TRIGGER_TAG
+        val wheelTag = if (wheelSide == QuickSetupSide.LEFT) QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG
+            else QuickSetupRepository.PREVIEW_RIGHT_TRIGGER_TAG
         val expectedWheels = if (request.showsWheel) setOf(wheelTag) else emptySet()
         (wheels.keys - expectedWheels).toList().forEach { tag ->
             removeWheelTouchViews(tag)
@@ -118,8 +119,9 @@ class GuidePreviewFloating(private val context: GestureService) :
             removeWheelTouchViews(config.tag)
             if (config.tag !in expectedWheels) return@forEach
             val wheel = wheels.getOrPut(config.tag) { GestureMainFloating(context) }
+            val baseConfig = request.actionConfig ?: ActionConfig()
             wheel.showGuidePreview(
-                buildQuickSetupWheelConfig(request.config),
+                buildQuickSetupWheelConfig(request.config, baseConfig),
                 buildQuickSetupWheelItems(request.config),
                 config,
                 editable = request.wheelMode == GuideWheelMode.EDIT,
@@ -129,9 +131,6 @@ class GuidePreviewFloating(private val context: GestureService) :
                     null
                 },
                 onLayout = {
-                    if (request.wheelMode == GuideWheelMode.EDIT && request.config.wheelItems.size >= QuickSetupConfig.MAX_WHEEL_ITEMS) {
-                        wheel.actionView.modelList.firstOrNull { it.type == ActionView.ItemType.WHITEBOARD }?.view?.visibility = View.GONE
-                    }
                     if (this.request == request && request.wheelInputEnabled &&
                         (request.wheelMode == GuideWheelMode.EDIT ||
                             (request.wheelSelection && reportedWheelPracticeId != request.practiceId))) {

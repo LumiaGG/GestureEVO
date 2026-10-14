@@ -280,8 +280,8 @@ class MainActionView : ActionView {
         ringsFlatten.clear()
         ringsFlatten.add(
             RingItem(
-                state.centerX - config.initRadius / 2,
-                state.centerY - config.initRadius / 2
+                state.centerX - (if (config.rectangleLayoutEnabled) config.itemDiameter else config.initRadius) / 2,
+                state.centerY - (if (config.rectangleLayoutEnabled) config.itemDiameter else config.initRadius) / 2
             )
         )
 

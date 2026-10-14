@@ -57,7 +57,7 @@ class QuickSetupConfigTest {
         val config = QuickSetupConfig.default()
         assertInvalid(config.copy(wheelItems = emptyList()))
         assertInvalid(config.copy(wheelItems = listOf(QuickAction(QuickActionType.HOME))))
-        assertInvalid(config.copy(wheelItems = List(9) { QuickAction(QuickActionType.HOME) }))
+        config.copy(wheelItems = List(9) { QuickAction(QuickActionType.HOME) }).validate(24)
         assertInvalid(config.copy(wheelItems = listOf(QuickAction(QuickActionType.NONE))))
         assertInvalid(config.copy(wheelItems = listOf(QuickAction(QuickActionType.WHEEL))))
         assertInvalid(config.copy(gestures = config.gestures - QuickGesture.TAP))

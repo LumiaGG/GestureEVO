@@ -1,43 +1,102 @@
 package io.github.lumiagg.gestureevo.settings.guide
 
+import android.accessibilityservice.AccessibilityService
 import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
 import io.github.lumiagg.gestureevo.gesture.config.ActionItemsTag
-import io.github.lumiagg.gestureevo.gesture.config.ActionViewState
 import io.github.lumiagg.gestureevo.gesture.config.FreeTriggerConfig
+import io.github.lumiagg.gestureevo.gesture.config.GestureActionItem
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionType
+import io.github.lumiagg.gestureevo.gesture.ui.GesturePhase
 import io.github.lumiagg.gestureevo.gesture.ui.GestureType
+import io.github.lumiagg.gestureevo.gesture.ui.GestureTypeEvent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class QuickSetupRepositoryTest {
     @Test
-    fun switchingSidesReplacesOnlyGuideTriggersWithoutDuplicates() {
+    fun defaultTriggerResolutionAndMergingPreservesUserTriggersAndCleansLegacy() {
+        val defaultTriggerName = "默认触发器"
         val userTrigger = FreeTriggerConfig().apply {
             tag = "user-trigger"
-            name = "My trigger"
+            name = "My custom trigger"
         }
-        val left = buildQuickSetupTriggers(QuickSetupConfig.default().copy(side = QuickSetupSide.LEFT), "Guide")
-        val both = buildQuickSetupTriggers(QuickSetupConfig.default().copy(side = QuickSetupSide.BOTH), "Guide")
-        val first = mergeQuickSetupTriggers(listOf(userTrigger), left)
-        val second = mergeQuickSetupTriggers(first, both)
-        val repeated = mergeQuickSetupTriggers(second, both)
-        assertEquals(3, repeated.size)
-        assertSame(userTrigger, repeated.first())
-        assertEquals(second.map { it.tag }, repeated.map { it.tag })
+        val legacyLeft = FreeTriggerConfig().apply {
+            tag = QuickSetupRepository.LEFT_TRIGGER_TAG
+            name = "Guide Left"
+        }
+        val legacyRight = FreeTriggerConfig().apply {
+            tag = QuickSetupRepository.RIGHT_TRIGGER_TAG
+            name = "Guide Right"
+        }
+        val previewTrigger = FreeTriggerConfig().apply {
+            tag = QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG
+            name = "Preview Left"
+        }
+        val defaultTrigger = FreeTriggerConfig().apply {
+            tag = "default-trigger-id"
+            name = defaultTriggerName
+        }
 
-        val rightOnly = mergeQuickSetupTriggers(repeated, buildQuickSetupTriggers(QuickSetupConfig.default(), "Guide"))
-        assertEquals(listOf("user-trigger", QuickSetupRepository.RIGHT_TRIGGER_TAG), rightOnly.map { it.tag })
+        val existing = listOf(userTrigger, legacyLeft, legacyRight, previewTrigger, defaultTrigger)
+
+        val resolved = resolveDefaultTrigger(existing, defaultTriggerName) {
+            FreeTriggerConfig().apply {
+                tag = "fallback-id"
+                name = defaultTriggerName
+            }
+        }
+        assertSame(defaultTrigger, resolved)
+
+        applyDefaultTriggerConfig(
+            resolved,
+            QuickSetupConfig.default().copy(side = QuickSetupSide.BOTH, verticalPercent = 65, triggerHeightDp = 120),
+            defaultTriggerName
+        )
+        assertEquals(0f, resolved.xRelativeValue, 0.001f)
+        assertEquals(0.65f, resolved.yRelativeValue, 0.001f)
+        assertEquals(120, resolved.height)
+        assertTrue(resolved.getState(FreeTriggerConfig.FLAG_MIRROR))
+        assertTrue(resolved.enable)
+
+        val merged = mergeQuickSetupTriggers(existing, resolved)
+        assertEquals(2, merged.size)
+        assertSame(userTrigger, merged[0])
+        assertSame(resolved, merged[1])
     }
 
     @Test
-    fun sidePlacementDoesNotDependOnMirroredGestureCoordinates() {
+    fun defaultTriggerSidePlacementHandlesLeftRightBoth() {
+        val defaultTriggerName = "默认触发器"
+
+        val leftTrigger = FreeTriggerConfig().apply { tag = "id-left" }
+        applyDefaultTriggerConfig(leftTrigger, QuickSetupConfig.default().copy(side = QuickSetupSide.LEFT), defaultTriggerName)
+        assertEquals(0f, leftTrigger.xRelativeValue, 0.001f)
+        assertFalse(leftTrigger.getState(FreeTriggerConfig.FLAG_MIRROR))
+
+        val rightTrigger = FreeTriggerConfig().apply { tag = "id-right" }
+        applyDefaultTriggerConfig(rightTrigger, QuickSetupConfig.default().copy(side = QuickSetupSide.RIGHT), defaultTriggerName)
+        assertEquals(1f, rightTrigger.xRelativeValue, 0.001f)
+        assertFalse(rightTrigger.getState(FreeTriggerConfig.FLAG_MIRROR))
+
+        val bothTrigger = FreeTriggerConfig().apply { tag = "id-both" }
+        applyDefaultTriggerConfig(bothTrigger, QuickSetupConfig.default().copy(side = QuickSetupSide.BOTH), defaultTriggerName)
+        assertEquals(0f, bothTrigger.xRelativeValue, 0.001f)
+        assertTrue(bothTrigger.getState(FreeTriggerConfig.FLAG_MIRROR))
+    }
+
+    @Test
+    fun previewTriggersUsePreviewTags() {
         val triggers = buildQuickSetupTriggers(
             QuickSetupConfig.default().copy(side = QuickSetupSide.BOTH, verticalPercent = 70, triggerHeightDp = 160),
             "Guide"
+        )
+        assertEquals(
+            listOf(QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG, QuickSetupRepository.PREVIEW_RIGHT_TRIGGER_TAG),
+            triggers.map { it.tag }
         )
         assertEquals(listOf(0f, 1f), triggers.map { it.xRelativeValue })
         triggers.forEach {
@@ -54,40 +113,86 @@ class QuickSetupRepositoryTest {
     }
 
     @Test
-    fun wheelsUseOneInwardQuadrantAboveAndBelowTheScreenCenter() {
+    fun wheelsUseAdaptiveQuadrantByDefault() {
         listOf(20, 49, 50, 80).forEach { verticalPercent ->
             val triggers = buildQuickSetupTriggers(
                 QuickSetupConfig.default().copy(side = QuickSetupSide.BOTH, verticalPercent = verticalPercent),
                 "Guide"
             )
-            val expectedQuadrants = if (verticalPercent < 50) listOf(3, 2) else listOf(0, 1)
-            triggers.zip(expectedQuadrants).forEach { (trigger, expectedQuadrant) ->
-                val quadrant = trigger.getQuadrant()
-                assertEquals(1, quadrant.count { it })
-                assertEquals(expectedQuadrant, quadrant.indexOf(true))
-                val state = ActionViewState().apply { setAngleByQuadrant(quadrant) }
-                assertEquals(90f, state.sweepAngle, 0f)
-                assertEquals(expectedQuadrant * 90f, state.startAngle, 0f)
+            triggers.forEach { trigger ->
+                assertEquals(0, trigger.quadrantValue)
             }
         }
     }
 
     @Test
-    fun wheelTagMergePreservesUserWheelAndSharedDefault() {
+    fun wheelTagMergeCleansLegacyTagAndDirectlyUsesDefaultTag() {
         val userWheel = ActionItemsTag().apply {
             tag = "user-wheel"
             name = "My wheel"
         }
-        val initial = mergeQuickSetupWheelTags(listOf(userWheel), "Guide")
-        val repeated = mergeQuickSetupWheelTags(initial, "Updated guide")
-        assertEquals(2, repeated.size)
-        assertSame(userWheel, repeated.first())
-        assertEquals("Updated guide", repeated.last().name)
-        assertNotEquals(ActionConfig.DEFAULT_TAG, repeated.last().tag)
+        val legacyWheel = ActionItemsTag().apply {
+            tag = QuickSetupRepository.LEGACY_WHEEL_TAG
+            name = "Legacy guide wheel"
+        }
+        val defaultTagInStore = ActionItemsTag().apply {
+            tag = ActionConfig.DEFAULT_TAG
+            name = "Default Tag"
+        }
+        val merged = mergeQuickSetupWheelTags(listOf(userWheel, legacyWheel, defaultTagInStore))
+        assertEquals(listOf("user-wheel"), merged.map { it.tag })
+
         assertEquals(
-            mapOf("actionItemsTag" to repeated.last().tag),
+            mapOf("actionItemsTag" to ActionConfig.DEFAULT_TAG),
             quickActionSpec(QuickAction(QuickActionType.WHEEL)).parameters
         )
+    }
+
+    @Test
+    fun buildTriggerActionsBindsBothInwardSwipesWhenSideIsBoth() {
+        val config = QuickSetupConfig.default().copy(
+            side = QuickSetupSide.BOTH,
+            gestures = mapOf(
+                QuickGesture.TAP to QuickAction(QuickActionType.BACK),
+                QuickGesture.SWIPE_IN to QuickAction(QuickActionType.WHEEL),
+                QuickGesture.SWIPE_UP to QuickAction(QuickActionType.HOME),
+                QuickGesture.SWIPE_DOWN to QuickAction(QuickActionType.NOTIFICATIONS),
+                QuickGesture.LONG_PRESS to QuickAction(QuickActionType.RECENTS),
+            )
+        )
+        val actions = QuickSetupRepository.buildTriggerActions(config, QuickSetupSide.BOTH)
+
+        val swipeRightKey = GestureTypeEvent(GestureType.SWIPE_RIGHT, GesturePhase.TD).toActionKey()
+        val swipeLeftKey = GestureTypeEvent(GestureType.SWIPE_LEFT, GesturePhase.TD).toActionKey()
+
+        val rightAction = actions.find { it.tag == swipeRightKey }
+        val leftAction = actions.find { it.tag == swipeLeftKey }
+
+        assertNotNull(rightAction)
+        assertNotNull(leftAction)
+        assertEquals(rightAction?.firstStageLink, leftAction?.firstStageLink)
+        assertEquals(QuickActionType.WHEEL, parseQuickAction(requireNotNull(rightAction)).type)
+        assertEquals(QuickActionType.WHEEL, parseQuickAction(requireNotNull(leftAction)).type)
+    }
+
+    @Test
+    fun parseQuickActionSupportsKeyTypes() {
+        val backItem = QuickSetupRepository.buildActionItem(QuickAction(QuickActionType.BACK), "tag1")
+        assertEquals(QuickActionType.BACK, parseQuickAction(backItem).type)
+
+        val wheelItem = QuickSetupRepository.buildActionItem(QuickAction(QuickActionType.WHEEL), "tag2")
+        assertEquals(QuickActionType.WHEEL, parseQuickAction(wheelItem).type)
+
+        val searchItem = QuickSetupRepository.buildActionItem(QuickAction(QuickActionType.SEARCH), "tag3")
+        assertEquals(QuickActionType.SEARCH, parseQuickAction(searchItem).type)
+
+        val appAction = QuickAction(QuickActionType.OPEN_APP, "org.test.app", "Test App", 10)
+        val appItem = QuickSetupRepository.buildActionItem(appAction, "tag4")
+        val parsedApp = parseQuickAction(appItem)
+        assertEquals(QuickActionType.OPEN_APP, parsedApp.type)
+        assertEquals("org.test.app", parsedApp.packageName)
+        assertEquals("Test App", parsedApp.appName)
+        assertEquals(10, parsedApp.userId)
     }
 
     @Test
