@@ -27,6 +27,8 @@ class ActionConfig {
         return MoshiUtils.toJson(this, format = format)
     }
 
+    fun copy(): ActionConfig = requireNotNull(toModel(toJson(format = false)))
+
     companion object {
         const val DEFAULT_TAG = "TriggerFloatingFixed"
 

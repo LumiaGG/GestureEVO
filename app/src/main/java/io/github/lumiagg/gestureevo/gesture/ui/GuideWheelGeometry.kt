@@ -1,5 +1,6 @@
 package io.github.lumiagg.gestureevo.gesture.ui
 
+import io.github.lumiagg.gestureevo.gesture.config.ActionViewState
 import kotlin.math.ceil
 import kotlin.math.floor
 
@@ -59,9 +60,31 @@ internal data class WheelAdaptiveShape(
     val quadrant: Int
 )
 
-internal fun resolveWheelAdaptiveShape(isLeft: Boolean, verticalPercent: Int): WheelAdaptiveShape {
+internal fun quarterWheelOuterRadius(itemCount: Int, radius: Float, diameter: Float, gap: Float): Pair<Float, Int> {
+    var ringRadius = radius
+    var remaining = itemCount - 1
+    var rings = 0
+    repeat(10) {
+        if (remaining <= 0) return@repeat
+        val ring = Ring(0f, 90f, ringRadius, rings % 2 != 0, diameter, gap)
+        remaining -= ring.items.size
+        rings++
+        ringRadius += diameter * 1.3f
+    }
+    return (ringRadius + diameter / 2f) to rings
+}
+
+internal fun resolveConfiguredWheelShape(isLeft: Boolean, verticalPercent: Int,
+    quadrants: List<Boolean>?, cornerThresholdPercent: Float = 25f): WheelAdaptiveShape {
+    if (quadrants == null) return resolveWheelAdaptiveShape(isLeft, verticalPercent, cornerThresholdPercent)
+    val state = ActionViewState().apply { setAngleByQuadrant(quadrants) }
+    return WheelAdaptiveShape(state.startAngle, state.sweepAngle, state.sweepAngle >= 180f,
+        verticalPercent < 50, (state.startAngle / 90f).toInt())
+}
+
+internal fun resolveWheelAdaptiveShape(isLeft: Boolean, verticalPercent: Int, cornerThresholdPercent: Float = 25f): WheelAdaptiveShape {
     return when {
-        verticalPercent < 25 -> {
+        verticalPercent < cornerThresholdPercent -> {
             val quadrant = if (isLeft) 3 else 2
             val startAngle = if (isLeft) 270f else 180f
             WheelAdaptiveShape(
@@ -72,7 +95,7 @@ internal fun resolveWheelAdaptiveShape(isLeft: Boolean, verticalPercent: Int): W
                 quadrant = quadrant
             )
         }
-        verticalPercent > 75 -> {
+        verticalPercent > 100f - cornerThresholdPercent -> {
             val quadrant = if (isLeft) 0 else 1
             val startAngle = if (isLeft) 0f else 90f
             WheelAdaptiveShape(
@@ -205,10 +228,11 @@ internal fun calculateFittedWheelLayout(
     baseItemWarpOffset: Float = 10f,
     margin: Float = 16f,
     marginTop: Float = margin,
-    marginBottom: Float = margin
+    marginBottom: Float = margin,
+    shapeOverride: WheelAdaptiveShape? = null,
+    mirror: Boolean = isLeft
 ): FittedWheelLayout {
-    val shape = resolveWheelAdaptiveShape(isLeft, verticalPercent)
-    val mirror = isLeft
+    val shape = shapeOverride ?: resolveWheelAdaptiveShape(isLeft, verticalPercent)
 
     val distribution = distributeConcentricSlots(
         itemCount = itemCount,
@@ -273,25 +297,25 @@ internal fun calculateFittedWheelLayout(
                 val shift = minOf(minCy - preferredY, maxAllowedShift)
                 val targetCy = minCy - shift
                 val scaleUp = if (extentUp > 0f) (targetCy - marginTop) / extentUp else fitScale
-                scale = minOf(fitScale, scaleUp).coerceAtLeast(0.1f)
+                scale = minOf(fitScale, scaleUp).coerceAtLeast(0.001f)
                 cy = targetCy
             } else {
                 val maxAllowedShift = usableH * 0.10f
                 val shift = minOf(preferredY - maxCy, maxAllowedShift)
                 val targetCy = maxCy + shift
                 val scaleDown = if (extentDown > 0f) (height - marginBottom - targetCy) / extentDown else fitScale
-                scale = minOf(fitScale, scaleDown).coerceAtLeast(0.1f)
+                scale = minOf(fitScale, scaleDown).coerceAtLeast(0.001f)
                 cy = targetCy
             }
         } else {
-            scale = fitScale.coerceAtLeast(0.1f)
+            scale = fitScale.coerceAtLeast(0.001f)
             cy = (marginTop + height - marginBottom) / 2f
         }
     } else if (shape.isUpper) {
-        scale = fitScale.coerceAtLeast(0.1f)
+        scale = fitScale.coerceAtLeast(0.001f)
         cy = marginTop + extentUp * scale
     } else {
-        scale = fitScale.coerceAtLeast(0.1f)
+        scale = fitScale.coerceAtLeast(0.001f)
         cy = height - marginBottom - extentDown * scale
     }
 

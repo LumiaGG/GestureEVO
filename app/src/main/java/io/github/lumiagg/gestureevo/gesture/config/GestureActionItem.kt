@@ -120,6 +120,17 @@ class GestureActionItem {
         return !secondStageLink.isNullOrEmpty() && secondStageAction != GestureActionType.NONE
     }
 
+    /** Detached copy for draft editors; assigning links also rebuilds cached URI metadata. */
+    fun copy(tag: String = this.tag): GestureActionItem = GestureActionItem().also {
+        it.tag = tag
+        it.name = name
+        it.subActionListTag = subActionListTag
+        it.icon = icon
+        it.iconType = iconType
+        it.firstStageLink = firstStageLink
+        it.secondStageLink = secondStageLink
+    }
+
     fun toJson(format: Boolean = true): String {
         return MoshiUtils.toJson(this, format = format)
     }

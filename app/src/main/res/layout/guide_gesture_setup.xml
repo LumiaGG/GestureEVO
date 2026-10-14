@@ -81,8 +81,8 @@
         android:contentDescription="@string/quick_setup_position"
         android:stepSize="1"
         android:value="55"
-        android:valueFrom="10"
-        android:valueTo="90"
+        android:valueFrom="0"
+        android:valueTo="100"
         app:labelBehavior="floating" />
 
     <TextView

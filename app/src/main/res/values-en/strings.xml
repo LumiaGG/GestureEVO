@@ -1106,6 +1106,7 @@
     <string name="guide_loading">Checking settings…</string>
     <string name="guide_open_failed">Unable to open settings. Configure this in system settings.</string>
     <string name="guide_load_failed">Unable to read settings. Please try again later.</string>
+    <string name="guide_retry">Reload</string>
     <string name="guide_save_failed">Unable to save setup progress. Please try again.</string>
     <string name="guide_enabled">Enabled</string>
     <string name="guide_optional">Optional</string>
@@ -1205,4 +1206,10 @@
     <string name="quick_practice_status_success">🎉 Gesture recognized!</string>
     <string name="quick_practice_skip">Skip</string>
     <string name="quick_practice_exit">Exit test</string>
+    <string name="quick_setup_more_settings">More settings</string>
+    <string name="gesture_add_action_sub_wheel">Link a sub-wheel</string>
+    <string name="gesture_add_action_sub_wheel_linked">Sub-wheel: linked</string>
+    <string name="gesture_add_action_sub_wheel_choose">Choose a wheel group</string>
+    <string name="gesture_add_action_sub_wheel_clear">Remove link</string>
+    <string name="gesture_add_action_save_failed">Could not save the action. Please try again.</string>
 </resources>

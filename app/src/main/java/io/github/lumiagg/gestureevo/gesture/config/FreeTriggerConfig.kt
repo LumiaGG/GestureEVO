@@ -86,6 +86,8 @@ class FreeTriggerConfig {
         return MoshiUtils.toJson(this, format = format)
     }
 
+    fun copy(): FreeTriggerConfig = requireNotNull(toModel(toJson(format = false)))
+
 
     companion object {
         const val FLAG_PORTRAIT: Int = 1.shl(0)

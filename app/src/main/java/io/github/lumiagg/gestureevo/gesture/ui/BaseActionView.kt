@@ -307,48 +307,10 @@ open class ActionView : ConstraintLayout {
         return if (nearestDistance <= nearestThreshold) nearestIndex else -1
     }
 
-    protected fun buildGridPositions(itemCount: Int): ArrayList<RingItem> {
-        val columns = config.rectangleColumns.coerceAtLeast(1)
-        val rows = ((itemCount + columns - 1) / columns).coerceAtLeast(1)
-        val cellSize = config.itemDiameter + config.itemWarpOffset
-        val gridWidth =
-            if (columns == 1) config.itemDiameter else config.itemDiameter + (columns - 1) * cellSize
-        val gridHeight =
-            if (rows == 1) config.itemDiameter else config.itemDiameter + (rows - 1) * cellSize
-        var startX = state.centerX - gridWidth / 2
-        var startY = state.centerY - gridHeight / 2
-        var anchorRight = false
-        var anchorBottom = false
-        if (width > 0 && height > 0) {
-            anchorRight = state.centerX > width / 2
-            anchorBottom = state.centerY > height / 2
-            startX = if (anchorRight) state.centerX - gridWidth else state.centerX.toFloat()
-            startY = if (anchorBottom) state.centerY - gridHeight else state.centerY.toFloat()
-        }
-        if (width > 0) {
-            val maxStartX = (width - gridWidth).coerceAtLeast(0f)
-            startX = startX.coerceIn(0f, maxStartX)
-        }
-        if (height > 0) {
-            val maxStartY = (height - gridHeight).coerceAtLeast(0f)
-            startY = startY.coerceIn(0f, maxStartY)
-        }
-        val positions = ArrayList<RingItem>(itemCount)
-        for (i in 0 until itemCount) {
-            val row = i / columns
-            val col = i % columns
-            val colIndex = if (state.mirror) col else columns - 1 - col
-            val rowIndex = if (anchorBottom) rows - 1 - row else row
-            positions.add(
-                RingItem(
-                    startX + colIndex * cellSize,
-                    startY + rowIndex * cellSize
-                )
-            )
-        }
-        return positions
-    }
-
+    protected fun buildGridPositions(itemCount: Int): ArrayList<RingItem> = wheelGridPositions(
+        itemCount, config.rectangleColumns, config.itemDiameter, config.itemWarpOffset,
+        state.centerX.toFloat(), state.centerY.toFloat(), width.toFloat(), height.toFloat(), state.mirror
+    )
     internal fun playShowAnim(showSpreadAnim: Boolean) {
         val alphaAnimator = ObjectAnimator.ofFloat(this, ALPHA, alpha, 1f)
         alphaAnimator.duration = 250
@@ -495,7 +457,7 @@ fun gestureActionIcon(context: Context, view: RoundImageTextView, item: GestureA
         }
 
         IconType.URI -> {
-            val icon = IconHelper.getIconBitmap(item.icon!!)
+            val icon = item.icon?.let { IconHelper.getIconBitmap(it) }
             if (icon != null) {
                 view.setImage(icon)
             } else {

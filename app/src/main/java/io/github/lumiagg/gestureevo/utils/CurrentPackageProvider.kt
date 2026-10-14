@@ -38,6 +38,8 @@ object CurrentPackageProvider {
     private var lastTrustedPackageName: String? = null
     private val _currentPackageFlow = MutableStateFlow<String?>(null)
     val currentPackageFlow: StateFlow<String?> = _currentPackageFlow.asStateFlow()
+    private val _serviceConnectedFlow = MutableStateFlow(false)
+    val serviceConnectedFlow: StateFlow<Boolean> = _serviceConnectedFlow.asStateFlow()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @Volatile
@@ -45,6 +47,7 @@ object CurrentPackageProvider {
 
     fun setService(service: AccessibilityService) {
         serviceRef = WeakReference(service)
+        _serviceConnectedFlow.value = true
         resolveCurrentPackageName()
     }
 
@@ -55,6 +58,7 @@ object CurrentPackageProvider {
         refreshJob = null
         serviceRef?.clear()
         serviceRef = null
+        _serviceConnectedFlow.value = false
         updateCurrentPackage(PackageSnapshot(null, PackageSource.FALLBACK))
     }
 

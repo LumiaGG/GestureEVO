@@ -25,8 +25,8 @@ import kotlinx.coroutines.withContext
 data class SettingsGuideStatus(
     val accessibilityEnabled: Boolean,
     val serviceConnected: Boolean,
-    val enabledTriggerCount: Int,
-    val configuredTriggerCount: Int,
+    val enabledTriggerTags: Set<String>,
+    val configuredTriggerTags: Set<String>,
     val batteryExempt: Boolean
 )
 
@@ -65,7 +65,7 @@ object SettingsGuideStatusReader {
         fun wheelHasAction(tag: String): Boolean = actions(tag).any { item ->
             hasAction(item) || item.subActionListTag?.let { actions(it).any(::hasAction) } == true
         }
-        val configuredCount = triggers.count { trigger ->
+        val configuredTriggers = triggers.filter { trigger ->
             // Legacy migration replaces the saved action list, so use the same precedence here.
             val triggerActions = if (trigger.actionMap.isNotEmpty()) {
                 trigger.actionMap.mapNotNull { (key, link) ->
@@ -116,9 +116,9 @@ object SettingsGuideStatusReader {
         SettingsGuideStatus(
             accessibilityEnabled = accessibilityEnabled,
             serviceConnected = CurrentPackageProvider.accessibilityService() != null,
-            enabledTriggerCount = triggers.size,
-            configuredTriggerCount = configuredCount,
-            batteryExempt = powerManager?.isIgnoringBatteryOptimizations(appContext.packageName) == true
+            batteryExempt = powerManager?.isIgnoringBatteryOptimizations(appContext.packageName) == true,
+            enabledTriggerTags = triggers.map { it.tag }.toSet(),
+            configuredTriggerTags = configuredTriggers.map { it.tag }.toSet()
         )
     }
 

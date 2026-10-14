@@ -75,12 +75,8 @@ class SubActionView : ActionView {
             config.itemDiameter.toInt()
         )
         item.elevation = 20F
-        item.setCornerRadius(config.iconCornerRadius)
-        item.setTransparentBackground(config.transparentIconBackground)
-        item.setImageRoundPercent(config.iconImageRoundPercent)
-        item.applyGlobalImageRoundPercent = false
+        item.applyWheelStyle(config)
         item.layoutParams = layoutParams
-        item.setImagePadding(config.iconPadding.toInt())
         item.setText(context.getString(R.string.action_icon_placeholder))
         return item
     }

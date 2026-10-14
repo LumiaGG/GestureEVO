@@ -7,6 +7,16 @@ import org.junit.Test
 
 class GuideWheelGeometryTest {
     @Test
+    fun previewUsesExplicitRuntimeQuadrantsAndDynamicCornerThresholds() {
+        val full = resolveConfiguredWheelShape(false, 10, listOf(true, true, true, true))
+        assertEquals(360f, full.sweepAngle, 0f)
+        val quarter = resolveConfiguredWheelShape(false, 50, listOf(false, true, false, false))
+        assertEquals(90f, quarter.startAngle, 0f)
+        assertEquals(90f, quarter.sweepAngle, 0f)
+        assertFalse(resolveConfiguredWheelShape(false, 10, null, 15f).isSemicircle)
+        assertTrue(resolveConfiguredWheelShape(false, 20, null, 15f).isSemicircle)
+    }
+    @Test
     fun nativeQuarterWheelFitsSmallScreensAndLandscapeAtExtremeSettings() {
         listOf(320 to 296, 360 to 456, 592 to 200).forEach { (width, height) ->
             listOf(80f, 130f, 200f).forEach { radius ->

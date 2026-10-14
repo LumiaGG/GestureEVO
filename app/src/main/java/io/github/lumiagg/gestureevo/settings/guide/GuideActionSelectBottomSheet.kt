@@ -1,7 +1,6 @@
 package io.github.lumiagg.gestureevo.settings.guide
 
 import android.content.res.ColorStateList
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.view.Gravity
 import android.view.View
@@ -12,190 +11,147 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.BottomSheetGuideActionSelectBinding
 import io.github.lumiagg.gestureevo.db.APPModel
+import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
+import io.github.lumiagg.gestureevo.gesture.config.GestureActionItem
+import io.github.lumiagg.gestureevo.gesture.config.GestureActionType
+import io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
+import io.github.lumiagg.gestureevo.gesture.ui.applyWheelStyle
 import io.github.lumiagg.gestureevo.settings.ui.DefaultSelectAPPBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.SelectAPPCallBack
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.app.syncAppCatalog
 import io.github.lumiagg.gestureevo.utils.dp2px
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 internal fun showGuideActionSelectBottomSheet(
     activity: AppCompatActivity,
     allowWheel: Boolean,
     allowNone: Boolean,
-    currentAction: QuickAction? = null,
-    onActionSelected: (QuickAction) -> Unit
+    currentAction: GestureActionItem? = null,
+    onActionSelected: (GestureActionItem) -> Unit,
+    onMoreSettings: () -> Unit
 ) {
-    val themedContext = DynamicColorUtils.dynamicThemedContext(activity)
-    val dialog = BottomSheetDialog(themedContext, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
+    val context = DynamicColorUtils.dynamicThemedContext(activity)
+    val dialog = BottomSheetDialog(context, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
     val binding = BottomSheetGuideActionSelectBinding.inflate(activity.layoutInflater)
     dialog.setContentView(binding.root)
+    binding.moreSettingsButton.setOnClickListener {
+        dialog.dismiss()
+        onMoreSettings()
+    }
+    val lifecycleObserver = object : DefaultLifecycleObserver {
+        override fun onDestroy(owner: LifecycleOwner) { dialog.dismiss() }
+    }
+    activity.lifecycle.addObserver(lifecycleObserver)
+    dialog.setOnDismissListener { activity.lifecycle.removeObserver(lifecycleObserver) }
 
-    fun createActionRow(action: QuickAction): View {
-        val row = LinearLayout(themedContext).apply {
+    fun createActionRow(action: GestureActionItem): View {
+        val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setBackgroundResource(R.drawable.bg_settings_tile)
             minimumHeight = 64f.dp2px.toInt()
-            val padH = 12f.dp2px.toInt()
-            val padV = 10f.dp2px.toInt()
-            setPadding(padH, padV, padH, padV)
+            setPadding(12f.dp2px.toInt(), 10f.dp2px.toInt(), 12f.dp2px.toInt(), 10f.dp2px.toInt())
             isClickable = true
             isFocusable = true
         }
-
-        // Icon badge
-        val iconBadge = ImageView(themedContext).apply {
+        row.addView(RoundImageTextView(context).apply {
             val size = 40f.dp2px.toInt()
-            layoutParams = LinearLayout.LayoutParams(size, size).apply {
-                marginEnd = 12f.dp2px.toInt()
-            }
-            val pad = 8f.dp2px.toInt()
-            setPadding(pad, pad, pad, pad)
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(DynamicColorUtils.secondaryContainerColor)
-            }
-            setImageDrawable(action.icon(themedContext))
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            if (action.type != QuickActionType.OPEN_APP || action.packageName == null) {
-                val tint = com.google.android.material.color.MaterialColors.getColor(
-                    themedContext,
-                    com.google.android.material.R.attr.colorOnSecondaryContainer,
-                    DynamicColorUtils.primaryColor
-                )
-                imageTintList = ColorStateList.valueOf(tint)
-            }
-        }
-        row.addView(iconBadge)
-
-        // Text column
-        val textCol = LinearLayout(themedContext).apply {
+            layoutParams = LinearLayout.LayoutParams(size, size).apply { marginEnd = 12f.dp2px.toInt() }
+            applyWheelStyle(ActionConfig(), size / 55f.dp2px)
+            bindGuideAction(action)
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        })
+        val text = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
-        val titleView = TextView(themedContext).apply {
-            text = action.label(themedContext)
+        text.addView(TextView(context).apply {
+            this.text = action.label(context)
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium)
             setTextColor(DynamicColorUtils.onSurfaceColor)
-        }
-        textCol.addView(titleView)
-
-        val descView = TextView(themedContext).apply {
-            text = action.description(themedContext)
+        })
+        text.addView(TextView(context).apply {
+            this.text = action.description(context)
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
             setTextColor(DynamicColorUtils.onSurfaceVariantColor)
             setPadding(0, 2f.dp2px.toInt(), 0, 0)
-        }
-        textCol.addView(descView)
-        row.addView(textCol)
-
-        // Selected indicator
-        val isSelected = currentAction?.type == action.type &&
-            (action.type != QuickActionType.OPEN_APP || currentAction?.packageName == action.packageName)
-        if (isSelected) {
-            val checkmark = ImageView(themedContext).apply {
+        })
+        row.addView(text)
+        if (currentAction?.firstStageLink == action.firstStageLink) {
+            row.addView(ImageView(context).apply {
                 val size = 24f.dp2px.toInt()
-                layoutParams = LinearLayout.LayoutParams(size, size).apply {
-                    marginStart = 8f.dp2px.toInt()
-                }
+                layoutParams = LinearLayout.LayoutParams(size, size).apply { marginStart = 8f.dp2px.toInt() }
                 setImageResource(R.drawable.baseline_check_24)
                 imageTintList = ColorStateList.valueOf(DynamicColorUtils.primaryColor)
-            }
-            row.addView(checkmark)
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            })
         }
-
         row.setOnClickListener {
-            if (action.type == QuickActionType.OPEN_APP) {
+            if (action.guideActionType == GestureActionType.OPEN_APP) {
                 dialog.dismiss()
                 activity.lifecycleScope.launch {
-                    syncAppCatalog(activity.applicationContext)
-                    DefaultSelectAPPBottomSheet(activity, activity.lifecycleScope, object : SelectAPPCallBack {
-                        override fun selectCompleted(model: APPModel) {
-                            onActionSelected(QuickAction(QuickActionType.OPEN_APP, model.pkgName, model.name, model.userId))
-                        }
-                    }).show()
+                    try {
+                        syncAppCatalog(activity.applicationContext)
+                        if (activity.isFinishing || activity.isDestroyed) return@launch
+                        DefaultSelectAPPBottomSheet(activity, activity.lifecycleScope, object : SelectAPPCallBack {
+                            override fun selectCompleted(model: APPModel) {
+                                onActionSelected(createGuideAction(GestureActionType.OPEN_APP,
+                                    mapOf("pkg" to model.pkgName, "userId" to model.userId.toString()), model.name))
+                            }
+                        }).show()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        android.util.Log.e("GuideActionSelect", "Unable to load applications", e)
+                        android.widget.Toast.makeText(activity, R.string.guide_load_failed, android.widget.Toast.LENGTH_LONG).show()
+                    }
                 }
             } else {
                 dialog.dismiss()
-                onActionSelected(action)
+                onActionSelected(action.copy())
             }
         }
-
         return row
     }
 
-    fun addActions(container: LinearLayout, actions: List<QuickAction>) {
+    fun addActions(container: LinearLayout, actions: List<GestureActionItem>) {
         actions.forEach { action ->
-            val row = createActionRow(action)
-            val params = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = 6f.dp2px.toInt()
-            }
-            container.addView(row, params)
+            container.addView(createActionRow(action), LinearLayout.LayoutParams(-1, -2).apply { topMargin = 6f.dp2px.toInt() })
         }
     }
-
-    // 1. System Navigation
-    val systemActions = mutableListOf(
-        QuickAction(QuickActionType.BACK),
-        QuickAction(QuickActionType.HOME),
-        QuickAction(QuickActionType.RECENTS),
-        QuickAction(QuickActionType.RECENT_APP),
-        QuickAction(QuickActionType.NOTIFICATIONS),
-        QuickAction(QuickActionType.QUICK_SETTINGS),
-    )
-    if (Build.VERSION.SDK_INT >= 28) {
-        systemActions.add(QuickAction(QuickActionType.SCREENSHOT))
-    }
-    addActions(binding.systemActionsContainer, systemActions)
-
-    // 2. Features & Tools
-    val toolActions = listOf(
-        QuickAction(QuickActionType.SEARCH),
-        QuickAction(QuickActionType.SCREEN_SEARCH),
-        QuickAction(QuickActionType.SCREEN_CONTENT),
-        QuickAction(QuickActionType.PIN_POOL),
-    )
-    addActions(binding.toolsActionsContainer, toolActions)
-
-    // 3. Application
-    val appAction = if (currentAction?.type == QuickActionType.OPEN_APP) currentAction else QuickAction(QuickActionType.OPEN_APP)
-    addActions(binding.appsActionsContainer, listOf(appAction))
-
-    // 4. Wheel Menu
+    val system = mutableListOf(createAccessibilityAction(1), createAccessibilityAction(2), createAccessibilityAction(3),
+        createGuideAction(GestureActionType.RECENT_APP), createAccessibilityAction(4), createAccessibilityAction(5))
+    if (Build.VERSION.SDK_INT >= 28) system.add(createAccessibilityAction(9))
+    addActions(binding.systemActionsContainer, system)
+    addActions(binding.toolsActionsContainer, listOf(createGuideAction(GestureActionType.SEARCH),
+        createGuideAction(GestureActionType.SCREEN_SEARCH), createGuideAction(GestureActionType.SCREEN_CONTENT),
+        createGuideAction(GestureActionType.PIN_POOL)))
+    addActions(binding.appsActionsContainer, listOf(
+        currentAction?.takeIf { it.guideActionType == GestureActionType.OPEN_APP } ?: createGuideAction(GestureActionType.OPEN_APP)))
     binding.categoryWheel.isVisible = allowWheel
-    if (allowWheel) {
-        addActions(binding.wheelActionsContainer, listOf(QuickAction(QuickActionType.WHEEL)))
-    }
-
-    // 5. Other
+    if (allowWheel) addActions(binding.wheelActionsContainer, listOf(createGuideAction(GestureActionType.SHOW_ACTION_VIEW,
+        mapOf("actionItemsTag" to QuickSetupRepository.WHEEL_TAG))))
     binding.categoryOther.isVisible = allowNone
-    if (allowNone) {
-        addActions(binding.otherActionsContainer, listOf(QuickAction(QuickActionType.NONE)))
-    }
-
-    dialog.setOnShowListener { d ->
-        val bottomSheet = (d as BottomSheetDialog)
-            .findViewById<View>(com.google.android.material.R.id.design_bottom_sheet) as? FrameLayout
-        bottomSheet?.let { sheet ->
+    if (allowNone) addActions(binding.otherActionsContainer, listOf(createGuideAction(GestureActionType.NONE)))
+    dialog.setOnShowListener {
+        dialog.findViewById<FrameLayout>(com.google.android.material.R.id.design_bottom_sheet)?.let { sheet ->
             DynamicColorUtils.applyBottomSheetSurface(dialog)
             BottomSheetBehavior.from(sheet).apply {
                 state = BottomSheetBehavior.STATE_EXPANDED
-                isDraggable = true
                 skipCollapsed = true
                 isFitToContents = true
                 isHideable = true
             }
         }
     }
-
     dialog.show()
 }
