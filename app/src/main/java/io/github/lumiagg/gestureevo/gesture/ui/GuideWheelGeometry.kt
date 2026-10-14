@@ -203,7 +203,9 @@ internal fun calculateFittedWheelLayout(
     baseRadius: Float = 130f,
     baseItemDiameter: Float = 55f,
     baseItemWarpOffset: Float = 10f,
-    margin: Float = 16f
+    margin: Float = 16f,
+    marginTop: Float = margin,
+    marginBottom: Float = margin
 ): FittedWheelLayout {
     val shape = resolveWheelAdaptiveShape(isLeft, verticalPercent)
     val mirror = isLeft
@@ -222,7 +224,7 @@ internal fun calculateFittedWheelLayout(
     if (distribution.positions.isEmpty()) {
         return FittedWheelLayout(
             cx = if (isLeft) margin else width - margin,
-            cy = if (shape.isUpper) margin else height - margin,
+            cy = if (shape.isUpper) marginTop else height - marginBottom,
             startAngle = shape.startAngle,
             sweepAngle = shape.sweepAngle,
             quadrant = shape.quadrant,
@@ -236,32 +238,56 @@ internal fun calculateFittedWheelLayout(
     }
 
     val bounds = guideWheelBounds(distribution.positions, distribution.sizes)
-    val usableW = (width - 2f * margin).coerceAtLeast(100f)
-    val usableH = (height - 2f * margin).coerceAtLeast(100f)
-    val boundsW = (bounds.right - bounds.left).coerceAtLeast(1f)
-    val boundsH = (bounds.bottom - bounds.top).coerceAtLeast(1f)
-    val scale = minOf(1f, usableW / boundsW, usableH / boundsH)
+
+    // Extents relative to origin (0, 0)
+    val extentLeft = maxOf(0f, -bounds.left)
+    val extentRight = maxOf(0f, bounds.right)
+    val extentUp = maxOf(0f, -bounds.top)
+    val extentDown = maxOf(0f, bounds.bottom)
+    val totalWidth = (bounds.right - bounds.left).coerceAtLeast(1f)
+    val totalHeight = (bounds.bottom - bounds.top).coerceAtLeast(1f)
+
+    val usableW = (width - 2f * margin).coerceAtLeast(10f)
+    val usableH = (height - marginTop - marginBottom).coerceAtLeast(10f)
+
+    // Horizontal scale constraint
+    val scaleX = usableW / totalWidth
+
+    // Determine scale and cy with directional distance checks
+    val scale: Float
+    val cy: Float
+
+    if (shape.isSemicircle) {
+        val preferredY = (height * (verticalPercent / 100f)).coerceIn(marginTop, height - marginBottom)
+        val availableUp = (preferredY - marginTop).coerceAtLeast(10f)
+        val availableDown = (height - marginBottom - preferredY).coerceAtLeast(10f)
+
+        // Scale down if distance in either direction (or total height/width) is insufficient
+        val scaleUp = if (extentUp > 0f) availableUp / extentUp else 1f
+        val scaleDown = if (extentDown > 0f) availableDown / extentDown else 1f
+        val scaleH = usableH / totalHeight
+
+        scale = minOf(1f, scaleX, scaleH, scaleUp, scaleDown).coerceAtLeast(0.1f)
+
+        val minY = marginTop + extentUp * scale
+        val maxY = height - marginBottom - extentDown * scale
+        cy = if (minY <= maxY) preferredY.coerceIn(minY, maxY) else (marginTop + height - marginBottom) / 2f
+    } else if (shape.isUpper) {
+        val scaleY = usableH / totalHeight
+        scale = minOf(1f, scaleX, scaleY).coerceAtLeast(0.1f)
+        cy = marginTop + extentUp * scale
+    } else {
+        val scaleY = usableH / totalHeight
+        scale = minOf(1f, scaleX, scaleY).coerceAtLeast(0.1f)
+        cy = height - marginBottom - extentDown * scale
+    }
 
     val scaledLeft = bounds.left * scale
-    val scaledTop = bounds.top * scale
     val scaledRight = bounds.right * scale
-    val scaledBottom = bounds.bottom * scale
-
     val cx = if (isLeft) {
         margin - scaledLeft
     } else {
         width - margin - scaledRight
-    }
-
-    val cy = if (shape.isSemicircle) {
-        val preferredY = height * (verticalPercent / 100f)
-        val minY = margin - scaledTop
-        val maxY = height - margin - scaledBottom
-        if (minY <= maxY) preferredY.coerceIn(minY, maxY) else height / 2f
-    } else if (shape.isUpper) {
-        margin - scaledTop
-    } else {
-        height - margin - scaledBottom
     }
 
     val slots = distribution.positions.indices.map { i ->

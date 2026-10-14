@@ -159,6 +159,54 @@ class GuideWheelGeometryTest {
         }
     }
 
+    @Test
+    fun directionalScalingRestrictsWheelInsideReservedMargins() {
+        listOf(true, false).forEach { isLeft ->
+            listOf(10, 25, 35, 50, 65, 75, 90).forEach { verticalPercent ->
+                listOf(3, 7, 12).forEach { count ->
+                    val marginTop = 42f
+                    val marginBottom = 28f
+                    val margin = 16f
+                    val width = 360f
+                    val height = 380f
+                    val layout = calculateFittedWheelLayout(
+                        width = width,
+                        height = height,
+                        itemCount = count,
+                        isLeft = isLeft,
+                        verticalPercent = verticalPercent,
+                        baseRadius = 130f,
+                        baseItemDiameter = 55f,
+                        baseItemWarpOffset = 10f,
+                        margin = margin,
+                        marginTop = marginTop,
+                        marginBottom = marginBottom
+                    )
+                    assertEquals(count, layout.slots.size)
+                    assertTrue("scale must be in valid range", layout.scale in 0.05f..1.0f)
+                    layout.slots.forEach { slot ->
+                        assertTrue(
+                            "slot ${slot.index} x >= margin ($margin), was ${slot.x}",
+                            slot.x >= margin - 0.5f
+                        )
+                        assertTrue(
+                            "slot ${slot.index} right <= width - margin (${width - margin}), was ${slot.x + slot.size}",
+                            slot.x + slot.size <= width - margin + 0.5f
+                        )
+                        assertTrue(
+                            "slot ${slot.index} y >= marginTop ($marginTop), was ${slot.y}",
+                            slot.y >= marginTop - 0.5f
+                        )
+                        assertTrue(
+                            "slot ${slot.index} bottom <= height - marginBottom (${height - marginBottom}), was ${slot.y + slot.size}",
+                            slot.y + slot.size <= height - marginBottom + 0.5f
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     private fun nativeWheel(
         radius: Float, itemDiameter: Float, itemWarpOffset: Float, itemCount: Int, quadrant: Int, mirror: Boolean
     ): GuideWheelBounds {

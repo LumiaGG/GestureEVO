@@ -22,6 +22,9 @@ import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
 import io.github.lumiagg.gestureevo.gesture.ui.FittedWheelLayout
 import io.github.lumiagg.gestureevo.gesture.ui.calculateFittedWheelLayout
+import io.github.lumiagg.gestureevo.gesture.ui.distributeConcentricSlots
+import io.github.lumiagg.gestureevo.gesture.ui.guideWheelBounds
+import io.github.lumiagg.gestureevo.gesture.ui.resolveWheelAdaptiveShape
 import io.github.lumiagg.gestureevo.ui.ActionTextMenuItem
 import io.github.lumiagg.gestureevo.ui.ActionTextMenuPopup
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
@@ -147,6 +150,12 @@ class GuideWheelSampleView @JvmOverloads constructor(
             updateToggleText()
         }
 
+        val oldShape = resolveWheelAdaptiveShape(oldConfig.side == QuickSetupSide.LEFT, oldConfig.verticalPercent)
+        val newShape = resolveWheelAdaptiveShape(newConfig.side == QuickSetupSide.LEFT, newConfig.verticalPercent)
+        if (oldShape.isSemicircle != newShape.isSemicircle || oldConfig.side != newConfig.side) {
+            requestLayout()
+        }
+
         val w = width.toFloat().takeIf { it > 0 } ?: return
         val h = height.toFloat().takeIf { it > 0 } ?: return
         val views = allDisplayViews()
@@ -221,9 +230,16 @@ class GuideWheelSampleView @JvmOverloads constructor(
      * Calculates the wheel layout matching MainActionView:
      * - Slot 0: Center item at quadrant origin
      * - Slots 1..N: Concentric rings (Ring 1, Ring 2, etc.) via GuideWheelGeometry
-     * - Auto-scales to fit comfortably inside view bounds
+     * - Directional scaling: if distance in any direction is insufficient, scales down to fit safely
      */
     private fun calculateWheelLayout(w: Float, h: Float, totalItems: Int): FittedWheelLayout {
+        val promptH = promptView.measuredHeight.takeIf { it > 0 }?.toFloat() ?: 36f.dp2px
+        val topReserved = promptH + 10f.dp2px
+        val bottomReserved = if (config.side == QuickSetupSide.BOTH) {
+            (sideToggleChip.measuredHeight.takeIf { it > 0 }?.toFloat() ?: 28f.dp2px) + 18f.dp2px
+        } else {
+            16f.dp2px
+        }
         return calculateFittedWheelLayout(
             width = w,
             height = h,
@@ -233,8 +249,97 @@ class GuideWheelSampleView @JvmOverloads constructor(
             baseRadius = actionConfig.initRadius,
             baseItemDiameter = actionConfig.itemDiameter,
             baseItemWarpOffset = actionConfig.itemWarpOffset,
-            margin = 16f.dp2px
+            margin = 16f.dp2px,
+            marginTop = topReserved,
+            marginBottom = bottomReserved
         )
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val widthSize = MeasureSpec.getSize(widthMeasureSpec).takeIf { it > 0 }
+            ?: (context.resources.displayMetrics.widthPixels - 32f.dp2px.toInt()).coerceAtLeast(300)
+
+        // 1. Measure header prompt and footer toggle chip to know reserved vertical margins
+        promptView.measure(
+            MeasureSpec.makeMeasureSpec(widthSize, MeasureSpec.AT_MOST),
+            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+        )
+        val promptH = promptView.measuredHeight.toFloat()
+        val topReserved = promptH + 10f.dp2px
+
+        val bottomReserved = if (config.side == QuickSetupSide.BOTH) {
+            sideToggleChip.measure(
+                MeasureSpec.makeMeasureSpec(widthSize, MeasureSpec.AT_MOST),
+                MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+            )
+            sideToggleChip.measuredHeight.toFloat() + 18f.dp2px
+        } else {
+            16f.dp2px
+        }
+
+        // 2. Compute natural unscaled wheel height so outer container adapts to wheel dimensions
+        val totalCount = config.wheelItems.size + 1
+        val shape = resolveWheelAdaptiveShape(isEffectiveLeft(), config.verticalPercent)
+        val naturalDist = distributeConcentricSlots(
+            itemCount = totalCount,
+            startAngle = shape.startAngle,
+            sweepAngle = shape.sweepAngle,
+            baseRadius = actionConfig.initRadius,
+            itemDiameter = actionConfig.itemDiameter,
+            itemWarpOffset = actionConfig.itemWarpOffset,
+            mirror = isEffectiveLeft(),
+            includeCenterItem = true
+        )
+
+        val desiredHeight: Float = if (naturalDist.positions.isNotEmpty()) {
+            val bounds = guideWheelBounds(naturalDist.positions, naturalDist.sizes)
+            val extentUp = maxOf(0f, -bounds.top)
+            val extentDown = maxOf(0f, bounds.bottom)
+            if (shape.isSemicircle) {
+                val neededH = 2f * maxOf(extentUp + topReserved, extentDown + bottomReserved)
+                neededH.coerceIn(300f.dp2px, 420f.dp2px)
+            } else {
+                val neededH = (bounds.bottom - bounds.top) + topReserved + bottomReserved
+                neededH.coerceIn(220f.dp2px, 320f.dp2px)
+            }
+        } else {
+            280f.dp2px
+        }
+
+        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
+        val heightSize = MeasureSpec.getSize(heightMeasureSpec)
+        val measuredHeight = when (heightMode) {
+            MeasureSpec.EXACTLY -> heightSize
+            MeasureSpec.AT_MOST -> minOf(desiredHeight.toInt(), heightSize)
+            else -> desiredHeight.toInt()
+        }
+
+        setMeasuredDimension(widthSize, measuredHeight)
+
+        // 3. Layout wheel for measured size and measure child views
+        val w = widthSize.toFloat()
+        val h = measuredHeight.toFloat()
+        val layout = calculateWheelLayout(w, h, allDisplayViews().size)
+        currentLayout = layout
+
+        actionViews.forEachIndexed { i, view ->
+            val size = if (i < layout.slots.size) layout.slots[i].size.toInt() else (actionConfig.itemDiameter * layout.scale).toInt()
+            val spec = MeasureSpec.makeMeasureSpec(size.coerceAtLeast(1), MeasureSpec.EXACTLY)
+            view.measure(spec, spec)
+        }
+        addView?.let { addBtn ->
+            val size = layout.slots.lastOrNull()?.size?.toInt() ?: (actionConfig.itemDiameter * layout.scale).toInt()
+            val spec = MeasureSpec.makeMeasureSpec(size.coerceAtLeast(1), MeasureSpec.EXACTLY)
+            addBtn.measure(spec, spec)
+        }
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        if (changed || activeTouchView == null) {
+            positionItemViews(animate = false)
+            updatePromptPosition()
+        }
     }
 
     private fun rebuildViews(animate: Boolean) {
@@ -243,9 +348,11 @@ class GuideWheelSampleView @JvmOverloads constructor(
         addView?.let { removeView(it) }
         addView = null
 
+        requestLayout()
+
         val totalCount = config.wheelItems.size + 1
         val w = width.toFloat().takeIf { it > 0 } ?: 360f.dp2px
-        val h = height.toFloat().takeIf { it > 0 } ?: 280f.dp2px
+        val h = height.toFloat().takeIf { it > 0 } ?: 360f.dp2px
         val layout = calculateWheelLayout(w, h, totalCount)
         currentLayout = layout
 
@@ -376,20 +483,17 @@ class GuideWheelSampleView @JvmOverloads constructor(
 
     private fun updatePromptPosition() {
         val isLeft = isEffectiveLeft()
-        val isUpper = config.verticalPercent < 50
         val lp = promptView.layoutParams as LayoutParams
 
-        // Position prompt in the corner opposite to the origin
-        val gravityH = if (isLeft) Gravity.END else Gravity.START
-        val gravityV = if (isUpper) Gravity.BOTTOM else Gravity.TOP
-        lp.gravity = gravityH or gravityV
+        // Prompt is pinned to top corner opposite to trigger edge
+        lp.gravity = (if (isLeft) Gravity.END else Gravity.START) or Gravity.TOP
         promptView.layoutParams = lp
 
-        // Side toggle chip positioned away from the active quadrant corner
+        // Side toggle chip positioned at bottom center
         val chipLp = sideToggleChip.layoutParams as LayoutParams
-        chipLp.gravity = (if (isUpper) Gravity.BOTTOM else Gravity.TOP) or Gravity.CENTER_HORIZONTAL
-        chipLp.bottomMargin = if (isUpper) 10f.dp2px.toInt() else 0
-        chipLp.topMargin = if (!isUpper) 10f.dp2px.toInt() else 0
+        chipLp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+        chipLp.bottomMargin = 10f.dp2px.toInt()
+        chipLp.topMargin = 0
         sideToggleChip.layoutParams = chipLp
     }
 
@@ -626,7 +730,7 @@ class GuideWheelSampleView @JvmOverloads constructor(
         val triggerWidth = 5f.dp2px
         val triggerHeight = (h * (config.triggerHeightDp.toFloat() / 700f)).coerceIn(24f.dp2px, 80f.dp2px)
         val triggerLeft = if (layout.isLeft) 4f.dp2px else w - 4f.dp2px - triggerWidth
-        val triggerCenterY = if (layout.sweepAngle < 180f) layout.cy else (h * (config.verticalPercent / 100f))
+        val triggerCenterY = layout.cy
         val triggerTop = (triggerCenterY - triggerHeight / 2f).coerceIn(4f.dp2px, h - triggerHeight - 4f.dp2px)
         val triggerRect = RectF(triggerLeft, triggerTop, triggerLeft + triggerWidth, triggerTop + triggerHeight)
 
