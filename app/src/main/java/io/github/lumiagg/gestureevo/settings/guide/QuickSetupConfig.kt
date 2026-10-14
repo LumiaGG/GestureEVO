@@ -8,8 +8,8 @@ enum class QuickSetupSide { LEFT, RIGHT, BOTH }
 enum class QuickGesture { TAP, SWIPE_IN, SWIPE_UP, SWIPE_DOWN, LONG_PRESS }
 
 enum class QuickActionType {
-    NONE, WHEEL, BACK, HOME, RECENTS, SEARCH, NOTIFICATIONS, QUICK_SETTINGS,
-    SCREENSHOT, SCREEN_CONTENT, SCREEN_SEARCH, PIN_POOL, OPEN_APP
+    NONE, WHEEL, BACK, HOME, RECENTS, RECENT_APP, SEARCH, NOTIFICATIONS, QUICK_SETTINGS,
+    SCREENSHOT, SCREEN_CONTENT, SCREEN_SEARCH, PIN_POOL, OPEN_APP, CUSTOM
 }
 
 @JsonClass(generateAdapter = true)
@@ -17,7 +17,8 @@ data class QuickAction(
     val type: QuickActionType,
     val packageName: String? = null,
     val appName: String? = null,
-    val userId: Int = 0
+    val userId: Int = 0,
+    val customLink: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -36,7 +37,6 @@ data class QuickSetupConfig(
         require(wheelOffsetXDp in 0..120) { "Wheel inset must be between 0 and 120 dp" }
         require(wheelRadiusDp in 80..200) { "Wheel radius must be between 80 and 200 dp" }
         require(gestures.keys == QuickGesture.entries.toSet()) { "Every quick gesture must have an action" }
-        require(gestures.values.any { it.type == QuickActionType.WHEEL }) { "A gesture must open the wheel" }
         require(wheelItems.size >= 2) { "The wheel must contain at least 2 actions" }
         require(wheelItems.none { it.type == QuickActionType.NONE || it.type == QuickActionType.WHEEL }) {
             "Wheel items must be executable actions"
@@ -48,8 +48,8 @@ data class QuickSetupConfig(
             if (action.type == QuickActionType.OPEN_APP) {
                 require(!action.packageName.isNullOrBlank()) { "An app action requires a package name" }
                 require(action.userId >= 0) { "An app action requires a valid user" }
-            } else {
-                require(action.packageName == null && action.appName == null && action.userId == 0) {
+            } else if (action.type != QuickActionType.CUSTOM) {
+                require(action.packageName == null && action.userId == 0) {
                     "Only app actions can contain application details"
                 }
             }

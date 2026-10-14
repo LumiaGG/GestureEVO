@@ -46,9 +46,6 @@ object QuickSetupRepository {
 
     suspend fun load(context: Context): QuickSetupConfig? = withContext(Dispatchers.IO) {
         val appContext = context.applicationContext
-        val saved = QuickSetupConfig.fromJson(appContext.gestureStore.readKey(KEY_CONFIG, ""))
-        if (saved != null) return@withContext saved
-
         try {
             loadFromDefault(appContext)
         } catch (_: Exception) {
@@ -57,9 +54,17 @@ object QuickSetupRepository {
     }
 
     private suspend fun loadFromDefault(context: Context): QuickSetupConfig? {
-        val triggers = FreeTriggerConfig.toModelList(context.gestureStore.readKey(KEY_FREE_TRIGGERS, "")).orEmpty()
         val defaultTriggerName = context.getString(R.string.default_trigger_name)
-        val defaultTrigger = triggers.find { it.name == defaultTriggerName } ?: triggers.firstOrNull() ?: return null
+        val triggers = FreeTriggerConfig.toModelList(context.gestureStore.readKey(KEY_FREE_TRIGGERS, "")).orEmpty()
+        val cleanTriggers = triggers.filterNot {
+            it.tag == LEFT_TRIGGER_TAG ||
+                it.tag == RIGHT_TRIGGER_TAG ||
+                it.tag == PREVIEW_LEFT_TRIGGER_TAG ||
+                it.tag == PREVIEW_RIGHT_TRIGGER_TAG
+        }
+        val defaultTrigger = cleanTriggers.find { it.name == defaultTriggerName }
+            ?: cleanTriggers.firstOrNull()
+            ?: FreeTriggerDataManager.createDefaultTrigger(context)
 
         val side = when {
             defaultTrigger.getState(FreeTriggerConfig.FLAG_MIRROR) -> QuickSetupSide.BOTH
@@ -80,20 +85,20 @@ object QuickSetupRepository {
         // Read trigger gestures
         val triggerActionsJson = context.actionStore.readKey(defaultTrigger.tag, "")
         val triggerActions = GestureActionItem.toModelList(triggerActionsJson).orEmpty()
-        val gestureMap = mutableMapOf<QuickGesture, QuickAction>()
-        QuickGesture.entries.forEach { gesture ->
-            val gestureType = quickGestureType(gesture, side)
-            val actionKey = GestureTypeEvent(gestureType, GesturePhase.TD).toActionKey()
-            val item = triggerActions.find { it.tag == actionKey }
-            val quickAction = item?.let(::parseQuickAction)
-            if (quickAction != null && quickAction.type != QuickActionType.NONE) {
-                gestureMap[gesture] = quickAction
-            }
-        }
-        val gestures = if (gestureMap.keys == QuickGesture.entries.toSet() && gestureMap.values.any { it.type == QuickActionType.WHEEL }) {
-            gestureMap
-        } else {
+
+        val gestures = if (triggerActions.isEmpty()) {
             QuickSetupConfig.default().gestures
+        } else {
+            QuickGesture.entries.associateWith { gesture ->
+                val gestureType = quickGestureType(gesture, side)
+                val actionKey = GestureTypeEvent(gestureType, GesturePhase.TD).toActionKey()
+                var item = triggerActions.find { it.tag == actionKey }
+                if (item == null && side == QuickSetupSide.BOTH && gesture == QuickGesture.SWIPE_IN) {
+                    val altKey = GestureTypeEvent(GestureType.SWIPE_RIGHT, GesturePhase.TD).toActionKey()
+                    item = triggerActions.find { it.tag == altKey }
+                }
+                item?.let(::parseQuickAction) ?: QuickAction(QuickActionType.NONE)
+            }
         }
 
         return QuickSetupConfig(
@@ -118,12 +123,13 @@ object QuickSetupRepository {
             applyDefaultTriggerConfig(defaultTrigger, config, defaultTriggerName)
             val finalTriggers = mergeQuickSetupTriggers(existingTriggers, defaultTrigger)
 
-            val triggerActions = buildTriggerActions(config, config.side)
+            val existingActionsJson = appContext.actionStore.readKey(defaultTrigger.tag, "")
+            val existingActions = GestureActionItem.toModelList(existingActionsJson).orEmpty()
+            val triggerActions = mergeTriggerActions(existingActions, config, config.side)
             val triggerActionsJson = GestureActionItem.toJsonList(triggerActions)
 
             val wheelItems = buildQuickSetupWheelItems(config)
             val wheelJson = GestureActionItem.toJsonList(wheelItems)
-            val configJson = config.toJson()
             val baseConfig = GestureActionDataManager.readActionConfig(appContext, ActionConfig.DEFAULT_TAG, false)
             val wheelConfig = buildQuickSetupWheelConfig(config, baseConfig).toJson()
 
@@ -154,7 +160,7 @@ object QuickSetupRepository {
 
                 appContext.gestureStore.edit { preferences ->
                     preferences[triggerKey] = FreeTriggerConfig.toJsonList(finalTriggers)
-                    preferences[stringPreferencesKey(KEY_CONFIG)] = configJson
+                    preferences.remove(stringPreferencesKey(KEY_CONFIG))
                 }
                 FreeTriggerDataManager.invalidateCache()
             }, publishConfiguration = {
@@ -163,7 +169,32 @@ object QuickSetupRepository {
         }
     }
 
+    internal fun mergeTriggerActions(
+        existing: List<GestureActionItem>,
+        config: QuickSetupConfig,
+        side: QuickSetupSide
+    ): List<GestureActionItem> {
+        val quickActions = buildTriggerActions(config, side)
+        val quickKeys = quickActions.map { it.tag }.toSet()
+        val preserved = existing.filterNot { it.tag in quickKeys }
+        return preserved + quickActions
+    }
+
     internal fun buildTriggerActions(config: QuickSetupConfig, side: QuickSetupSide): List<GestureActionItem> {
+        val targetTypes = mutableSetOf(
+            GestureType.SINGLE_CLICK,
+            GestureType.LONG_PRESS,
+            GestureType.SWIPE_UP,
+            GestureType.SWIPE_DOWN
+        )
+        when (side) {
+            QuickSetupSide.LEFT -> targetTypes.add(GestureType.SWIPE_RIGHT)
+            QuickSetupSide.RIGHT -> targetTypes.add(GestureType.SWIPE_LEFT)
+            QuickSetupSide.BOTH -> {
+                targetTypes.add(GestureType.SWIPE_RIGHT)
+                targetTypes.add(GestureType.SWIPE_LEFT)
+            }
+        }
         val actionMap = mutableMapOf<GestureType, QuickAction>()
         config.gestures.forEach { (gesture, action) ->
             when (gesture) {
@@ -183,7 +214,7 @@ object QuickSetupRepository {
                 }
             }
         }
-        return GestureType.entries.filter { it != GestureType.TOUCH }.flatMap { type ->
+        return targetTypes.flatMap { type ->
             GesturePhase.entries.map { phase ->
                 val action = if (phase == GesturePhase.TD) actionMap[type] else null
                 buildActionItem(
@@ -195,6 +226,13 @@ object QuickSetupRepository {
     }
 
     internal fun buildActionItem(action: QuickAction, itemTag: String): GestureActionItem {
+        if (action.type == QuickActionType.CUSTOM && !action.customLink.isNullOrBlank()) {
+            return GestureActionItem().apply {
+                tag = itemTag
+                name = action.appName
+                firstStageLink = action.customLink
+            }
+        }
         val spec = quickActionSpec(action)
         return GestureActionItem().apply {
             tag = itemTag
@@ -258,6 +296,7 @@ internal fun quickActionSpec(action: QuickAction): QuickActionSpec {
         QuickActionType.BACK -> accessibility(AccessibilityService.GLOBAL_ACTION_BACK)
         QuickActionType.HOME -> accessibility(AccessibilityService.GLOBAL_ACTION_HOME)
         QuickActionType.RECENTS -> accessibility(AccessibilityService.GLOBAL_ACTION_RECENTS)
+        QuickActionType.RECENT_APP -> QuickActionSpec(GestureActionType.RECENT_APP)
         QuickActionType.NOTIFICATIONS -> accessibility(AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS)
         QuickActionType.QUICK_SETTINGS -> accessibility(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS)
         QuickActionType.SCREENSHOT -> accessibility(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT)
@@ -265,6 +304,7 @@ internal fun quickActionSpec(action: QuickAction): QuickActionSpec {
         QuickActionType.SCREEN_CONTENT -> QuickActionSpec(GestureActionType.SCREEN_CONTENT)
         QuickActionType.SCREEN_SEARCH -> QuickActionSpec(GestureActionType.SCREEN_SEARCH)
         QuickActionType.PIN_POOL -> QuickActionSpec(GestureActionType.PIN_POOL)
+        QuickActionType.CUSTOM -> QuickActionSpec(GestureActionType.NONE)
         QuickActionType.OPEN_APP -> QuickActionSpec(
             GestureActionType.OPEN_APP,
             buildMap {
@@ -335,7 +375,9 @@ internal fun parseActionLink(link: String): Pair<GestureActionType, Map<String, 
 }
 
 internal fun parseQuickAction(item: GestureActionItem): QuickAction {
-    val (actionType, params) = parseActionLink(item.firstStageLink.orEmpty())
+    val link = item.firstStageLink.orEmpty()
+    if (link.isBlank()) return QuickAction(QuickActionType.NONE)
+    val (actionType, params) = parseActionLink(link)
     return when (actionType) {
         GestureActionType.NONE -> QuickAction(QuickActionType.NONE)
         GestureActionType.SHOW_ACTION_VIEW -> QuickAction(QuickActionType.WHEEL)
@@ -347,9 +389,10 @@ internal fun parseQuickAction(item: GestureActionItem): QuickAction {
                 AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS -> QuickAction(QuickActionType.NOTIFICATIONS)
                 AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS -> QuickAction(QuickActionType.QUICK_SETTINGS)
                 AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT -> QuickAction(QuickActionType.SCREENSHOT)
-                else -> QuickAction(QuickActionType.NONE)
+                else -> QuickAction(QuickActionType.CUSTOM, appName = item.name, customLink = link)
             }
         }
+        GestureActionType.RECENT_APP -> QuickAction(QuickActionType.RECENT_APP)
         GestureActionType.SEARCH -> QuickAction(QuickActionType.SEARCH)
         GestureActionType.SCREEN_CONTENT -> QuickAction(QuickActionType.SCREEN_CONTENT)
         GestureActionType.SCREEN_SEARCH -> QuickAction(QuickActionType.SCREEN_SEARCH)
@@ -368,7 +411,11 @@ internal fun parseQuickAction(item: GestureActionItem): QuickAction {
                 )
             }
         }
-        else -> QuickAction(QuickActionType.NONE)
+        else -> QuickAction(
+            type = QuickActionType.CUSTOM,
+            appName = item.name,
+            customLink = link
+        )
     }
 }
 

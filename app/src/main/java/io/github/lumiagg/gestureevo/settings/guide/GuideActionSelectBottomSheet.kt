@@ -148,6 +148,7 @@ internal fun showGuideActionSelectBottomSheet(
         QuickAction(QuickActionType.BACK),
         QuickAction(QuickActionType.HOME),
         QuickAction(QuickActionType.RECENTS),
+        QuickAction(QuickActionType.RECENT_APP),
         QuickAction(QuickActionType.NOTIFICATIONS),
         QuickAction(QuickActionType.QUICK_SETTINGS),
     )

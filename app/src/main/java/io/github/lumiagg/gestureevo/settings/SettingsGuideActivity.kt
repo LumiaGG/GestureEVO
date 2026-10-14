@@ -207,6 +207,9 @@ class SettingsGuideActivity : AppCompatActivity() {
         binding.advancedButton.setOnClickListener { showAdvancedOptions() }
         binding.finishButton.setOnClickListener {
             lifecycleScope.launch {
+                if (quickSetup.hasUnsavedChanges) {
+                    quickSetup.save()
+                }
                 refreshStatus()
                 if (binding.finishButton.isEnabled) leaveGuide(completed = true)
             }
@@ -222,8 +225,14 @@ class SettingsGuideActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.quick_setup_unsaved_title)
             .setMessage(R.string.quick_setup_unsaved_exit)
-            .setPositiveButton(R.string.quick_practice_continue, null)
+            .setPositiveButton(R.string.quick_setup_save_and_exit) { _, _ ->
+                lifecycleScope.launch {
+                    quickSetup.save()
+                    leave()
+                }
+            }
             .setNegativeButton(R.string.quick_setup_discard) { _, _ -> leave() }
+            .setNeutralButton(android.R.string.cancel, null)
             .show()
     }
 

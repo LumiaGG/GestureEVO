@@ -125,13 +125,32 @@
         android:layout_marginTop="8dp"
         android:orientation="vertical" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/applyQuickSetupButton"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:minHeight="48dp"
-        android:text="@string/quick_practice_start"
-        app:icon="@drawable/baseline_gesture_24" />
+        android:orientation="horizontal">
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/applyQuickSetupButton"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:minHeight="48dp"
+            android:text="@string/quick_setup_save_button"
+            app:icon="@drawable/baseline_save_24" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/practiceQuickSetupButton"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:minHeight="48dp"
+            android:text="@string/quick_setup_practice_button"
+            app:icon="@drawable/baseline_gesture_24" />
+    </LinearLayout>
 </LinearLayout>

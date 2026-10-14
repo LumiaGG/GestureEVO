@@ -1066,7 +1066,7 @@
     <string name="package_activity_label">%1$s\n%2$s</string>
     <string name="contact_result_label">%1$s – %2$s</string>
     <string name="guide_title">设置引导</string>
-    <string name="guide_entry_summary">检查权限、后台运行和手势配置</string>
+    <string name="guide_entry_summary">一站式快速配置触发区、基础手势与快捷轮盘（推荐新用户使用）</string>
     <string name="guide_progress">核心设置已就绪 %1$d / %2$d</string>
     <string name="guide_accessibility_title">1. 无障碍服务</string>
     <string name="guide_accessibility_summary">必需，用于识别手势并执行动作</string>
@@ -1148,11 +1148,15 @@
     <string name="quick_setup_move_up">上移</string>
     <string name="quick_setup_move_down">下移</string>
     <string name="quick_setup_remove">移除</string>
-    <string name="quick_setup_invalid">请至少保留一个打开轮盘的手势，轮盘需包含至少 2 个动作。</string>
+    <string name="quick_setup_invalid">手势与轮盘配置无效，轮盘需包含至少 2 个动作。</string>
+    <string name="quick_setup_save_button">保存配置</string>
+    <string name="quick_setup_save_and_exit">保存并退出</string>
+    <string name="quick_setup_practice_button">演练手势</string>
+    <string name="quick_setup_saved_toast">配置已保存并生效</string>
     <string name="quick_setup_saving">正在保存配置…</string>
-    <string name="quick_setup_save_failed">保存失败，请重新练习以重试。</string>
+    <string name="quick_setup_save_failed">保存失败，请重试。</string>
     <string name="quick_setup_unsaved_title">尚有未生效的更改</string>
-    <string name="quick_setup_unsaved_exit">当前更改尚未保存，已完成练习的配置会保留。</string>
+    <string name="quick_setup_unsaved_exit">当前更改尚未保存，是否保存配置？</string>
     <string name="quick_setup_discard">放弃更改</string>
     <string name="quick_gesture_inward">向内滑动</string>
     <string name="quick_practice_for">练习%1$s</string>
@@ -1193,6 +1197,8 @@
     <string name="quick_setup_action_open_app_desc">选择并启动已安装的应用</string>
     <string name="quick_setup_action_wheel_desc">展开扇形快捷轮盘菜单</string>
     <string name="quick_setup_action_none_desc">不执行任何操作</string>
+    <string name="quick_setup_action_recent_app_desc">在最近使用的两个应用之间快速切换</string>
+    <string name="quick_setup_action_custom_desc">自定义动作链接或高级动作</string>
     <string name="quick_practice_dialog_title">手势实操测试</string>
     <string name="quick_practice_step_format">第 %1$d / %2$d 项 · %3$s</string>
     <string name="quick_practice_pointer_hint_right">👈 在此边缘滑动</string>

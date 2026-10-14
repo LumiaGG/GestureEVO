@@ -1063,7 +1063,7 @@
     <string name="package_activity_label">%1$s\n%2$s</string>
     <string name="contact_result_label">%1$s – %2$s</string>
     <string name="guide_title">Setup guide</string>
-    <string name="guide_entry_summary">Review permissions, background activity and gestures</string>
+    <string name="guide_entry_summary">All-in-one setup for trigger area, basic gestures and quick wheel (recommended for new users)</string>
     <string name="guide_progress">%1$d / %2$d essentials ready</string>
     <string name="guide_accessibility_title">1. Accessibility service</string>
     <string name="guide_accessibility_summary">Required for gesture recognition and actions</string>
@@ -1145,11 +1145,15 @@
     <string name="quick_setup_move_up">Move up</string>
     <string name="quick_setup_move_down">Move down</string>
     <string name="quick_setup_remove">Remove</string>
-    <string name="quick_setup_invalid">Keep at least one gesture that opens the wheel, with at least 2 wheel actions.</string>
+    <string name="quick_setup_invalid">Invalid gesture or wheel configuration. The wheel must have at least 2 actions.</string>
+    <string name="quick_setup_save_button">Save configuration</string>
+    <string name="quick_setup_save_and_exit">Save and exit</string>
+    <string name="quick_setup_practice_button">Practice gestures</string>
+    <string name="quick_setup_saved_toast">Configuration saved and applied</string>
     <string name="quick_setup_saving">Saving setup…</string>
-    <string name="quick_setup_save_failed">Could not save. Practice again to retry.</string>
+    <string name="quick_setup_save_failed">Could not save. Please try again.</string>
     <string name="quick_setup_unsaved_title">Unapplied changes</string>
-    <string name="quick_setup_unsaved_exit">These changes are not saved yet. Previously practiced settings will be kept.</string>
+    <string name="quick_setup_unsaved_exit">Current changes are not saved yet. Do you want to save them?</string>
     <string name="quick_setup_discard">Discard changes</string>
     <string name="quick_gesture_inward">Swipe inward</string>
     <string name="quick_practice_for">Practice %1$s</string>
@@ -1190,6 +1194,8 @@
     <string name="quick_setup_action_open_app_desc">Choose and launch an installed application</string>
     <string name="quick_setup_action_wheel_desc">Open radial shortcut wheel</string>
     <string name="quick_setup_action_none_desc">Do nothing</string>
+    <string name="quick_setup_action_recent_app_desc">Quickly switch between last two used applications</string>
+    <string name="quick_setup_action_custom_desc">Custom action link or advanced action</string>
     <string name="quick_practice_dialog_title">Gesture Testing</string>
     <string name="quick_practice_step_format">Step %1$d of %2$d · %3$s</string>
     <string name="quick_practice_pointer_hint_right">👈 Swipe from this edge</string>
