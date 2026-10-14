@@ -46,8 +46,6 @@ internal class QuickSetupController(
     private var previewFinished = false
     private var wheelMode = GuideWheelMode.HIDDEN
     private var wheelInputEnabled = true
-    private var wheelEditor: Dialog? = null
-    private var wheelEditorSession = 0
     private var wheelActionDialog: Dialog? = null
 
     val hasUnsavedChanges: Boolean get() = !loading && config != savedConfig
@@ -101,22 +99,10 @@ internal class QuickSetupController(
         gestureBinding.applyQuickSetupButton.setIconResource(R.drawable.baseline_gesture_24)
         gestureBinding.applyQuickSetupButton.setOnClickListener { practiceSequence(0) }
 
-        wheelBinding.editWheelButton.setOnClickListener { editWheel() }
         wheelBinding.addWheelItemButton.setOnClickListener {
             chooseWheelAction { selected ->
                 if (config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS) {
                     update(config.copy(wheelItems = config.wheelItems + selected))
-                }
-            }
-        }
-
-        activity.lifecycleScope.launch {
-            GuidePreviewSession.wheelEdits.collect { edit ->
-                if (edit.owner != previewOwner || edit.config != config || wheelEditor?.isShowing != true) return@collect
-                when (edit.action) {
-                    GuideWheelEditAction.EDIT -> editWheelItem(edit.itemIndex)
-                    GuideWheelEditAction.REMOVE -> removeWheelItem(edit.itemIndex)
-                    GuideWheelEditAction.ADD -> chooseWheelAction { update(config.copy(wheelItems = config.wheelItems + it)) }
                 }
             }
         }
@@ -160,7 +146,7 @@ internal class QuickSetupController(
 
     fun finishPreview() {
         previewFinished = true
-        wheelEditor?.dismiss()
+        wheelActionDialog?.dismiss()
         suspendPreview()
     }
 
@@ -210,7 +196,6 @@ internal class QuickSetupController(
             else -> R.string.quick_setup_saved
         })
         gestureBinding.applyQuickSetupButton.isEnabled = !loading
-        wheelBinding.editWheelButton.isEnabled = !loading
         wheelBinding.addWheelItemButton.isEnabled = !loading && config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS
         wheelBinding.resetDefaultsButton.isEnabled = !loading
         gestureBinding.sideGroup.isEnabled = !loading
@@ -279,6 +264,22 @@ internal class QuickSetupController(
     }
 
     private fun renderWheelItems() {
+        wheelBinding.wheelSampleView.setConfig(
+            config = config,
+            onEditItem = { index ->
+                if (index in config.wheelItems.indices) {
+                    chooseWheelAction(currentAction = config.wheelItems[index]) { action ->
+                        val newItems = config.wheelItems.toMutableList()
+                        newItems[index] = action
+                        update(config.copy(wheelItems = newItems))
+                    }
+                }
+            },
+            onRemoveItem = { index ->
+                removeWheelItem(index)
+            }
+        )
+
         wheelBinding.wheelItemsContainer.removeAllViews()
         config.wheelItems.forEachIndexed { index, action ->
             val row = LinearLayout(activity).apply {
@@ -349,87 +350,31 @@ internal class QuickSetupController(
         wheelBinding.addWheelItemButton.isVisible = config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS
     }
 
-    private fun editWheel() {
-        if (loading || wheelEditor?.isShowing == true) return
-        if (CurrentPackageProvider.accessibilityService() == null) {
-            wheelBinding.quickSetupMessage.setText(R.string.quick_setup_preview_permission)
-            return
-        }
-        val session = ++wheelEditorSession
-        wheelMode = GuideWheelMode.EDIT
-        wheelEditor = showGuideWheelEditor(
-            activity = activity,
-            configProvider = { config },
-            onEditItem = { editWheelItem(it) },
-            onRemoveItem = { removeWheelItem(it) },
-            onAddItem = {
-                chooseWheelAction { selected ->
-                    if (config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS) {
-                        update(config.copy(wheelItems = config.wheelItems + selected))
-                    }
-                }
-            },
-            onDismiss = {
-                if (session != wheelEditorSession) return@showGuideWheelEditor
-                wheelEditorSession++
-                wheelActionDialog?.dismiss()
-                wheelActionDialog = null
-                wheelMode = GuideWheelMode.HIDDEN
-                wheelInputEnabled = true
-                wheelEditor = null
-                refreshPreview()
-            }
-        )
-        refreshPreview()
-    }
-
-    private fun editWheelItem(index: Int) {
-        if (wheelEditor?.isShowing != true || index !in config.wheelItems.indices) return
-        chooseWheelAction(currentAction = config.wheelItems[index]) { action ->
-            if (wheelEditor?.isShowing != true || index !in config.wheelItems.indices) return@chooseWheelAction
-            update(config.copy(wheelItems = config.wheelItems.toMutableList().apply { this[index] = action }))
-        }
-    }
-
     private fun chooseWheelAction(currentAction: QuickAction? = null, selected: (QuickAction) -> Unit) {
-        val session = wheelEditorSession
-        val draft = config
-        wheelInputEnabled = false
-        refreshPreview()
-        chooseAction(wheel = true, currentAction = currentAction, onFinished = {
-            if (session != wheelEditorSession) return@chooseAction
-            wheelInputEnabled = true
-            refreshPreview()
-        }, selected = {
-            if (wheelEditor?.isShowing != true || (session == wheelEditorSession && config == draft)) {
-                selected(it)
-            }
+        chooseAction(wheel = true, currentAction = currentAction, onFinished = {}, selected = {
+            selected(it)
         })
     }
 
     private fun removeWheelItem(index: Int) {
         if (index !in config.wheelItems.indices) return
-        val session = wheelEditorSession
-        val draft = config
-        wheelInputEnabled = false
-        refreshPreview()
+        if (config.wheelItems.size <= 2) {
+            MaterialAlertDialogBuilder(activity)
+                .setTitle(R.string.quick_setup_minimum_items)
+                .setMessage(R.string.quick_setup_minimum_items)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+            return
+        }
         val dialog = MaterialAlertDialogBuilder(activity)
             .setTitle(R.string.action_view_item_menu_delete)
-            .setMessage(if (config.wheelItems.size > 2) config.wheelItems[index].label(activity)
-                else activity.getString(R.string.quick_setup_minimum_items))
-            .setNegativeButton(android.R.string.cancel, null)
-        if (config.wheelItems.size > 2) {
-            dialog.setPositiveButton(R.string.action_view_item_menu_delete) { _, _ ->
-                if (wheelEditor?.isShowing != true || (session == wheelEditorSession && config == draft)) {
-                    update(config.copy(wheelItems = config.wheelItems.filterIndexed { i, _ -> i != index }))
-                }
+            .setMessage(config.wheelItems[index].label(activity))
+            .setPositiveButton(R.string.action_view_item_menu_delete) { _, _ ->
+                update(config.copy(wheelItems = config.wheelItems.filterIndexed { i, _ -> i != index }))
             }
-        }
+            .setNegativeButton(android.R.string.cancel, null)
         wheelActionDialog = dialog.setOnDismissListener {
-            if (session != wheelEditorSession) return@setOnDismissListener
             wheelActionDialog = null
-            wheelInputEnabled = true
-            refreshPreview()
         }.show()
     }
 

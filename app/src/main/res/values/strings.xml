@@ -1120,6 +1120,9 @@
     <string name="quick_setup_wheel_card_title">3. 快捷轮盘设置</string>
     <string name="quick_setup_wheel_card_summary">配置一级菜单项，支持添加与删除</string>
     <string name="quick_setup_wheel_desc">在屏幕边缘向内滑动可呼出扇形快捷轮盘。在此配置轮盘一级常用动作（支持 2 ~ 8 项）。</string>
+    <string name="quick_setup_wheel_sample_hint">点击项目编辑或删除</string>
+    <string name="quick_setup_wheel_sample_side_left">双侧触发 · 预览左侧 (点击切换)</string>
+    <string name="quick_setup_wheel_sample_side_right">双侧触发 · 预览右侧 (点击切换)</string>
     <string name="quick_setup_side">触发区域</string>
     <string name="quick_setup_left">左侧</string>
     <string name="quick_setup_both">双侧</string>
