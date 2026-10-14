@@ -22,6 +22,23 @@ internal fun QuickAction.label(context: Context): String = when (type) {
     QuickActionType.OPEN_APP -> appName ?: packageName ?: context.getString(R.string.gesture_action_open_app)
 }
 
+internal fun QuickAction.description(context: Context): String = when (type) {
+    QuickActionType.NONE -> context.getString(R.string.quick_setup_action_none_desc)
+    QuickActionType.WHEEL -> context.getString(R.string.quick_setup_action_wheel_desc)
+    QuickActionType.BACK -> context.getString(R.string.quick_setup_action_back_desc)
+    QuickActionType.HOME -> context.getString(R.string.quick_setup_action_home_desc)
+    QuickActionType.RECENTS -> context.getString(R.string.quick_setup_action_recents_desc)
+    QuickActionType.NOTIFICATIONS -> context.getString(R.string.quick_setup_action_notifications_desc)
+    QuickActionType.QUICK_SETTINGS -> context.getString(R.string.quick_setup_action_quick_settings_desc)
+    QuickActionType.SCREENSHOT -> context.getString(R.string.quick_setup_action_screenshot_desc)
+    QuickActionType.SEARCH -> context.getString(R.string.quick_setup_action_search_desc)
+    QuickActionType.SCREEN_CONTENT -> context.getString(R.string.quick_setup_action_screen_content_desc)
+    QuickActionType.SCREEN_SEARCH -> context.getString(R.string.quick_setup_action_screen_search_desc)
+    QuickActionType.PIN_POOL -> context.getString(R.string.quick_setup_action_pin_pool_desc)
+    QuickActionType.OPEN_APP -> packageName?.let { context.getString(R.string.app_activity_label, appName ?: "", it) }
+        ?: context.getString(R.string.quick_setup_action_open_app_desc)
+}
+
 internal fun QuickAction.icon(context: Context): Drawable? {
     if (type == QuickActionType.OPEN_APP && packageName != null) return IconHelper.getIcon(context, packageName)
     val resource = when (type) {

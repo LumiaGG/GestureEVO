@@ -1,37 +1,38 @@
 package io.github.lumiagg.gestureevo.settings.guide
 
-import android.content.res.ColorStateList
 import android.app.Dialog
+import android.content.res.ColorStateList
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.appcompat.widget.TooltipCompat
+import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.slider.Slider
 import com.google.android.material.textview.MaterialTextView
 import io.github.lumiagg.gestureevo.R
-import io.github.lumiagg.gestureevo.databinding.GuideQuickSetupBinding
-import io.github.lumiagg.gestureevo.db.APPModel
-import io.github.lumiagg.gestureevo.settings.ui.DefaultSelectAPPBottomSheet
-import io.github.lumiagg.gestureevo.settings.ui.SelectAPPCallBack
+import io.github.lumiagg.gestureevo.databinding.GuideGestureSetupBinding
+import io.github.lumiagg.gestureevo.databinding.GuideWheelSetupBinding
 import io.github.lumiagg.gestureevo.utils.CurrentPackageProvider
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
-import io.github.lumiagg.gestureevo.utils.app.syncAppCatalog
 import io.github.lumiagg.gestureevo.utils.dp2px
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import com.google.android.material.slider.Slider
-import kotlin.math.roundToInt
 import java.util.UUID
+import kotlin.math.roundToInt
 
 internal class QuickSetupController(
     private val activity: AppCompatActivity,
-    private val binding: GuideQuickSetupBinding,
+    private val gestureBinding: GuideGestureSetupBinding,
+    private val wheelBinding: GuideWheelSetupBinding,
     savedInstanceState: Bundle?,
     private val onChanged: () -> Unit
 ) {
@@ -47,39 +48,33 @@ internal class QuickSetupController(
     private var wheelInputEnabled = true
     private var wheelEditor: Dialog? = null
     private var wheelEditorSession = 0
-    private var wheelPickerJob: Job? = null
-    private var wheelPicker: DefaultSelectAPPBottomSheet? = null
     private var wheelActionDialog: Dialog? = null
+
     val hasUnsavedChanges: Boolean get() = !loading && config != savedConfig
     val isSaved: Boolean get() = !loading && savedConfig != null && !hasUnsavedChanges
 
     init {
-        binding.positionSlider.valueTo = 90f
-        binding.heightSlider.valueTo = 200f
-        binding.sideGroup.addOnButtonCheckedListener { _, id, checked ->
+        gestureBinding.positionSlider.valueTo = 90f
+        gestureBinding.heightSlider.valueTo = 200f
+
+        gestureBinding.sideGroup.addOnButtonCheckedListener { _, id, checked ->
             if (checked && !updatingViews) update(config.copy(side = when (id) {
                 R.id.sideLeft -> QuickSetupSide.LEFT
                 R.id.sideBoth -> QuickSetupSide.BOTH
                 else -> QuickSetupSide.RIGHT
             }))
         }
-        binding.positionSlider.addOnChangeListener { _, value, fromUser ->
+        gestureBinding.positionSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) update(config.copy(verticalPercent = value.roundToInt()), rebuild = false)
         }
-        binding.heightSlider.addOnChangeListener { _, value, fromUser ->
+        gestureBinding.heightSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) update(config.copy(triggerHeightDp = value.roundToInt()), rebuild = false)
         }
-        binding.wheelInsetSlider.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) update(config.copy(wheelOffsetXDp = value.roundToInt()), rebuild = false)
-        }
-        binding.wheelRadiusSlider.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) update(config.copy(wheelRadiusDp = value.roundToInt()), rebuild = false)
-        }
-        binding.positionSlider.setLabelFormatter { activity.getString(R.string.display_percent, it.roundToInt()) }
-        binding.heightSlider.setLabelFormatter { activity.getString(R.string.quick_setup_dp, it.roundToInt()) }
-        binding.wheelInsetSlider.setLabelFormatter { activity.getString(R.string.quick_setup_dp, it.roundToInt()) }
-        binding.wheelRadiusSlider.setLabelFormatter { activity.getString(R.string.quick_setup_dp, it.roundToInt()) }
-        listOf(binding.positionSlider, binding.heightSlider, binding.wheelInsetSlider, binding.wheelRadiusSlider)
+
+        gestureBinding.positionSlider.setLabelFormatter { activity.getString(R.string.display_percent, it.roundToInt()) }
+        gestureBinding.heightSlider.setLabelFormatter { activity.getString(R.string.quick_setup_dp, it.roundToInt()) }
+
+        listOf(gestureBinding.positionSlider, gestureBinding.heightSlider)
             .forEach { slider ->
                 slider.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
                     override fun onStartTrackingTouch(slider: Slider) {
@@ -92,7 +87,8 @@ internal class QuickSetupController(
                     }
                 })
             }
-        binding.resetDefaultsButton.setOnClickListener {
+
+        wheelBinding.resetDefaultsButton.setOnClickListener {
             MaterialAlertDialogBuilder(activity)
                 .setTitle(R.string.quick_setup_reset)
                 .setMessage(R.string.quick_setup_reset_message)
@@ -100,10 +96,20 @@ internal class QuickSetupController(
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()
         }
-        binding.applyQuickSetupButton.setText(R.string.quick_practice_start)
-        binding.applyQuickSetupButton.setIconResource(R.drawable.baseline_gesture_24)
-        binding.applyQuickSetupButton.setOnClickListener { practiceSequence(0) }
-        binding.editWheelButton.setOnClickListener { editWheel() }
+
+        gestureBinding.applyQuickSetupButton.setText(R.string.quick_practice_start)
+        gestureBinding.applyQuickSetupButton.setIconResource(R.drawable.baseline_gesture_24)
+        gestureBinding.applyQuickSetupButton.setOnClickListener { practiceSequence(0) }
+
+        wheelBinding.editWheelButton.setOnClickListener { editWheel() }
+        wheelBinding.addWheelItemButton.setOnClickListener {
+            chooseWheelAction { selected ->
+                if (config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS) {
+                    update(config.copy(wheelItems = config.wheelItems + selected))
+                }
+            }
+        }
+
         activity.lifecycleScope.launch {
             GuidePreviewSession.wheelEdits.collect { edit ->
                 if (edit.owner != previewOwner || edit.config != config || wheelEditor?.isShowing != true) return@collect
@@ -114,6 +120,7 @@ internal class QuickSetupController(
                 }
             }
         }
+
         activity.lifecycleScope.launch {
             try {
                 savedConfig = QuickSetupRepository.load(activity)
@@ -129,7 +136,7 @@ internal class QuickSetupController(
                 throw e
             } catch (e: Exception) {
                 android.util.Log.e("QuickSetup", "Unable to load quick setup", e)
-                binding.quickSetupMessage.setText(R.string.guide_load_failed)
+                wheelBinding.quickSetupMessage.setText(R.string.guide_load_failed)
             }
         }
         render()
@@ -180,50 +187,46 @@ internal class QuickSetupController(
 
     private fun render() {
         updatingViews = true
-        binding.sideGroup.check(when (config.side) {
+        gestureBinding.sideGroup.check(when (config.side) {
             QuickSetupSide.LEFT -> R.id.sideLeft
             QuickSetupSide.BOTH -> R.id.sideBoth
             QuickSetupSide.RIGHT -> R.id.sideRight
         })
-        binding.positionSlider.value = config.verticalPercent.toFloat()
-        binding.heightSlider.value = config.triggerHeightDp.toFloat()
-        binding.wheelInsetSlider.value = config.wheelOffsetXDp.toFloat()
-        binding.wheelRadiusSlider.value = config.wheelRadiusDp.toFloat()
+        gestureBinding.positionSlider.value = config.verticalPercent.toFloat()
+        gestureBinding.heightSlider.value = config.triggerHeightDp.toFloat()
         updatingViews = false
         renderGestures()
+        renderWheelItems()
         renderState()
         refreshPreview()
     }
 
     private fun renderState() {
-        binding.positionValue.text = activity.getString(R.string.quick_setup_position_value, config.verticalPercent)
-        binding.heightValue.text = activity.getString(R.string.quick_setup_dp, config.triggerHeightDp)
-        binding.wheelInsetValue.text = activity.getString(R.string.quick_setup_dp, config.wheelOffsetXDp)
-        binding.wheelRadiusValue.text = activity.getString(R.string.quick_setup_dp, config.wheelRadiusDp)
-        binding.quickSetupMessage.setText(when {
+        gestureBinding.positionValue.text = activity.getString(R.string.quick_setup_position_value, config.verticalPercent)
+        gestureBinding.heightValue.text = activity.getString(R.string.quick_setup_dp, config.triggerHeightDp)
+        wheelBinding.quickSetupMessage.setText(when {
             loading -> R.string.guide_loading
             hasUnsavedChanges -> R.string.quick_setup_unsaved
             else -> R.string.quick_setup_saved
         })
-        binding.applyQuickSetupButton.isEnabled = !loading
-        binding.editWheelButton.isEnabled = !loading
-        binding.resetDefaultsButton.isEnabled = !loading
-        binding.sideGroup.isEnabled = !loading
-        for (index in 0 until binding.sideGroup.childCount) binding.sideGroup.getChildAt(index).isEnabled = !loading
-        binding.positionSlider.isEnabled = !loading
-        binding.heightSlider.isEnabled = !loading
-        binding.wheelInsetSlider.isEnabled = !loading
-        binding.wheelRadiusSlider.isEnabled = !loading
+        gestureBinding.applyQuickSetupButton.isEnabled = !loading
+        wheelBinding.editWheelButton.isEnabled = !loading
+        wheelBinding.addWheelItemButton.isEnabled = !loading && config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS
+        wheelBinding.resetDefaultsButton.isEnabled = !loading
+        gestureBinding.sideGroup.isEnabled = !loading
+        for (index in 0 until gestureBinding.sideGroup.childCount) gestureBinding.sideGroup.getChildAt(index).isEnabled = !loading
+        gestureBinding.positionSlider.isEnabled = !loading
+        gestureBinding.heightSlider.isEnabled = !loading
     }
 
     private fun renderGestures() {
-        binding.gestureRows.removeAllViews()
+        gestureBinding.gestureRows.removeAllViews()
         QuickGesture.entries.forEach { gesture ->
             val row = LinearLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 setBackgroundResource(R.drawable.bg_settings_tile)
-                setPadding(dp(8), dp(8), dp(4), dp(8))
+                setPadding(dp(8), dp(8), dp(8), dp(8))
                 isClickable = true
                 isFocusable = true
                 contentDescription = activity.getString(R.string.quick_practice_for, gesture.label(activity))
@@ -237,78 +240,175 @@ internal class QuickSetupController(
                 setOnClickListener { practice(gesture) }
                 TooltipCompat.setTooltipText(this, contentDescription)
             }
-            row.addView(demo, LinearLayout.LayoutParams(dp(64), dp(104)))
+            row.addView(demo, LinearLayout.LayoutParams(dp(56), dp(88)))
+
             val text = LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(10), dp(8), dp(4), dp(8))
+                setPadding(dp(12), dp(4), dp(4), dp(4))
             }
             val action = config.gestures.getValue(gesture)
             text.addView(label(action.label(activity), title = true))
             text.addView(label(gesture.label(activity)))
-            if (gesture in practiced) text.addView(label(activity.getString(R.string.quick_practice_saved)))
+            if (gesture in practiced) {
+                text.addView(label(activity.getString(R.string.quick_practice_saved)).apply {
+                    (this as? TextView)?.setTextColor(DynamicColorUtils.primaryColor)
+                })
+            }
             row.addView(text, LinearLayout.LayoutParams(0, -2, 1f))
-            row.addView(iconButton(R.drawable.baseline_edit_24,
-                activity.getString(R.string.quick_setup_choose_for, gesture.label(activity))) {
-                chooseAction(wheel = false) { selected ->
+
+            // Action change button
+            row.addView(iconButton(
+                R.drawable.baseline_edit_24,
+                activity.getString(R.string.quick_setup_choose_for, gesture.label(activity))
+            ) {
+                chooseAction(wheel = false, currentAction = action) { selected ->
                     update(config.copy(gestures = config.gestures + (gesture to selected)))
                 }
             })
-            binding.gestureRows.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+
+            // Practice / Test button
+            row.addView(iconButton(
+                R.drawable.baseline_gesture_24,
+                activity.getString(R.string.quick_practice_for, gesture.label(activity))
+            ) {
+                practice(gesture)
+            })
+
+            gestureBinding.gestureRows.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
         }
+    }
+
+    private fun renderWheelItems() {
+        wheelBinding.wheelItemsContainer.removeAllViews()
+        config.wheelItems.forEachIndexed { index, action ->
+            val row = LinearLayout(activity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setBackgroundResource(R.drawable.bg_settings_tile)
+                setPadding(dp(12), dp(8), dp(8), dp(8))
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    chooseWheelAction(currentAction = action) { selected ->
+                        val newItems = config.wheelItems.toMutableList()
+                        newItems[index] = selected
+                        update(config.copy(wheelItems = newItems))
+                    }
+                }
+            }
+
+            // Index badge
+            val idxView = TextView(activity).apply {
+                text = "${index + 1}"
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
+                setTextColor(DynamicColorUtils.primaryColor)
+                setPadding(dp(4), 0, dp(8), 0)
+            }
+            row.addView(idxView)
+
+            // Icon badge
+            val iconBadge = ImageView(activity).apply {
+                val size = dp(36)
+                layoutParams = LinearLayout.LayoutParams(size, size).apply {
+                    marginEnd = dp(10)
+                }
+                val pad = dp(6)
+                setPadding(pad, pad, pad, pad)
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(DynamicColorUtils.secondaryContainerColor)
+                }
+                setImageDrawable(action.icon(activity))
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                if (action.type != QuickActionType.OPEN_APP || action.packageName == null) {
+                    imageTintList = ColorStateList.valueOf(DynamicColorUtils.primaryColor)
+                }
+            }
+            row.addView(iconBadge)
+
+            // Text
+            val textCol = LinearLayout(activity).apply {
+                orientation = LinearLayout.VERTICAL
+            }
+            textCol.addView(label(action.label(activity), title = true))
+            textCol.addView(label(action.description(activity)))
+            row.addView(textCol, LinearLayout.LayoutParams(0, -2, 1f))
+
+            // Delete item button (only if > 2 items)
+            if (config.wheelItems.size > 2) {
+                row.addView(iconButton(
+                    R.drawable.baseline_clear_24,
+                    activity.getString(R.string.quick_setup_remove)
+                ) {
+                    removeWheelItem(index)
+                })
+            }
+
+            wheelBinding.wheelItemsContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
+        }
+        wheelBinding.addWheelItemButton.isVisible = config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS
     }
 
     private fun editWheel() {
         if (loading || wheelEditor?.isShowing == true) return
         if (CurrentPackageProvider.accessibilityService() == null) {
-            binding.quickSetupMessage.setText(R.string.quick_setup_preview_permission)
+            wheelBinding.quickSetupMessage.setText(R.string.quick_setup_preview_permission)
             return
         }
-        wheelPickerJob?.cancel()
-        wheelPickerJob = null
         val session = ++wheelEditorSession
         wheelMode = GuideWheelMode.EDIT
-        wheelEditor = showGuideWheelEditor(activity) {
-            if (session != wheelEditorSession) return@showGuideWheelEditor
-            wheelPickerJob?.cancel()
-            wheelPickerJob = null
-            wheelEditorSession++
-            wheelPicker?.dismiss()
-            wheelPicker = null
-            wheelActionDialog?.dismiss()
-            wheelActionDialog = null
-            wheelMode = GuideWheelMode.HIDDEN
-            wheelInputEnabled = true
-            wheelEditor = null
-            refreshPreview()
-        }
+        wheelEditor = showGuideWheelEditor(
+            activity = activity,
+            configProvider = { config },
+            onEditItem = { editWheelItem(it) },
+            onRemoveItem = { removeWheelItem(it) },
+            onAddItem = {
+                chooseWheelAction { selected ->
+                    if (config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS) {
+                        update(config.copy(wheelItems = config.wheelItems + selected))
+                    }
+                }
+            },
+            onDismiss = {
+                if (session != wheelEditorSession) return@showGuideWheelEditor
+                wheelEditorSession++
+                wheelActionDialog?.dismiss()
+                wheelActionDialog = null
+                wheelMode = GuideWheelMode.HIDDEN
+                wheelInputEnabled = true
+                wheelEditor = null
+                refreshPreview()
+            }
+        )
         refreshPreview()
     }
 
     private fun editWheelItem(index: Int) {
         if (wheelEditor?.isShowing != true || index !in config.wheelItems.indices) return
-        chooseWheelAction { action ->
+        chooseWheelAction(currentAction = config.wheelItems[index]) { action ->
             if (wheelEditor?.isShowing != true || index !in config.wheelItems.indices) return@chooseWheelAction
             update(config.copy(wheelItems = config.wheelItems.toMutableList().apply { this[index] = action }))
         }
     }
 
-    private fun chooseWheelAction(selected: (QuickAction) -> Unit) {
-        if (wheelEditor?.isShowing != true) return
+    private fun chooseWheelAction(currentAction: QuickAction? = null, selected: (QuickAction) -> Unit) {
         val session = wheelEditorSession
         val draft = config
         wheelInputEnabled = false
         refreshPreview()
-        chooseAction(wheel = true, onFinished = {
+        chooseAction(wheel = true, currentAction = currentAction, onFinished = {
             if (session != wheelEditorSession) return@chooseAction
             wheelInputEnabled = true
             refreshPreview()
         }, selected = {
-            if (session == wheelEditorSession && config == draft && wheelEditor?.isShowing == true) selected(it)
+            if (wheelEditor?.isShowing != true || (session == wheelEditorSession && config == draft)) {
+                selected(it)
+            }
         })
     }
 
     private fun removeWheelItem(index: Int) {
-        if (wheelEditor?.isShowing != true || index !in config.wheelItems.indices) return
+        if (index !in config.wheelItems.indices) return
         val session = wheelEditorSession
         val draft = config
         wheelInputEnabled = false
@@ -318,9 +418,11 @@ internal class QuickSetupController(
             .setMessage(if (config.wheelItems.size > 2) config.wheelItems[index].label(activity)
                 else activity.getString(R.string.quick_setup_minimum_items))
             .setNegativeButton(android.R.string.cancel, null)
-        if (config.wheelItems.size > 2) dialog.setPositiveButton(R.string.action_view_item_menu_delete) { _, _ ->
-            if (session == wheelEditorSession && config == draft && wheelEditor?.isShowing == true) {
-                update(config.copy(wheelItems = config.wheelItems.filterIndexed { i, _ -> i != index }))
+        if (config.wheelItems.size > 2) {
+            dialog.setPositiveButton(R.string.action_view_item_menu_delete) { _, _ ->
+                if (wheelEditor?.isShowing != true || (session == wheelEditorSession && config == draft)) {
+                    update(config.copy(wheelItems = config.wheelItems.filterIndexed { i, _ -> i != index }))
+                }
             }
         }
         wheelActionDialog = dialog.setOnDismissListener {
@@ -331,61 +433,23 @@ internal class QuickSetupController(
         }.show()
     }
 
-    private fun chooseAction(wheel: Boolean, onFinished: () -> Unit = {}, selected: (QuickAction) -> Unit) {
+    private fun chooseAction(
+        wheel: Boolean,
+        currentAction: QuickAction? = null,
+        onFinished: () -> Unit = {},
+        selected: (QuickAction) -> Unit
+    ) {
         if (loading) return
-        val editorSession = wheelEditorSession
-        val types = QuickActionType.entries.filter {
-            (!wheel || it !in listOf(QuickActionType.NONE, QuickActionType.WHEEL)) &&
-                (it != QuickActionType.SCREENSHOT || Build.VERSION.SDK_INT >= 28)
-        }
-        val labels = types.map { QuickAction(it).label(activity) }.toTypedArray()
-        var selectingApp = false
-        val dialog = MaterialAlertDialogBuilder(activity)
-            .setTitle(R.string.quick_setup_choose_action)
-            .setItems(labels) { _, index ->
-                val type = types[index]
-                if (type != QuickActionType.OPEN_APP) selected(QuickAction(type))
-                else {
-                    selectingApp = true
-                    val job = activity.lifecycleScope.launch {
-                        try {
-                            syncAppCatalog(activity.applicationContext)
-                            if (wheel && (editorSession != wheelEditorSession || wheelEditor?.isShowing != true)) return@launch
-                            val picker = DefaultSelectAPPBottomSheet(activity, activity.lifecycleScope, object : SelectAPPCallBack {
-                                override fun selectCompleted(model: APPModel) {
-                                    if (wheel && (editorSession != wheelEditorSession || wheelEditor?.isShowing != true)) return
-                                    selected(QuickAction(QuickActionType.OPEN_APP, model.pkgName, model.name, model.userId))
-                                }
-                            }, onDismiss = {
-                                if (!wheel || editorSession == wheelEditorSession) {
-                                    if (wheel) wheelPicker = null
-                                    onFinished()
-                                }
-                            })
-                            if (wheel) wheelPicker = picker
-                            picker.show()
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            android.util.Log.w("QuickSetup", "Unable to load app picker", e)
-                            binding.quickSetupMessage.setText(R.string.guide_load_failed)
-                            onFinished()
-                        } finally {
-                            if (wheel && editorSession == wheelEditorSession) wheelPickerJob = null
-                        }
-                    }
-                    if (wheel) wheelPickerJob = job
-                }
+        showGuideActionSelectBottomSheet(
+            activity = activity,
+            allowWheel = !wheel,
+            allowNone = !wheel,
+            currentAction = currentAction,
+            onActionSelected = { chosen ->
+                selected(chosen)
+                onFinished()
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .setOnDismissListener {
-                if (!wheel || editorSession == wheelEditorSession) {
-                    if (wheel) wheelActionDialog = null
-                    if (!selectingApp) onFinished()
-                }
-            }
-            .show()
-        if (wheel) wheelActionDialog = dialog
+        )
     }
 
     private fun practiceSequence(index: Int) {
@@ -398,14 +462,14 @@ internal class QuickSetupController(
     private fun practice(gesture: QuickGesture, next: (() -> Unit)? = null) {
         if (loading) return
         if (CurrentPackageProvider.accessibilityService() == null) {
-            binding.quickSetupMessage.setText(R.string.quick_setup_preview_permission)
+            wheelBinding.quickSetupMessage.setText(R.string.quick_setup_preview_permission)
             onChanged()
             return
         }
         try {
             config.validate(Build.VERSION.SDK_INT)
         } catch (_: IllegalArgumentException) {
-            binding.quickSetupMessage.setText(R.string.quick_setup_invalid)
+            wheelBinding.quickSetupMessage.setText(R.string.quick_setup_invalid)
             return
         }
         val draft = config
@@ -420,7 +484,7 @@ internal class QuickSetupController(
 
     private fun iconButton(icon: Int, description: String, click: () -> Unit): View =
         AppCompatImageButton(activity).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(48), dp(48))
+            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
             setImageResource(icon)
             scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
             imageTintList = ColorStateList.valueOf(DynamicColorUtils.primaryColor)
@@ -429,16 +493,16 @@ internal class QuickSetupController(
             val background = android.util.TypedValue()
             activity.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, background, true)
             setBackgroundResource(background.resourceId)
-            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setPadding(dp(10), dp(10), dp(10), dp(10))
             setOnClickListener { click() }
         }
 
     private fun label(text: String, title: Boolean = false): View = MaterialTextView(activity).apply {
         this.text = text
-        setTextAppearance(if (title) com.google.android.material.R.style.TextAppearance_Material3_TitleSmall
+        setTextAppearance(if (title) com.google.android.material.R.style.TextAppearance_Material3_TitleMedium
             else com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
         setTextColor(if (title) DynamicColorUtils.onSurfaceColor else DynamicColorUtils.onSurfaceVariantColor)
-        setPadding(0, dp(3), 0, dp(3))
+        setPadding(0, dp(2), 0, dp(2))
     }
 
     private fun dp(value: Int): Int = value.toFloat().dp2px.toInt()
