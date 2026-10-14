@@ -27,6 +27,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.MaterialColors
 import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
@@ -41,6 +42,7 @@ internal fun showGuidePractice(
     gesture: QuickGesture,
     config: QuickSetupConfig,
     previewOwner: String,
+    actionConfig: ActionConfig? = null,
     onRecognized: suspend () -> Unit,
     onNext: (() -> Unit)? = null
 ) {
@@ -316,7 +318,7 @@ internal fun showGuidePractice(
 
     fun restorePreview() {
         if (GuidePreviewSession.current.value?.let { it.owner == previewOwner && it.practiceId == practiceId } == true) {
-            GuidePreviewSession.show(previewOwner, config)
+            GuidePreviewSession.show(previewOwner, config, actionConfig = actionConfig)
         }
     }
 
@@ -361,7 +363,7 @@ internal fun showGuidePractice(
                     recognized = false
                     awaitingWheel = false
                     practiceId = UUID.randomUUID().toString()
-                    GuidePreviewSession.show(previewOwner, config, gesture, practiceId)
+                    GuidePreviewSession.show(previewOwner, config, gesture, practiceId, actionConfig = actionConfig)
                 }
             } finally {
                 saving = false
@@ -381,7 +383,7 @@ internal fun showGuidePractice(
                 if (!awaitingWheel) {
                     awaitingWheel = true
                     statusBanner.text = context.getString(R.string.quick_practice_choose_wheel)
-                    GuidePreviewSession.show(previewOwner, config, gesture, practiceId, wheelSelection = true)
+                    GuidePreviewSession.show(previewOwner, config, gesture, practiceId, wheelSelection = true, actionConfig = actionConfig)
                 }
                 return@collect
             }
@@ -393,7 +395,7 @@ internal fun showGuidePractice(
     val lifecycleObserver = object : DefaultLifecycleObserver {
         override fun onStart(owner: LifecycleOwner) {
             if (!disposed && !recognized) {
-                GuidePreviewSession.show(previewOwner, config, gesture, practiceId, awaitingWheel)
+                GuidePreviewSession.show(previewOwner, config, gesture, practiceId, wheelSelection = awaitingWheel, actionConfig = actionConfig)
             }
         }
         override fun onDestroy(owner: LifecycleOwner) { dialog.dismiss() }
@@ -416,5 +418,5 @@ internal fun showGuidePractice(
         window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
     }
     ViewCompat.requestApplyInsets(root)
-    GuidePreviewSession.show(previewOwner, config, gesture, practiceId)
+    GuidePreviewSession.show(previewOwner, config, gesture, practiceId, actionConfig = actionConfig)
 }

@@ -2,7 +2,6 @@ package io.github.lumiagg.gestureevo.settings.guide
 
 import android.app.Dialog
 import android.content.res.ColorStateList
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
@@ -362,7 +361,7 @@ internal class QuickSetupController(
             return
         }
         val draft = config
-        showGuidePractice(activity, gesture, draft, previewOwner, onRecognized = {
+        showGuidePractice(activity, gesture, draft, previewOwner, baseActionConfig, onRecognized = {
             QuickSetupRepository.apply(activity, draft)
             savedConfig = draft
             practiced.add(gesture)
@@ -375,7 +374,7 @@ internal class QuickSetupController(
         AppCompatImageButton(activity).apply {
             layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
             setImageResource(icon)
-            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            scaleType = ImageView.ScaleType.FIT_CENTER
             imageTintList = ColorStateList.valueOf(DynamicColorUtils.primaryColor)
             contentDescription = description
             TooltipCompat.setTooltipText(this, description)

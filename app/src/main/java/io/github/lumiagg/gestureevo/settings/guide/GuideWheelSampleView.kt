@@ -5,13 +5,8 @@ import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.DashPathEffect
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.RadialGradient
 import android.graphics.RectF
-import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.Gravity
@@ -562,6 +557,21 @@ class GuideWheelSampleView @JvmOverloads constructor(
         super.cancelLongPress()
         longPressRunnable?.let { removeCallbacks(it) }
         longPressRunnable = null
+    }
+
+    override fun onDetachedFromWindow() {
+        cancelLongPress()
+        if (isDragging) {
+            isDragging = false
+            activeTouchView?.scaleX = 1.0f
+            activeTouchView?.scaleY = 1.0f
+            activeTouchView?.translationZ = 0f
+            activeTouchView = null
+            activeTouchIndex = -1
+        }
+        actionViews.forEach { it.animate().cancel() }
+        addView?.animate()?.cancel()
+        super.onDetachedFromWindow()
     }
 
     private fun resetPrompt() {
