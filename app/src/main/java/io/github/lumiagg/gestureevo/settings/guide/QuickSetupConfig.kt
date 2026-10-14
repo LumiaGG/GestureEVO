@@ -37,7 +37,7 @@ data class QuickSetupConfig(
         require(wheelRadiusDp in 80..200) { "Wheel radius must be between 80 and 200 dp" }
         require(gestures.keys == QuickGesture.entries.toSet()) { "Every quick gesture must have an action" }
         require(gestures.values.any { it.type == QuickActionType.WHEEL }) { "A gesture must open the wheel" }
-        require(wheelItems.size in 2..MAX_WHEEL_ITEMS) { "The wheel must contain between 2 and 8 actions" }
+        require(wheelItems.size >= 2) { "The wheel must contain at least 2 actions" }
         require(wheelItems.none { it.type == QuickActionType.NONE || it.type == QuickActionType.WHEEL }) {
             "Wheel items must be executable actions"
         }
@@ -59,8 +59,6 @@ data class QuickSetupConfig(
     fun toJson(): String = MoshiUtils.toJson(this)
 
     companion object {
-        const val MAX_WHEEL_ITEMS = 8
-
         fun default(): QuickSetupConfig = QuickSetupConfig()
 
         fun fromJson(json: String): QuickSetupConfig? = MoshiUtils.toModel(json)

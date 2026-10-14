@@ -270,10 +270,8 @@ internal class QuickSetupController(
                 removeWheelItem(index)
             },
             onAddItem = {
-                if (config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS) {
-                    chooseWheelAction { selected ->
-                        update(config.copy(wheelItems = config.wheelItems + selected))
-                    }
+                chooseWheelAction { selected ->
+                    update(config.copy(wheelItems = config.wheelItems + selected))
                 }
             },
             onReorderItems = { newItems ->

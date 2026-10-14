@@ -1116,7 +1116,7 @@
     <string name="quick_setup_gesture_card_summary">Configure edge trigger areas and gesture actions</string>
     <string name="quick_setup_wheel_card_title">3. Shortcut wheel</string>
     <string name="quick_setup_wheel_card_summary">Configure first-level menu items; add or remove actions</string>
-    <string name="quick_setup_wheel_desc">Swipe inward from the edge to open the shortcut wheel. Configure 2 to 8 favorite actions.</string>
+    <string name="quick_setup_wheel_desc">Swipe inward from the edge to open the shortcut wheel. Configure at least 2 favorite actions.</string>
     <string name="quick_setup_wheel_sample_hint">Hold and drag to reorder · Tap to edit</string>
     <string name="quick_setup_wheel_sample_drag_hint">Release at target position</string>
     <string name="quick_setup_wheel_sample_side_left">Both sides · Left preview (tap to switch)</string>
@@ -1145,7 +1145,7 @@
     <string name="quick_setup_move_up">Move up</string>
     <string name="quick_setup_move_down">Move down</string>
     <string name="quick_setup_remove">Remove</string>
-    <string name="quick_setup_invalid">Keep at least one gesture that opens the wheel, with 2 to 8 wheel actions.</string>
+    <string name="quick_setup_invalid">Keep at least one gesture that opens the wheel, with at least 2 wheel actions.</string>
     <string name="quick_setup_saving">Saving setup…</string>
     <string name="quick_setup_save_failed">Could not save. Practice again to retry.</string>
     <string name="quick_setup_unsaved_title">Unapplied changes</string>

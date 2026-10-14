@@ -56,8 +56,18 @@ class GuideWheelSampleView @JvmOverloads constructor(
     private val originMargin = 16f.dp2px
     private val itemRadius = 185f.dp2px
     private val fanRadius = 225f.dp2px
-    private val bubbleSize = 42f.dp2px.toInt()
-    private val iconSize = 24f.dp2px.toInt()
+    private var currentBubbleSize = 42f.dp2px.toInt()
+
+    private fun getEffectiveBubbleSize(itemCount: Int): Int {
+        val count = itemCount.coerceAtLeast(1)
+        val sweepAngle = 90.0
+        val stepAngle = sweepAngle / count
+        // Chord distance between adjacent items on the arc
+        val chordDistance = 2.0 * itemRadius * sin(Math.toRadians(stepAngle / 2.0))
+        // Leave at least 4dp gap between bubbles, clamp between 24dp and 42dp
+        val desiredSize = (chordDistance - 4f.dp2px).toFloat()
+        return desiredSize.coerceIn(24f.dp2px, 42f.dp2px).toInt()
+    }
 
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -219,6 +229,9 @@ class GuideWheelSampleView @JvmOverloads constructor(
         addView?.let { removeView(it) }
         addView = null
 
+        val totalCount = config.wheelItems.size + 1
+        currentBubbleSize = getEffectiveBubbleSize(totalCount)
+
         // 1. Build action item bubble views (clean circular bubbles, no text underneath)
         config.wheelItems.forEachIndexed { index, action ->
             val itemView = createActionItemView(index, action)
@@ -226,12 +239,10 @@ class GuideWheelSampleView @JvmOverloads constructor(
             addView(itemView)
         }
 
-        // 2. Build Add item ("+") if items < MAX_WHEEL_ITEMS (8 items)
-        if (config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS) {
-            val addBtn = createAddButtonView()
-            addView = addBtn
-            addView(addBtn)
-        }
+        // 2. Build Add item ("+") - always available at the end (matches real wheel edit mode)
+        val addBtn = createAddButtonView()
+        addView = addBtn
+        addView(addBtn)
 
         positionItemViews(animate)
         updatePromptPosition()
@@ -239,8 +250,8 @@ class GuideWheelSampleView @JvmOverloads constructor(
 
     private fun createActionItemView(index: Int, action: QuickAction): View {
         return ImageView(context).apply {
-            layoutParams = LayoutParams(bubbleSize, bubbleSize)
-            val pad = 9f.dp2px.toInt()
+            layoutParams = LayoutParams(currentBubbleSize, currentBubbleSize)
+            val pad = (currentBubbleSize * 0.22f).toInt().coerceAtLeast(4f.dp2px.toInt())
             setPadding(pad, pad, pad, pad)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
@@ -257,8 +268,8 @@ class GuideWheelSampleView @JvmOverloads constructor(
 
     private fun createAddButtonView(): View {
         return ImageView(context).apply {
-            layoutParams = LayoutParams(bubbleSize, bubbleSize)
-            val pad = 9f.dp2px.toInt()
+            layoutParams = LayoutParams(currentBubbleSize, currentBubbleSize)
+            val pad = (currentBubbleSize * 0.22f).toInt().coerceAtLeast(4f.dp2px.toInt())
             setPadding(pad, pad, pad, pad)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
@@ -309,8 +320,8 @@ class GuideWheelSampleView @JvmOverloads constructor(
             val targetCenterX = cx + itemRadius * cos(rad).toFloat()
             val targetCenterY = cy + itemRadius * sin(rad).toFloat()
 
-            val targetX = targetCenterX - bubbleSize / 2f
-            val targetY = targetCenterY - bubbleSize / 2f
+            val targetX = targetCenterX - currentBubbleSize / 2f
+            val targetY = targetCenterY - currentBubbleSize / 2f
 
             if (animate && view.x != 0f && view.y != 0f) {
                 animators.add(ObjectAnimator.ofFloat(view, "x", view.x, targetX))
@@ -370,13 +381,13 @@ class GuideWheelSampleView @JvmOverloads constructor(
         downY = event.y
 
         val views = allDisplayViews()
-        val hitRadius = bubbleSize / 2f + 12f.dp2px
+        val hitRadius = currentBubbleSize / 2f + 12f.dp2px
         activeTouchIndex = -1
         activeTouchView = null
 
         views.forEachIndexed { i, view ->
-            val vcx = view.x + bubbleSize / 2f
-            val vcy = view.y + bubbleSize / 2f
+            val vcx = view.x + currentBubbleSize / 2f
+            val vcy = view.y + currentBubbleSize / 2f
             val dx = event.x - vcx
             val dy = event.y - vcy
             if (dx * dx + dy * dy <= hitRadius * hitRadius) {
@@ -421,8 +432,8 @@ class GuideWheelSampleView @JvmOverloads constructor(
         // Dragging in progress: follow finger
         parent?.requestDisallowInterceptTouchEvent(true)
         activeTouchView?.let { view ->
-            view.x = event.x - bubbleSize / 2f
-            view.y = event.y - bubbleSize / 2f
+            view.x = event.x - currentBubbleSize / 2f
+            view.y = event.y - currentBubbleSize / 2f
         }
     }
 

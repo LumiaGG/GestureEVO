@@ -1119,7 +1119,7 @@
     <string name="quick_setup_gesture_card_summary">配置边缘触发区域与手势动作映射</string>
     <string name="quick_setup_wheel_card_title">3. 快捷轮盘设置</string>
     <string name="quick_setup_wheel_card_summary">配置一级菜单项，支持添加与删除</string>
-    <string name="quick_setup_wheel_desc">在屏幕边缘向内滑动可呼出扇形快捷轮盘。在此配置轮盘一级常用动作（支持 2 ~ 8 项）。</string>
+    <string name="quick_setup_wheel_desc">在屏幕边缘向内滑动可呼出扇形快捷轮盘。在此配置轮盘一级常用动作（至少 2 项）。</string>
     <string name="quick_setup_wheel_sample_hint">长按拖拽排序 · 点击编辑动作</string>
     <string name="quick_setup_wheel_sample_drag_hint">拖动到目标位置松开</string>
     <string name="quick_setup_wheel_sample_side_left">双侧触发 · 预览左侧 (点击切换)</string>
@@ -1148,7 +1148,7 @@
     <string name="quick_setup_move_up">上移</string>
     <string name="quick_setup_move_down">下移</string>
     <string name="quick_setup_remove">移除</string>
-    <string name="quick_setup_invalid">请至少保留一个打开轮盘的手势，轮盘需包含 2 至 8 个动作。</string>
+    <string name="quick_setup_invalid">请至少保留一个打开轮盘的手势，轮盘需包含至少 2 个动作。</string>
     <string name="quick_setup_saving">正在保存配置…</string>
     <string name="quick_setup_save_failed">保存失败，请重新练习以重试。</string>
     <string name="quick_setup_unsaved_title">尚有未生效的更改</string>

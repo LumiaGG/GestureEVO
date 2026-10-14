@@ -129,9 +129,6 @@ class GuidePreviewFloating(private val context: GestureService) :
                     null
                 },
                 onLayout = {
-                    if (request.wheelMode == GuideWheelMode.EDIT && request.config.wheelItems.size >= QuickSetupConfig.MAX_WHEEL_ITEMS) {
-                        wheel.actionView.modelList.firstOrNull { it.type == ActionView.ItemType.WHITEBOARD }?.view?.visibility = View.GONE
-                    }
                     if (this.request == request && request.wheelInputEnabled &&
                         (request.wheelMode == GuideWheelMode.EDIT ||
                             (request.wheelSelection && reportedWheelPracticeId != request.practiceId))) {

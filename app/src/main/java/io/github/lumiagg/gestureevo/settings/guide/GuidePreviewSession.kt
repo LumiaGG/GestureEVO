@@ -78,7 +78,7 @@ object GuidePreviewSession {
     internal fun reportWheelEdit(request: GuidePreviewRequest, action: GuideWheelEditAction, index: Int) {
         if (mutableCurrent.value != request || request.wheelMode != GuideWheelMode.EDIT || !request.wheelInputEnabled) return
         if (action == GuideWheelEditAction.ADD) {
-            if (index != request.config.wheelItems.size || index >= QuickSetupConfig.MAX_WHEEL_ITEMS) return
+            if (index != request.config.wheelItems.size) return
         } else if (index !in request.config.wheelItems.indices) return
         mutableWheelEdits.tryEmit(GuideWheelEdit(request.owner, action, index, request.config))
     }
