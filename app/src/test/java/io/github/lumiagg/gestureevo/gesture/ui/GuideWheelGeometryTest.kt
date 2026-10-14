@@ -49,6 +49,75 @@ class GuideWheelGeometryTest {
         assertEquals(GuideWheelBounds(-120f, -80f, 185f, 180f), bounds.relativeTo(20, 30))
     }
 
+    @Test
+    fun quadrantForEdgeMatchesCardinalDirections() {
+        assertEquals(3, quadrantForEdge(isLeft = true, isUpper = true))
+        assertEquals(0, quadrantForEdge(isLeft = true, isUpper = false))
+        assertEquals(2, quadrantForEdge(isLeft = false, isUpper = true))
+        assertEquals(1, quadrantForEdge(isLeft = false, isUpper = false))
+    }
+
+    @Test
+    fun distributeConcentricSlotsDistributesItemsAcrossRings() {
+        // 1 item: Center only
+        val single = distributeConcentricSlots(
+            itemCount = 1,
+            startAngle = 0f,
+            baseRadius = 100f,
+            itemDiameter = 40f
+        )
+        assertEquals(1, single.positions.size)
+        assertEquals(-50f, single.positions[0].x, 0.01f)
+        assertEquals(-50f, single.positions[0].y, 0.01f)
+        assertEquals(100f, single.sizes[0], 0.01f)
+        assertEquals(listOf(0), single.ringIndices)
+        assertTrue(single.ringRadii.isEmpty())
+
+        // 9 items: 1 center + Ring 1 (3 items) + Ring 2 (5 items)
+        val multi = distributeConcentricSlots(
+            itemCount = 9,
+            startAngle = 0f,
+            baseRadius = 100f,
+            itemDiameter = 40f
+        )
+        assertEquals(9, multi.positions.size)
+        assertEquals(2, multi.ringRadii.size)
+        assertEquals(100f, multi.ringRadii[0], 0.01f)
+        assertEquals(100f + 40f * 1.3f, multi.ringRadii[1], 0.01f)
+        assertEquals(0, multi.ringIndices[0])
+        assertEquals(1, multi.ringIndices[1])
+        assertEquals(2, multi.ringIndices.last())
+    }
+
+    @Test
+    fun calculateFittedWheelLayoutFitsAnyContainerSizeAndEdge() {
+        listOf(true, false).forEach { isLeft ->
+            listOf(true, false).forEach { isUpper ->
+                listOf(1, 4, 8, 15, 25).forEach { count ->
+                    val layout = calculateFittedWheelLayout(
+                        width = 400f,
+                        height = 300f,
+                        itemCount = count,
+                        isLeft = isLeft,
+                        isUpper = isUpper,
+                        baseRadius = 80f,
+                        baseItemDiameter = 40f,
+                        baseItemWarpOffset = 5f,
+                        margin = 16f
+                    )
+                    assertEquals(count, layout.slots.size)
+                    assertTrue(layout.scale in 0.01f..1.0f)
+                    layout.slots.forEach { slot ->
+                        assertTrue("slot ${slot.index} left >= 0", slot.x >= 0f)
+                        assertTrue("slot ${slot.index} top >= 0", slot.y >= 0f)
+                        assertTrue("slot ${slot.index} right <= 400", slot.x + slot.size <= 400f)
+                        assertTrue("slot ${slot.index} bottom <= 300", slot.y + slot.size <= 300f)
+                    }
+                }
+            }
+        }
+    }
+
     private fun nativeWheel(
         radius: Float, itemDiameter: Float, itemWarpOffset: Float, itemCount: Int, quadrant: Int, mirror: Boolean
     ): GuideWheelBounds {

@@ -24,9 +24,8 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.graphics.ColorUtils
 import io.github.lumiagg.gestureevo.R
-import io.github.lumiagg.gestureevo.gesture.ui.Ring
-import io.github.lumiagg.gestureevo.gesture.ui.RingItem
-import io.github.lumiagg.gestureevo.gesture.ui.guideWheelBounds
+import io.github.lumiagg.gestureevo.gesture.ui.FittedWheelLayout
+import io.github.lumiagg.gestureevo.gesture.ui.calculateFittedWheelLayout
 import io.github.lumiagg.gestureevo.ui.ActionTextMenuItem
 import io.github.lumiagg.gestureevo.ui.ActionTextMenuPopup
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
@@ -86,7 +85,7 @@ class GuideWheelSampleView @JvmOverloads constructor(
     private var addView: View? = null
 
     // Cached layout geometry
-    private var currentLayout: WheelLayout? = null
+    private var currentLayout: FittedWheelLayout? = null
 
     // Drag-to-reorder state
     private var activeTouchIndex = -1
@@ -97,28 +96,6 @@ class GuideWheelSampleView @JvmOverloads constructor(
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
     private val longPressTimeout = 260L
     private var longPressRunnable: Runnable? = null
-
-    data class SlotInfo(
-        val index: Int,
-        val x: Float,
-        val y: Float,
-        val size: Float,
-        val centerX: Float,
-        val centerY: Float,
-        val isCenterItem: Boolean
-    )
-
-    data class WheelLayout(
-        val cx: Float,
-        val cy: Float,
-        val startAngle: Float,
-        val sweepAngle: Float,
-        val isLeft: Boolean,
-        val isUpper: Boolean,
-        val slots: List<SlotInfo>,
-        val ringRadii: List<Float>,
-        val maxRadius: Float
-    )
 
     init {
         setWillNotDraw(false)
@@ -220,122 +197,20 @@ class GuideWheelSampleView @JvmOverloads constructor(
     /**
      * Calculates the wheel layout matching MainActionView:
      * - Slot 0: Center item at quadrant origin
-     * - Slots 1..N: Concentric rings (Ring 1, Ring 2, etc.) via Ring class
+     * - Slots 1..N: Concentric rings (Ring 1, Ring 2, etc.) via GuideWheelGeometry
      * - Auto-scales to fit comfortably inside view bounds
      */
-    private fun calculateWheelLayout(w: Float, h: Float, totalItems: Int): WheelLayout {
-        val isLeft = isEffectiveLeft()
-        val isUpper = config.verticalPercent < 50
-
-        // Quadrants: 0 = Right & Up, 1 = Left & Up, 2 = Left & Down, 3 = Right & Down
-        val quadrant = when {
-            isLeft && isUpper -> 3
-            isLeft && !isUpper -> 0
-            !isLeft && isUpper -> 2
-            else -> 1
-        }
-        val mirror = isLeft
-        val startAngle = quadrant * 90f
-        val sweepAngle = 90f
-
-        // Base geometry dimensions (scaled down proportionally if needed)
-        val baseRadius = 78f.dp2px
-        val baseItemDiameter = 38f.dp2px
-        val baseItemWarpOffset = 5f.dp2px
-
-        // Step 1: Compute unscaled relative slot positions relative to quadrant origin (0, 0)
-        val relativePositions = mutableListOf<RingItem>()
-        val relativeSizes = mutableListOf<Float>()
-        val unscaledRadii = mutableListOf<Float>()
-
-        // Slot 0: Center item
-        relativePositions.add(RingItem(-baseRadius / 2f, -baseRadius / 2f))
-        relativeSizes.add(baseRadius)
-
-        var remaining = (totalItems - 1).coerceAtLeast(0)
-        var ringRadius = baseRadius
-        var reverse = false
-
-        while (remaining > 0) {
-            val ring = Ring(
-                startAngle = startAngle,
-                sweepAngle = sweepAngle,
-                radius = ringRadius,
-                reverse = reverse,
-                itemDiameter = baseItemDiameter,
-                itemWarpOffset = baseItemWarpOffset
-            )
-            if (mirror) {
-                ring.items.reverse()
-            }
-            unscaledRadii.add(ringRadius)
-            val takeCount = minOf(remaining, ring.items.size)
-            for (i in 0 until takeCount) {
-                val item = ring.items[i]
-                relativePositions.add(RingItem(item.x - baseItemDiameter / 2f, item.y - baseItemDiameter / 2f))
-                relativeSizes.add(baseItemDiameter)
-            }
-            remaining -= takeCount
-            ringRadius += (baseItemDiameter * 1.3f)
-            reverse = !reverse
-        }
-
-        // Step 2: Calculate bounding box and scale to fit inside card
-        val bounds = guideWheelBounds(relativePositions, relativeSizes.map { it.toInt() })
-        val margin = 16f.dp2px
-        val usableW = (w - 2f * margin).coerceAtLeast(100f)
-        val usableH = (h - 2f * margin).coerceAtLeast(100f)
-        val boundsW = (bounds.right - bounds.left).coerceAtLeast(1f)
-        val boundsH = (bounds.bottom - bounds.top).coerceAtLeast(1f)
-        val scale = minOf(1f, usableW / boundsW, usableH / boundsH)
-
-        // Step 3: Determine quadrant origin (cx, cy)
-        val scaledLeft = bounds.left * scale
-        val scaledTop = bounds.top * scale
-        val scaledRight = bounds.right * scale
-        val scaledBottom = bounds.bottom * scale
-
-        val cx = if (isLeft) {
-            margin - scaledLeft
-        } else {
-            w - margin - scaledRight
-        }
-
-        val cy = if (isUpper) {
-            margin - scaledTop
-        } else {
-            h - margin - scaledBottom
-        }
-
-        // Step 4: Generate final slots
-        val slots = relativePositions.indices.map { i ->
-            val size = relativeSizes[i] * scale
-            val slotX = cx + relativePositions[i].x * scale
-            val slotY = cy + relativePositions[i].y * scale
-            SlotInfo(
-                index = i,
-                x = slotX,
-                y = slotY,
-                size = size,
-                centerX = slotX + size / 2f,
-                centerY = slotY + size / 2f,
-                isCenterItem = (i == 0)
-            )
-        }
-
-        val scaledRadii = unscaledRadii.map { it * scale }
-        val maxRadius = (unscaledRadii.lastOrNull() ?: baseRadius) * scale + (baseItemDiameter * scale * 0.8f)
-
-        return WheelLayout(
-            cx = cx,
-            cy = cy,
-            startAngle = startAngle,
-            sweepAngle = sweepAngle,
-            isLeft = isLeft,
-            isUpper = isUpper,
-            slots = slots,
-            ringRadii = scaledRadii,
-            maxRadius = maxRadius
+    private fun calculateWheelLayout(w: Float, h: Float, totalItems: Int): FittedWheelLayout {
+        return calculateFittedWheelLayout(
+            width = w,
+            height = h,
+            itemCount = totalItems,
+            isLeft = isEffectiveLeft(),
+            isUpper = config.verticalPercent < 50,
+            baseRadius = 78f.dp2px,
+            baseItemDiameter = 38f.dp2px,
+            baseItemWarpOffset = 5f.dp2px,
+            margin = 16f.dp2px
         )
     }
 
