@@ -25,15 +25,8 @@ data class ShowItem(val appModel: APPModel, val icon: Drawable?)
 class DefaultSelectAPPBottomSheet(
     activity: Activity,
     coroutineScope: LifecycleCoroutineScope,
-    selectAPPCallBack: SelectAPPCallBack,
-    private val onDismiss: (() -> Unit)? = null
+    selectAPPCallBack: SelectAPPCallBack
 ) : BaseSelectAPPBottomSheet(activity, coroutineScope, selectAPPCallBack) {
-    fun dismiss() = bottomSheetDialog.dismiss()
-
-    override fun showDialog() {
-        super.showDialog()
-        bottomSheetDialog.setOnDismissListener { onDismiss?.invoke() }
-    }
 
     override fun onBindItem(holder: BindingAdapter.BindingViewHolder) {
         // Default binding implementation

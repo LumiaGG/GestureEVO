@@ -13,6 +13,21 @@ import org.junit.Test
 
 class QuickSetupCommitTest {
     @Test
+    fun failedSecondWriteRestoresTheFirstWriteBeforeReturningFailure() = runBlocking {
+        var actions = "old-actions"
+        var published = false
+        val failure = runCatching {
+            commitQuickSetup(writeConfiguration = {
+                actions = "new-actions"
+                error("trigger write failed")
+            }, publishConfiguration = { published = true }, rollbackConfiguration = { actions = "old-actions" })
+        }.exceptionOrNull()
+        assertTrue(failure is IllegalStateException)
+        assertEquals("old-actions", actions)
+        assertFalse(published)
+    }
+
+    @Test
     fun runtimeIsRefreshedOnlyAfterConfigurationIsCommitted() = runBlocking {
         val steps = mutableListOf<String>()
         commitQuickSetup(

@@ -42,7 +42,6 @@ import io.github.lumiagg.gestureevo.settings.ActionViewSettingsActivity.Companio
 import io.github.lumiagg.gestureevo.settings.ActionViewSettingsActivity.Companion.KEY_SELECTED_HINT_ICON
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_WHEEL_BACKGROUND_BLUR
 import io.github.lumiagg.gestureevo.settings.GestureAddActionActivity
-import io.github.lumiagg.gestureevo.settings.guide.QuickSetupRepository
 import io.github.lumiagg.gestureevo.utils.ActionProxy
 import io.github.lumiagg.gestureevo.utils.GestureActionLink
 import io.github.lumiagg.gestureevo.utils.OverlaySurfaceBlur
@@ -452,7 +451,7 @@ class GestureMainFloating(private val context: GestureService) :
         config: ActionConfig,
         items: List<GestureActionItem>,
         trigger: FreeTriggerConfig,
-        editable: Boolean = false,
+        isMirror: Boolean = false,
         onWheelSelection: ((Int) -> Unit)? = null,
         onLayout: (() -> Unit)? = null,
     ) {
@@ -473,15 +472,15 @@ class GestureMainFloating(private val context: GestureService) :
         actionView.config = config
         actionView.state.itemsTag = config.tag
         actionView.setModeList(items)
-        actionView.workMode = if (editable) ActionView.WorkMode.CONFIG_MAIN else ActionView.WorkMode.ACTIVE
+        actionView.workMode = ActionView.WorkMode.ACTIVE
         actionView.disableAllWheelVibrate = true
         actionView.visibility = View.VISIBLE
         ensureAttached()
         actionView.doOnLayout {
             if (revision == guidePreviewRevision && isAttachRequested(actionView)) {
-                val (x, y) = resolveTriggerCenter(trigger)
+                val (x, y) = resolveTriggerCenter(trigger, isMirror)
                 if (trigger.quadrantValue == 0) relayoutActionViewQuadrant(x, y)
-                else relayoutActionViewQuadrantByTrigger(trigger, x, y)
+                else relayoutActionViewQuadrantByTrigger(trigger, x, y, isMirror = isMirror)
                 actionView.relayoutSelectedIcon(enable = false)
                 actionView.fitGuideWheelToScreen(guideWheelScreenBounds(actionView.width, actionView.height))
                 actionView.layoutGuidePreview()
@@ -824,26 +823,13 @@ class GestureMainFloating(private val context: GestureService) :
     ) {
         actionView.restoreGuideWheelScreenFit()
         actionView.state.mirror = downX <= viewWidth / 2
-        val guideTrigger = triggerConfig.tag == QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG ||
-            triggerConfig.tag == QuickSetupRepository.PREVIEW_RIGHT_TRIGGER_TAG ||
-            triggerConfig.tag == QuickSetupRepository.LEFT_TRIGGER_TAG ||
-            triggerConfig.tag == QuickSetupRepository.RIGHT_TRIGGER_TAG
-        if (guideTrigger) {
-            val halfCenter = actionView.config.initRadius / 2
-            val insetX = actionView.config.actionOffsetX
-            val centerX = if (actionView.state.mirror) downX + insetX else downX - insetX
-            actionView.state.centerX = centerX.coerceIn(halfCenter, (viewWidth - halfCenter).coerceAtLeast(halfCenter)).toInt()
-            actionView.state.centerY = downY.coerceIn(halfCenter, (actionView.height - halfCenter).coerceAtLeast(halfCenter)).toInt()
-        } else {
-            actionView.state.centerX = downX.toInt() + actionView.config.actionOffsetX.toInt()
-            actionView.state.centerY = downY.toInt() + actionView.config.actionOffsetY.toInt()
-        }
+        actionView.state.centerX = downX.toInt() + actionView.config.actionOffsetX.toInt()
+        actionView.state.centerY = downY.toInt() + actionView.config.actionOffsetY.toInt()
         if (!actionView.config.rectangleLayoutEnabled && triggerConfig.quadrantValue == 15) {
             actionView.state.mirror = false
         }
         val quadrant = triggerConfig.getQuadrant(isMirror)
         actionView.state.setAngleByQuadrant(quadrant)
-        if (guideTrigger) actionView.fitGuideWheelToScreen(guideWheelScreenBounds(viewWidth, actionView.height))
     }
 
     @SuppressLint("InternalInsetResource", "DiscouragedApi")
@@ -862,7 +848,7 @@ class GestureMainFloating(private val context: GestureService) :
             }
         }
         val left = insets.left.coerceAtMost((viewWidth - 3).coerceAtLeast(0))
-        val top = (insets.top + 136f.dp2px.toInt()).coerceAtMost((viewHeight - 3).coerceAtLeast(0))
+        val top = insets.top.coerceAtMost((viewHeight - 3).coerceAtLeast(0))
         return Rect(
             left, top, (viewWidth - insets.right).coerceAtLeast(left + 3),
             (viewHeight - insets.bottom).coerceAtLeast(top + 3)

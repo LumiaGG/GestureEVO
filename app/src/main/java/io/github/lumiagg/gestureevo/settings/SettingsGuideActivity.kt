@@ -33,19 +33,25 @@ import io.github.lumiagg.gestureevo.settings.guide.SettingsGuideStatus
 import io.github.lumiagg.gestureevo.settings.guide.SettingsGuideStatusReader
 import io.github.lumiagg.gestureevo.utils.NotificationPermissionPromptActivity
 import io.github.lumiagg.gestureevo.utils.NotificationPermissionUtils
+import io.github.lumiagg.gestureevo.utils.CurrentPackageProvider
+import io.github.lumiagg.gestureevo.utils.actionStore
+import io.github.lumiagg.gestureevo.utils.gestureStore
 import io.github.lumiagg.gestureevo.utils.app.AShizuku
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.saveKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
 
 class SettingsGuideActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsGuideBinding
     private var leaving = false
+    private var currentStatus: SettingsGuideStatus? = null
     private lateinit var quickSetup: QuickSetupController
     private val contactsPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) lifecycleScope.launch {
@@ -69,17 +75,25 @@ class SettingsGuideActivity : AppCompatActivity() {
             binding.wheelSetup,
             savedInstanceState
         ) {
-            lifecycleScope.launch { refreshStatus() }
+            currentStatus?.let(::renderStatus)
         }
         setupNavigation()
         setupActions()
         SettingsSearchNavigator.focusAnchorIfNeeded(binding.root, intent)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                while (isActive) {
-                    refreshStatus()
-                    delay(1_000)
-                }
+                combine(gestureStore.data, actionStore.data, settingsStore.data,
+                    CurrentPackageProvider.serviceConnectedFlow) { _, _, _, _ -> Unit }
+                    .retryWhen { failure, attempt ->
+                        if (failure is CancellationException) throw failure
+                        Log.w(TAG, "Unable to observe guide settings", failure)
+                        currentStatus = null
+                        binding.finishButton.isEnabled = false
+                        binding.statusMessage.setText(R.string.guide_load_failed)
+                        delay(((attempt + 1).coerceAtMost(10) * 1_000L))
+                        true
+                    }
+                    .conflate().collect { refreshStatus() }
             }
         }
     }
@@ -90,13 +104,14 @@ class SettingsGuideActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
+        quickSetup.suspendPreview()
         super.onPause()
         binding.finishButton.isEnabled = false
     }
 
-    override fun onStart() {
-        super.onStart()
-        quickSetup.resumePreview()
+    override fun onResume() {
+        super.onResume()
+        if (!leaving) quickSetup.resumePreview()
     }
 
     override fun onStop() {
@@ -105,13 +120,14 @@ class SettingsGuideActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        quickSetup.suspendPreview()
+        quickSetup.finishPreview()
         super.onDestroy()
     }
 
     private suspend fun refreshStatus() {
         try {
             val current = SettingsGuideStatusReader.read(this)
+            currentStatus = current
             quickSetup.refreshPreview()
             renderStatus(current)
             refreshOptionalPermissions()
@@ -119,6 +135,7 @@ class SettingsGuideActivity : AppCompatActivity() {
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "Unable to read guide status", e)
+            currentStatus = null
             binding.finishButton.isEnabled = false
             binding.progressText.setText(R.string.guide_load_failed)
             binding.statusMessage.setText(R.string.guide_load_failed)
@@ -127,8 +144,8 @@ class SettingsGuideActivity : AppCompatActivity() {
 
     private fun renderStatus(current: SettingsGuideStatus) {
         val serviceReady = current.accessibilityEnabled && current.serviceConnected
-        val triggerReady = current.enabledTriggerCount > 0
-        val actionReady = current.configuredTriggerCount > 0
+        val triggerReady = quickSetup.selectedTriggerTag in current.enabledTriggerTags
+        val actionReady = quickSetup.selectedTriggerTag in current.configuredTriggerTags
         val ready = serviceReady && triggerReady && actionReady
         val progress = listOf(serviceReady, triggerReady, actionReady).count { it }
         binding.progressText.text = getString(R.string.guide_progress, progress, 3)
@@ -218,6 +235,7 @@ class SettingsGuideActivity : AppCompatActivity() {
     }
 
     private fun confirmLeave(leave: () -> Unit) {
+        if (quickSetup.isSaving) return
         if (!quickSetup.hasUnsavedChanges) {
             leave()
             return
@@ -227,8 +245,8 @@ class SettingsGuideActivity : AppCompatActivity() {
             .setMessage(R.string.quick_setup_unsaved_exit)
             .setPositiveButton(R.string.quick_setup_save_and_exit) { _, _ ->
                 lifecycleScope.launch {
-                    quickSetup.save()
-                    leave()
+                    if (quickSetup.save()) leave()
+                    else Toast.makeText(this@SettingsGuideActivity, R.string.quick_setup_save_failed, Toast.LENGTH_LONG).show()
                 }
             }
             .setNegativeButton(R.string.quick_setup_discard) { _, _ -> leave() }

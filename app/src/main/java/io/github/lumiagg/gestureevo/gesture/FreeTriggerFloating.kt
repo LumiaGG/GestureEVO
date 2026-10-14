@@ -14,6 +14,7 @@ import io.github.lumiagg.gestureevo.gesture.config.FreeTriggerConfig
 import io.github.lumiagg.gestureevo.gesture.config.FreeTriggerDataManager
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionDataManager
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionItem
+import io.github.lumiagg.gestureevo.gesture.config.gestureConfigurationWriteMutex
 import io.github.lumiagg.gestureevo.gesture.ui.TriggerCallBack
 import io.github.lumiagg.gestureevo.gesture.ui.TriggerView
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
@@ -25,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.withLock
 import kotlin.math.max
 import kotlin.math.min
 
@@ -80,28 +82,29 @@ class FreeTriggerFloating(
     suspend fun migrateActionMap(context: Context, configs: List<FreeTriggerConfig>) = withContext(
         Dispatchers.IO
     ) {
-        configs.forEach { config ->
-            if (!config.actionMap.isEmpty()) {
-                val newActionList = ArrayList<GestureActionItem>()
-                config.actionMap.forEach {
-                    val gestureActionItem = GestureActionItem()
-                    gestureActionItem.tag = it.key
-                    gestureActionItem.firstStageLink = it.value
-                    newActionList.add(gestureActionItem)
+        if (configs.none { it.actionMap.isNotEmpty() }) return@withContext configs
+        gestureConfigurationWriteMutex.withLock {
+            // The snapshot can become stale while waiting for a guide commit.
+            val current = FreeTriggerDataManager.readTriggers(context).map { it.copy() }
+            if (current.none { it.actionMap.isNotEmpty() }) return@withLock current
+            current.forEach { config ->
+                if (config.actionMap.isNotEmpty()) {
+                    val items = ArrayList(config.actionMap.map { (key, link) ->
+                        GestureActionItem().apply { tag = key; firstStageLink = link }
+                    })
+                    GestureActionDataManager.saveActionItemList(context, config.tag, items)
+                    config.actionMap = emptyMap()
+                    config.gestureActionList = items
                 }
-                config.actionMap = HashMap()
-                GestureActionDataManager.saveActionItemList(context, config.tag, newActionList)
             }
+            FreeTriggerDataManager.saveTriggers(context, current)
+            current
         }
-        FreeTriggerDataManager.saveTriggers(context, configs)
     }
 
     suspend fun reloadTriggers() = withContext(Dispatchers.Main) {
         // Read all trigger configurations
-        val newConfigs = FreeTriggerDataManager.readTriggers(context)
-
-        // Migrate action map
-        migrateActionMap(context, newConfigs)
+        val newConfigs = migrateActionMap(context, FreeTriggerDataManager.readTriggers(context))
 
         // Collect all view tags that should exist
         val expectedViewTags = newConfigs.filter { it.enable }.map { it.tag }.toSet()

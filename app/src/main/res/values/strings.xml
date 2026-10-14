@@ -1109,6 +1109,7 @@
     <string name="guide_loading">正在检查设置…</string>
     <string name="guide_open_failed">无法打开设置，请从系统设置中手动配置</string>
     <string name="guide_load_failed">无法读取设置，请稍后重试</string>
+    <string name="guide_retry">重新加载</string>
     <string name="guide_save_failed">无法保存引导状态，请重试</string>
     <string name="guide_enabled">已开启</string>
     <string name="guide_optional">可选</string>
@@ -1208,4 +1209,10 @@
     <string name="quick_practice_status_success">🎉 手势识别成功！</string>
     <string name="quick_practice_skip">跳过此项</string>
     <string name="quick_practice_exit">退出测试</string>
+    <string name="quick_setup_more_settings">更多设置</string>
+    <string name="gesture_add_action_sub_wheel">关联子轮盘</string>
+    <string name="gesture_add_action_sub_wheel_linked">子轮盘：已关联</string>
+    <string name="gesture_add_action_sub_wheel_choose">选择轮盘组</string>
+    <string name="gesture_add_action_sub_wheel_clear">移除关联</string>
+    <string name="gesture_add_action_save_failed">动作保存失败，请重试</string>
 </resources>

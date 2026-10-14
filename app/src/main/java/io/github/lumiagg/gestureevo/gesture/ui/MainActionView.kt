@@ -137,12 +137,8 @@ class MainActionView : ActionView {
             config.itemDiameter.toInt()
         )
         item.elevation = 10F
-        item.setCornerRadius(config.iconCornerRadius)
-        item.setTransparentBackground(config.transparentIconBackground)
-        item.setImageRoundPercent(config.iconImageRoundPercent)
-        item.applyGlobalImageRoundPercent = false
+        item.applyWheelStyle(config)
         item.layoutParams = layoutParams
-        item.setImagePadding(config.iconPadding.toInt())
         item.setText(context.getString(R.string.action_icon_placeholder))
         return item
     }
@@ -311,32 +307,7 @@ class MainActionView : ActionView {
             val maxDimension = max(gridWidth, gridHeight)
             return Pair(maxDimension, rows)
         }
-        var ringRadius = config.initRadius
-        var ringsCount = 0
-        var remainItem = modelList.size - 1 // Subtract center item
-
-        // Calculate max radius across all rings
-        for (i in 0 until 10) { // Max 10 rings as per original code
-            if (remainItem <= 0) break
-
-            val ring = Ring(
-                0F,
-                90F,
-                radius = ringRadius,
-                itemDiameter = config.itemDiameter,
-                reverse = (i % 2 != 0),
-                itemWarpOffset = config.itemWarpOffset
-            )
-
-            remainItem -= ring.items.size
-            ringsCount++
-            ringRadius += (config.itemDiameter * 1.3).toFloat()
-        }
-
-        // Add half of item diameter to account for the outer edge items
-        val maxRadius = ringRadius + (config.itemDiameter / 2)
-
-        return Pair(maxRadius, ringsCount)
+        return quarterWheelOuterRadius(modelList.size, config.initRadius, config.itemDiameter, config.itemWarpOffset)
     }
 
     fun touchInMinRadius(touchX: Float, touchY: Float): Boolean {
@@ -417,7 +388,7 @@ class MainActionView : ActionView {
     internal fun fitGuideWheelToScreen(screenBounds: Rect) {
         val viewWidth = screenBounds.width()
         val viewHeight = screenBounds.height()
-        if (viewWidth <= 2 || viewHeight <= 2 || modelList.isEmpty() || config.rectangleLayoutEnabled) return
+        if (viewWidth <= 2 || viewHeight <= 2 || modelList.isEmpty()) return
         val source = if (config === guideFittedConfig) guideSourceConfig ?: config else config
         config = source
         guideSourceConfig = source
@@ -428,20 +399,12 @@ class MainActionView : ActionView {
         val scale = guideWheelScale(bounds, viewWidth, viewHeight)
         if (scale < 1f) {
             // Keep the persisted configuration intact; only the display geometry is fitted.
-            config = ActionConfig().apply {
-                tag = source.tag
+            config = source.copy().apply {
                 itemDiameter = source.itemDiameter * scale
                 initRadius = source.initRadius * scale
                 itemWarpOffset = source.itemWarpOffset * scale
                 iconPadding = source.iconPadding * scale
                 iconCornerRadius = source.iconCornerRadius * scale
-                iconImageRoundPercent = source.iconImageRoundPercent
-                actionOffsetX = source.actionOffsetX
-                actionOffsetY = source.actionOffsetY
-                subActionFollowConfig = source.subActionFollowConfig
-                transparentIconBackground = source.transparentIconBackground
-                rectangleLayoutEnabled = source.rectangleLayoutEnabled
-                rectangleColumns = source.rectangleColumns
             }
             updateGuideWheelItemSizes()
             distributeItemsInRing()
@@ -470,8 +433,7 @@ class MainActionView : ActionView {
     private fun updateGuideWheelItemSizes() {
         dragItemAction.updateRingItemsSize(showAnim = false)
         modelList.forEach {
-            it.view.setImagePadding(config.iconPadding.toInt())
-            it.view.setCornerRadius(config.iconCornerRadius)
+            it.view.applyWheelStyle(config)
         }
     }
 

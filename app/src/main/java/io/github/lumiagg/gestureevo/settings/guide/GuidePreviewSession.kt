@@ -8,8 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-enum class GuideWheelMode { HIDDEN, PREVIEW, EDIT }
-enum class GuideWheelEditAction { EDIT, REMOVE, ADD }
+enum class GuideWheelMode { HIDDEN, PREVIEW }
 
 data class GuidePreviewRequest(
     val owner: String,
@@ -18,18 +17,10 @@ data class GuidePreviewRequest(
     val practiceId: String? = null,
     val wheelSelection: Boolean = false,
     val wheelMode: GuideWheelMode = GuideWheelMode.HIDDEN,
-    val wheelInputEnabled: Boolean = true,
     val actionConfig: ActionConfig? = null,
 ) {
-    val showsWheel: Boolean get() = wheelInputEnabled && (wheelSelection || wheelMode != GuideWheelMode.HIDDEN)
+    val showsWheel: Boolean get() = wheelSelection || wheelMode == GuideWheelMode.PREVIEW
 }
-
-data class GuideWheelEdit(
-    val owner: String,
-    val action: GuideWheelEditAction,
-    val itemIndex: Int,
-    val config: QuickSetupConfig,
-)
 
 data class GuidePreviewGesture(
     val owner: String,
@@ -42,49 +33,36 @@ data class GuidePreviewGesture(
 object GuidePreviewSession {
     private val mutableCurrent = MutableStateFlow<GuidePreviewRequest?>(null)
     val current: StateFlow<GuidePreviewRequest?> = mutableCurrent.asStateFlow()
-
     private val mutableGestures = MutableSharedFlow<GuidePreviewGesture>(extraBufferCapacity = 1)
     val gestures: SharedFlow<GuidePreviewGesture> = mutableGestures.asSharedFlow()
-    private val mutableWheelEdits = MutableSharedFlow<GuideWheelEdit>(extraBufferCapacity = 1)
-    val wheelEdits: SharedFlow<GuideWheelEdit> = mutableWheelEdits.asSharedFlow()
 
-    fun show(
-        owner: String,
-        config: QuickSetupConfig,
-        practice: QuickGesture? = null,
-        practiceId: String? = null,
-        wheelSelection: Boolean = false,
-        wheelMode: GuideWheelMode = GuideWheelMode.HIDDEN,
-        wheelInputEnabled: Boolean = true,
-        actionConfig: ActionConfig? = null,
-    ) {
-        mutableCurrent.value = GuidePreviewRequest(
-            owner, config, practice, practiceId, wheelSelection, wheelMode, wheelInputEnabled, actionConfig
-        )
+    fun show(owner: String, config: QuickSetupConfig, practice: QuickGesture? = null, practiceId: String? = null,
+        wheelSelection: Boolean = false, wheelMode: GuideWheelMode = GuideWheelMode.HIDDEN, actionConfig: ActionConfig? = null) {
+        mutableCurrent.value = GuidePreviewRequest(owner, config, practice, practiceId, wheelSelection, wheelMode, actionConfig)
     }
 
     fun clear(owner: String) {
         if (mutableCurrent.value?.owner == owner) mutableCurrent.value = null
     }
 
-    internal fun reportGesture(request: GuidePreviewRequest, gesture: QuickGesture) {
-        val practiceId = request.practiceId ?: return
-        if (mutableCurrent.value != request || request.practice != gesture) return
-        mutableGestures.tryEmit(GuidePreviewGesture(request.owner, practiceId, gesture))
+    internal fun refresh(owner: String, config: QuickSetupConfig, wheelMode: GuideWheelMode, actionConfig: ActionConfig? = null) {
+        val practice = mutableCurrent.value?.takeIf { it.owner == owner && it.practice != null }
+        // A practice request owns its target wheel, appearance and selection state.
+        // Status refreshes must not replace any of them with the setup draft.
+        if (practice != null) return
+        show(owner, config, wheelMode = wheelMode, actionConfig = actionConfig)
     }
 
-    internal fun reportWheelSelection(request: GuidePreviewRequest, index: Int) {
-        val practiceId = request.practiceId ?: return
-        val practice = request.practice ?: return
-        if (mutableCurrent.value != request || !request.wheelSelection || index !in request.config.wheelItems.indices) return
-        mutableGestures.tryEmit(GuidePreviewGesture(request.owner, practiceId, practice, index))
+    internal fun reportGesture(request: GuidePreviewRequest, gesture: QuickGesture): Boolean {
+        val practiceId = request.practiceId ?: return false
+        if (mutableCurrent.value != request || request.practice != gesture) return false
+        return mutableGestures.tryEmit(GuidePreviewGesture(request.owner, practiceId, gesture))
     }
 
-    internal fun reportWheelEdit(request: GuidePreviewRequest, action: GuideWheelEditAction, index: Int) {
-        if (mutableCurrent.value != request || request.wheelMode != GuideWheelMode.EDIT || !request.wheelInputEnabled) return
-        if (action == GuideWheelEditAction.ADD) {
-            if (index != request.config.wheelItems.size) return
-        } else if (index !in request.config.wheelItems.indices) return
-        mutableWheelEdits.tryEmit(GuideWheelEdit(request.owner, action, index, request.config))
+    internal fun reportWheelSelection(request: GuidePreviewRequest, index: Int): Boolean {
+        val practiceId = request.practiceId ?: return false
+        val practice = request.practice ?: return false
+        if (mutableCurrent.value != request || !request.wheelSelection || index !in request.config.wheelItems.indices) return false
+        return mutableGestures.tryEmit(GuidePreviewGesture(request.owner, practiceId, practice, index))
     }
 }

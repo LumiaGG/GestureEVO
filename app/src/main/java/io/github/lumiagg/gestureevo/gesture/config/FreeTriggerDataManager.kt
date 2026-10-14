@@ -110,12 +110,16 @@ object FreeTriggerDataManager {
             Log.d(TAG, "saveTriggers: size=${triggers.size}")
         }
 
-        // Update cache
+        try {
+            context.gestureStore.saveKey(KEY_FREE_TRIGGERS, json)
+        } catch (failure: Exception) {
+            cachedTriggers = null
+            cacheValid = false
+            throw failure
+        }
+        // Publish the cache only after storage accepts the new configuration.
         cachedTriggers = ArrayList(triggers)
         cacheValid = true
-
-        // Write to persistent storage
-        context.gestureStore.saveKey(KEY_FREE_TRIGGERS, json)
     }
 
     suspend fun saveTriggers(context: Context, triggers: List<FreeTriggerConfig>) =

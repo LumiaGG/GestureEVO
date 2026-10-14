@@ -7,6 +7,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.lifecycle.LifecycleCoroutineScope
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.recyclerview.widget.RecyclerView
 import com.drake.brv.BindingAdapter
 import com.drake.brv.utils.grid
@@ -60,6 +62,16 @@ abstract class BaseSelectAPPBottomSheet(
             BottomSheetDialog(themedContext, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
         bottomSheetDialog.setContentView(R.layout.app_select_bottomsheet)
         bottomSheetDialog.setCanceledOnTouchOutside(false)
+        (activity as? LifecycleOwner)?.let { owner ->
+            val observer = object : DefaultLifecycleObserver {
+                override fun onDestroy(owner: LifecycleOwner) { bottomSheetDialog.dismiss() }
+            }
+            owner.lifecycle.addObserver(observer)
+            bottomSheetDialog.setOnDismissListener {
+                searchJob?.cancel()
+                owner.lifecycle.removeObserver(observer)
+            }
+        }
     }
 
     protected open fun setupBottomSheetBehavior() {

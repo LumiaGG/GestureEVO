@@ -13,9 +13,28 @@ import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import io.github.lumiagg.gestureevo.utils.app.syncAppCatalogIfNeeded
+import io.github.lumiagg.gestureevo.search.SettingsShortcutSearchHelper
 
 
 class EvoApplication : Application() {
+    private val maintenanceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    fun refreshSearchCatalogs() {
+        maintenanceScope.launch {
+            try { syncAppCatalogIfNeeded(applicationContext) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { android.util.Log.w("Startup", "Unable to refresh app catalog", e) }
+            try { SettingsShortcutSearchHelper.syncShortcutsToDatabase(applicationContext) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { android.util.Log.w("Startup", "Unable to refresh shortcuts", e) }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()

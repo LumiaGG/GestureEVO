@@ -348,7 +348,7 @@ class RoundImageTextView @JvmOverloads constructor(
             setColor(backplateColor)
         }
         val backplateInset = 0
-        val resolvedIconInset = iconInset ?: (8.dp2px - imagePadding * 0.3f).toInt()
+        val resolvedIconInset = iconInset ?: (8.dp2px - imagePadding * 0.3f).toInt().coerceAtLeast(0)
         imageFilterView.background = InsetDrawable(
             backplate,
             backplateInset,
@@ -404,10 +404,15 @@ class RoundImageTextView @JvmOverloads constructor(
     }
 
     fun setImagePadding(padding: Int) {
+        val changed = imagePadding != padding.toFloat()
         imagePadding = padding.toFloat()
         val params = imageFilterView.layoutParams as MarginLayoutParams
         params.setMargins(padding, padding, padding, padding)
         imageFilterView.layoutParams = params
+        if (changed && isUsingBackplate) {
+            val inset = (8.dp2px - imagePadding * 0.3f).toInt().coerceAtLeast(0)
+            imageFilterView.setPadding(inset, inset, inset, inset)
+        }
     }
 
     /**

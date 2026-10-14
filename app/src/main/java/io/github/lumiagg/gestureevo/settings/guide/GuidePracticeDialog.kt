@@ -11,7 +11,6 @@ import android.view.View
 import android.view.Window
 import android.view.WindowManager
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -22,12 +21,19 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.MaterialColors
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
+import io.github.lumiagg.gestureevo.gesture.config.GestureActionType
+import io.github.lumiagg.gestureevo.gesture.config.GestureActionDataManager
+import io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
+import io.github.lumiagg.gestureevo.gesture.ui.applyWheelStyle
+import io.github.lumiagg.gestureevo.gesture.freeTriggerBounds
+import androidx.core.widget.NestedScrollView
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
@@ -103,7 +109,10 @@ internal fun showGuidePracticeSequence(
         val pad = 20f.dp2px.toInt()
         setPadding(pad, pad, pad, pad)
     }
-    card.addView(cardContent)
+    val cardScroll = NestedScrollView(context).apply {
+        addView(cardContent, FrameLayout.LayoutParams(-1, -2))
+    }
+    card.addView(cardScroll, FrameLayout.LayoutParams(-1, -1))
 
     // Top Header: Step/Dialog title + Close button
     val headerLayout = LinearLayout(context).apply {
@@ -184,12 +193,12 @@ internal fun showGuidePracticeSequence(
             bottomMargin = 10f.dp2px.toInt()
         }
     }
-    val actionIcon = ImageView(context).apply {
+    val actionIcon = RoundImageTextView(context).apply {
         val size = 20f.dp2px.toInt()
         layoutParams = LinearLayout.LayoutParams(size, size).apply {
             marginEnd = 6f.dp2px.toInt()
         }
-        scaleType = ImageView.ScaleType.FIT_CENTER
+        applyWheelStyle(ActionConfig(), size / 55f.dp2px)
     }
     actionBadge.addView(actionIcon)
 
@@ -281,7 +290,7 @@ internal fun showGuidePracticeSequence(
         elevation = 12f.dp2px
     }
 
-    val pointerGravity = if (isLeftEdge) Gravity.START or Gravity.TOP else Gravity.END or Gravity.TOP
+    val pointerGravity = if (isLeftEdge) Gravity.LEFT or Gravity.TOP else Gravity.RIGHT or Gravity.TOP
     val pointerParams = FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.WRAP_CONTENT,
         FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -289,10 +298,39 @@ internal fun showGuidePracticeSequence(
     ).apply {
         val marginSide = 24f.dp2px.toInt()
         if (isLeftEdge) leftMargin = marginSide else rightMargin = marginSide
-        topMargin = (activity.resources.displayMetrics.heightPixels * (config.verticalPercent / 100f)).toInt() - 20f.dp2px.toInt()
+        topMargin = 0
     }
     root.addView(pointerPill, pointerParams)
 
+    val previewTrigger = buildQuickSetupTriggers(config, context.getString(R.string.guide_title))
+        .first { it.tag == if (isLeftEdge) QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG else QuickSetupRepository.PREVIEW_RIGHT_TRIGGER_TAG }
+    val rootLocation = IntArray(2)
+    fun updateLayout() {
+        if (root.width <= 0 || root.height <= 0) return
+        val availableWidth = (root.width - root.paddingLeft - root.paddingRight - 40f.dp2px).toInt().coerceAtLeast(1)
+        val cardWidth = minOf(340f.dp2px.toInt(), availableWidth)
+        cardContent.measure(View.MeasureSpec.makeMeasureSpec(cardWidth, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+        val availableHeight = (root.height - root.paddingTop - root.paddingBottom - 40f.dp2px).toInt().coerceAtLeast(1)
+        val cardHeight = minOf(cardContent.measuredHeight, availableHeight).coerceAtLeast(1)
+        val params = card.layoutParams
+        if (params.width != cardWidth || params.height != cardHeight) {
+            params.width = cardWidth
+            params.height = cardHeight
+            card.layoutParams = params
+        }
+        root.getLocationOnScreen(rootLocation)
+        val bounds = freeTriggerBounds(activity, previewTrigger, config.side == QuickSetupSide.BOTH && !isLeftEdge)
+        val top = guideHintTop(bounds.centerY() - rootLocation[1] - root.paddingTop,
+            pointerPill.height, root.height - root.paddingTop - root.paddingBottom)
+        val hintParams = pointerPill.layoutParams as FrameLayout.LayoutParams
+        if (hintParams.topMargin != top) {
+            hintParams.topMargin = top
+            pointerPill.layoutParams = hintParams
+        }
+        if (pointerPill.maxWidth != availableWidth) pointerPill.maxWidth = availableWidth
+    }
+    root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateLayout() }
     val bounceDistance = 10f.dp2px
     val bounceAnimator = ObjectAnimator.ofFloat(
         pointerPill,
@@ -317,6 +355,15 @@ internal fun showGuidePracticeSequence(
     var awaitingWheel = false
     var saveJob: Job? = null
     var transitionJob: Job? = null
+    var wheelLoadJob: Job? = null
+    var practiceConfig = config
+    var practiceActionConfig = actionConfig
+    var wheelLoading = false
+
+    fun publishPractice() {
+        if (!disposed && !wheelLoading && activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) GuidePreviewSession.show(previewOwner, practiceConfig, currentGesture,
+            practiceId, wheelSelection = awaitingWheel, actionConfig = practiceActionConfig)
+    }
 
     fun restorePreview() {
         if (GuidePreviewSession.current.value?.let { it.owner == previewOwner && it.practiceId == practiceId } == true) {
@@ -326,12 +373,16 @@ internal fun showGuidePracticeSequence(
 
     fun displayGesture(index: Int) {
         transitionJob?.cancel()
+        wheelLoadJob?.cancel()
         currentIndex = index
         currentGesture = gestures[currentIndex]
         recognized = false
         saving = false
         awaitingWheel = false
         practiceId = UUID.randomUUID().toString()
+        practiceConfig = config
+        practiceActionConfig = actionConfig
+        wheelLoading = false
 
         val isLast = currentIndex + 1 >= gestures.size
         badgeView.text = if (gestures.size > 1) {
@@ -346,12 +397,7 @@ internal fun showGuidePracticeSequence(
         val targetAction = config.gestures[currentGesture]
         if (targetAction != null) {
             actionBadge.isVisible = true
-            actionIcon.setImageDrawable(targetAction.icon(context))
-            if (targetAction.type != QuickActionType.OPEN_APP || targetAction.packageName == null) {
-                actionIcon.imageTintList = ColorStateList.valueOf(DynamicColorUtils.primaryColor)
-            } else {
-                actionIcon.imageTintList = null
-            }
+            actionIcon.bindGuideAction(targetAction)
             actionText.text = context.getString(R.string.quick_practice_trigger_hint, targetAction.label(context))
         } else {
             actionBadge.isVisible = false
@@ -376,7 +422,37 @@ internal fun showGuidePracticeSequence(
             bounceAnimator.start()
         }
 
-        GuidePreviewSession.show(previewOwner, config, currentGesture, practiceId, actionConfig = actionConfig)
+        val targetWheelTag = targetAction?.takeIf { it.guideActionType == GestureActionType.SHOW_ACTION_VIEW }
+            ?.firstStageLink?.let { parseActionLink(it).second["actionItemsTag"] } ?: QuickSetupRepository.WHEEL_TAG
+        if (targetWheelTag == QuickSetupRepository.WHEEL_TAG) {
+            publishPractice()
+        } else {
+            wheelLoading = true
+            pointerPill.isVisible = false
+            bounceAnimator.cancel()
+            statusBanner.setText(R.string.guide_loading)
+            GuidePreviewSession.show(previewOwner, config, actionConfig = actionConfig)
+            val expectedId = practiceId
+            wheelLoadJob = activity.lifecycleScope.launch {
+                try {
+                    val items = QuickSetupRepository.readWheelItems(activity, targetWheelTag)
+                    val appearance = GestureActionDataManager.readActionConfig(activity, targetWheelTag, false)
+                    if (disposed || practiceId != expectedId) return@launch
+                    practiceConfig = config.copy(wheelItems = items)
+                    practiceActionConfig = appearance
+                    wheelLoading = false
+                    statusBanner.setText(R.string.quick_practice_status_waiting)
+                    pointerPill.isVisible = true
+                    bounceAnimator.start()
+                    publishPractice()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    android.util.Log.e("GuidePractice", "Unable to load the selected wheel", e)
+                    if (!disposed && practiceId == expectedId) statusBanner.setText(R.string.guide_load_failed)
+                }
+            }
+        }
     }
 
     skipButton.setOnClickListener {
@@ -444,7 +520,7 @@ internal fun showGuidePracticeSequence(
                     recognized = false
                     awaitingWheel = false
                     practiceId = UUID.randomUUID().toString()
-                    GuidePreviewSession.show(previewOwner, config, currentGesture, practiceId, actionConfig = actionConfig)
+                    publishPractice()
                 }
             } finally {
                 saving = false
@@ -460,11 +536,11 @@ internal fun showGuidePracticeSequence(
     val gestureJob = activity.lifecycleScope.launch {
         GuidePreviewSession.gestures.collect { result ->
             if (disposed || recognized || result.owner != previewOwner || result.practiceId != practiceId) return@collect
-            if (config.gestures[currentGesture]?.type == QuickActionType.WHEEL && result.wheelItemIndex == null) {
+            if (config.gestures[currentGesture]?.guideActionType == GestureActionType.SHOW_ACTION_VIEW && result.wheelItemIndex == null) {
                 if (!awaitingWheel) {
                     awaitingWheel = true
                     statusBanner.text = context.getString(R.string.quick_practice_choose_wheel)
-                    GuidePreviewSession.show(previewOwner, config, currentGesture, practiceId, wheelSelection = true, actionConfig = actionConfig)
+                    publishPractice()
                 }
                 return@collect
             }
@@ -474,11 +550,13 @@ internal fun showGuidePracticeSequence(
     }
 
     val lifecycleObserver = object : DefaultLifecycleObserver {
-        override fun onStart(owner: LifecycleOwner) {
+        override fun onResume(owner: LifecycleOwner) {
             if (!disposed && !recognized) {
-                GuidePreviewSession.show(previewOwner, config, currentGesture, practiceId, wheelSelection = awaitingWheel, actionConfig = actionConfig)
+                publishPractice()
+                if (pointerPill.isVisible && !bounceAnimator.isRunning) bounceAnimator.start()
             }
         }
+        override fun onPause(owner: LifecycleOwner) { bounceAnimator.cancel() }
         override fun onDestroy(owner: LifecycleOwner) { dialog.dismiss() }
     }
     activity.lifecycle.addObserver(lifecycleObserver)
@@ -489,6 +567,7 @@ internal fun showGuidePracticeSequence(
         gestureJob.cancel()
         saveJob?.cancel()
         transitionJob?.cancel()
+        wheelLoadJob?.cancel()
         restorePreview()
         activity.lifecycle.removeObserver(lifecycleObserver)
         onDismissed?.invoke()

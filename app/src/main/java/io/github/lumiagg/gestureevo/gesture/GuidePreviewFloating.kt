@@ -15,11 +15,9 @@ import io.github.lumiagg.gestureevo.gesture.ui.GestureType
 import io.github.lumiagg.gestureevo.gesture.ui.GestureTypeEvent
 import io.github.lumiagg.gestureevo.gesture.ui.TriggerCallBack
 import io.github.lumiagg.gestureevo.gesture.ui.TriggerView
-import io.github.lumiagg.gestureevo.gesture.ui.ActionView
 import io.github.lumiagg.gestureevo.settings.guide.GuidePreviewRequest
 import io.github.lumiagg.gestureevo.settings.guide.GuidePreviewSession
 import io.github.lumiagg.gestureevo.settings.guide.GuideWheelMode
-import io.github.lumiagg.gestureevo.settings.guide.GuideWheelEditAction
 import io.github.lumiagg.gestureevo.settings.guide.QuickSetupConfig
 import io.github.lumiagg.gestureevo.settings.guide.QuickSetupRepository
 import io.github.lumiagg.gestureevo.settings.guide.QuickSetupSide
@@ -69,8 +67,7 @@ class GuidePreviewFloating(private val context: GestureService) :
             val practiceId = current.practiceId ?: return
             if (reportedPracticeId == practiceId || gestureTypeEvent.phase != GesturePhase.TD) return
             if (gestureTypeEvent.type == quickGestureType(practice, side)) {
-                reportedPracticeId = practiceId
-                GuidePreviewSession.reportGesture(current, practice)
+                if (GuidePreviewSession.reportGesture(current, practice)) reportedPracticeId = practiceId
             }
         }
     }
@@ -109,8 +106,9 @@ class GuidePreviewFloating(private val context: GestureService) :
                 }
             }
             view.triggerConfig = config
+            view.isMirror = request.config.side == QuickSetupSide.BOTH && config.tag == QuickSetupRepository.PREVIEW_RIGHT_TRIGGER_TAG
             view.setBackgroundColor(ColorUtils.setAlphaComponent(DynamicColorUtils.primaryColor, 180))
-            val params = triggerLayoutParams(config)
+            val params = triggerLayoutParams(config, view.isMirror)
             if (view.isAttachedToWindow) {
                 updateViewLayoutSafely(view, params)
             } else {
@@ -121,19 +119,17 @@ class GuidePreviewFloating(private val context: GestureService) :
             val wheel = wheels.getOrPut(config.tag) { GestureMainFloating(context) }
             val baseConfig = request.actionConfig ?: ActionConfig()
             wheel.showGuidePreview(
-                buildQuickSetupWheelConfig(request.config, baseConfig),
+                buildQuickSetupWheelConfig(baseConfig),
                 buildQuickSetupWheelItems(request.config),
                 config,
-                editable = request.wheelMode == GuideWheelMode.EDIT,
+                isMirror = view.isMirror,
                 onWheelSelection = if (request.wheelSelection) {
                     { index -> reportWheelSelection(request, index) }
                 } else {
                     null
                 },
                 onLayout = {
-                    if (this.request == request && request.wheelInputEnabled &&
-                        (request.wheelMode == GuideWheelMode.EDIT ||
-                            (request.wheelSelection && reportedWheelPracticeId != request.practiceId))) {
+                    if (this.request == request && request.wheelSelection && reportedWheelPracticeId != request.practiceId) {
                         addWheelTouchViews(config.tag, wheel, request)
                     }
                     wheel.actionView.alpha = if (request.wheelMode == GuideWheelMode.PREVIEW) 0.65f else 1f
@@ -164,9 +160,9 @@ class GuidePreviewFloating(private val context: GestureService) :
         if (this.request != request || GuidePreviewSession.current.value != request ||
             reportedWheelPracticeId == request.practiceId
         ) return
+        if (!GuidePreviewSession.reportWheelSelection(request, index)) return
         reportedWheelPracticeId = request.practiceId
         wheelTouchViews.keys.toList().forEach(::removeWheelTouchViews)
-        GuidePreviewSession.reportWheelSelection(request, index)
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -191,28 +187,11 @@ class GuidePreviewFloating(private val context: GestureService) :
             }
             // Route only the visible item bounds to the existing wheel selection logic.
             val view = View(context).apply {
-                if (current.wheelMode == GuideWheelMode.EDIT) {
-                    contentDescription = if (item.type == ActionView.ItemType.WHITEBOARD) {
-                        context.getString(R.string.quick_setup_add)
-                    } else {
-                        current.config.wheelItems[index].let { it.appName ?: it.type.name }
+                setOnTouchListener { _, event ->
+                    if (request == current && current.wheelSelection && reportedWheelPracticeId != current.practiceId) {
+                        wheel.actionView.onTouchEvent(event)
                     }
-                    setOnClickListener {
-                        val action = if (item.type == ActionView.ItemType.WHITEBOARD) GuideWheelEditAction.ADD
-                            else GuideWheelEditAction.EDIT
-                        GuidePreviewSession.reportWheelEdit(current, action, index)
-                    }
-                    if (item.type != ActionView.ItemType.WHITEBOARD) setOnLongClickListener {
-                        GuidePreviewSession.reportWheelEdit(current, GuideWheelEditAction.REMOVE, index)
-                        true
-                    }
-                } else {
-                    setOnTouchListener { _, event ->
-                        if (request?.wheelSelection == true && reportedWheelPracticeId != request?.practiceId) {
-                            wheel.actionView.onTouchEvent(event)
-                        }
-                        true
-                    }
+                    true
                 }
             }
             views.add(view)
@@ -225,8 +204,8 @@ class GuidePreviewFloating(private val context: GestureService) :
         wheelTouchViews.remove(tag)?.forEach { detachViewSafely(it) }
     }
 
-    private fun triggerLayoutParams(config: FreeTriggerConfig): WindowManager.LayoutParams {
-        val bounds = freeTriggerBounds(context, config)
+    private fun triggerLayoutParams(config: FreeTriggerConfig, isMirror: Boolean): WindowManager.LayoutParams {
+        val bounds = freeTriggerBounds(context, config, isMirror)
         return WindowManager.LayoutParams().apply {
             configureAccessibilityOverlay(
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or

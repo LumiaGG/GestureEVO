@@ -22,6 +22,7 @@ import androidx.core.graphics.createBitmap
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.ActivityGestureAddActionBinding
 import io.github.lumiagg.gestureevo.databinding.ActivityGestureAddActionConfigBinding
@@ -55,6 +56,7 @@ import io.github.lumiagg.gestureevo.utils.TempDndPermissionRequester
 import io.github.lumiagg.gestureevo.utils.icon.IconFileUtils
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -65,6 +67,8 @@ class GestureAddActionActivity : AppCompatActivity() {
     private var sourceActionView = ActionView.ActionViewType.MAIN
     private var editMode = false
     private var externalActionMode = false
+    private var returnActionItemMode = false
+    private var savingAction = false
     private var actionItem = GestureActionItem()
     private val firstActionLink = GestureActionLink()
     private val secondActionLink = GestureActionLink()
@@ -82,7 +86,26 @@ class GestureAddActionActivity : AppCompatActivity() {
         setContentView(binding.root)
         tempDndPermissionRequester = TempDndPermissionRequester(this)
         initView()
-        initData()
+        initData(savedInstanceState)
+        firstButtonsState.enable = true
+        secondButtonsState.enable = true
+        if (!externalActionMode) gestureActionIcon(this, binding.actionIcon, actionItem)
+        binding.subWheelButton.visibility = if (externalActionMode || selectTriggerActionMode) View.GONE else View.VISIBLE
+        binding.subWheelButton.setOnClickListener {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.gesture_add_action_sub_wheel)
+                .setItems(arrayOf(getString(R.string.gesture_add_action_sub_wheel_choose), getString(R.string.gesture_add_action_sub_wheel_clear))) { _, index ->
+                    if (index == 1) {
+                        actionItem.subActionListTag = null
+                    } else {
+                        showPieGroupSelectBottomSheet(this, lifecycleScope,
+                            currentSelectedTag = actionItem.subActionListTag.orEmpty(),
+                            onSelect = { actionItem.subActionListTag = it; renderSubWheelButton() })
+                    }
+                    renderSubWheelButton()
+                }.show()
+        }
+        renderSubWheelButton()
         if (selectTriggerActionMode) {
             initSelectTriggerActionView()
         } else if (externalActionMode) {
@@ -125,7 +148,7 @@ class GestureAddActionActivity : AppCompatActivity() {
         binding.shortAction.actionTimeout.isEnabled = false
         binding.fab.setOnClickListener {
             val resultIntent = Intent()
-            setResult(RESULT_OK, resultIntent)
+            if (!returnActionItemMode) setResult(RESULT_OK, resultIntent)
             saveAction(false)
         }
     }
@@ -163,7 +186,8 @@ class GestureAddActionActivity : AppCompatActivity() {
         }
     }
 
-    private fun initData() {
+    private fun initData(savedInstanceState: Bundle?) {
+        returnActionItemMode = intent.getBooleanExtra(EXTRA_RETURN_ACTION_ITEM, false)
         externalActionMode = intent.getBooleanExtra(EXTRA_EXTERNAL_ACTION_MODE, false)
         if (externalActionMode) {
             intent.getStringExtra(EXTRA_EXTERNAL_ACTION_LINK)?.let {
@@ -181,8 +205,8 @@ class GestureAddActionActivity : AppCompatActivity() {
         editMode = intent.getBooleanExtra("editMode", false)
         selectTriggerActionMode = intent.getBooleanExtra("triggerActionMode", false)
         expectItemTag = intent.getStringExtra("expectItemTag")
-        if (editMode) {
-            GestureActionItem.toModel(intent.getStringExtra("item")!!)?.let {
+        if (editMode || savedInstanceState?.containsKey(EXTRA_ACTION_ITEM) == true) {
+            GestureActionItem.toModel(savedInstanceState?.getString(EXTRA_ACTION_ITEM) ?: intent.getStringExtra(EXTRA_ACTION_ITEM)!!)?.let {
                 actionItem = it
                 actionItem.firstStageLink?.let {
                     fillActionConfig(binding.shortAction, actionItem.firstStageLink!!)
@@ -195,6 +219,20 @@ class GestureAddActionActivity : AppCompatActivity() {
             binding.shortAction.getButtonsState().enable = true
             binding.longAction.getButtonsState().enable = true
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        val draft = actionItem.copy().apply {
+            firstStageLink = binding.shortAction.actionLink.text.toString()
+            secondStageLink = binding.longAction.actionLink.text.toString()
+        }
+        outState.putString(EXTRA_ACTION_ITEM, draft.toJson(false))
+        super.onSaveInstanceState(outState)
+    }
+
+    private fun renderSubWheelButton() {
+        binding.subWheelButton.setText(if (actionItem.subActionListTag.isNullOrBlank())
+            R.string.gesture_add_action_sub_wheel else R.string.gesture_add_action_sub_wheel_linked)
     }
 
     private fun fillActionConfig(
@@ -674,30 +712,44 @@ class GestureAddActionActivity : AppCompatActivity() {
         finish()
     }
 
-    private fun saveAction(isPlaceHolder: Boolean) = lifecycleScope.launch(Dispatchers.IO) {
-        actionItem.firstStageLink = binding.shortAction.actionLink.text.toString()
-        actionItem.secondStageLink = binding.longAction.actionLink.text.toString()
-        if (iconFileUtils.saveIcon()) {
-            actionItem.icon = iconFileUtils.imgPath
+    private fun saveAction(isPlaceHolder: Boolean) {
+        if (savingAction) return
+        val savedItem = actionItem.copy().apply {
+            firstStageLink = binding.shortAction.actionLink.text.toString()
+            secondStageLink = binding.longAction.actionLink.text.toString()
+            if (isPlaceHolder) iconType = IconType.INVISIBLE
         }
-
-        if (isPlaceHolder) actionItem.iconType = IconType.INVISIBLE
-
-        Log.d(TAG, "saveAction: tag $itemListTag")
-
-        if (editMode) {
-            GestureActionDataManager.updateActionItem(
-                applicationContext, itemListTag, actionItem
-            )
-        } else {
-            Log.d(TAG, "saveAction: expectItemTag:$expectItemTag")
-            actionItem.tag = expectItemTag ?: buildTag()
-            GestureActionDataManager.addActionItem(
-                applicationContext, itemListTag, actionItem
-            )
+        savingAction = true
+        binding.fab.isEnabled = false
+        binding.fabPlaceholder.isEnabled = false
+        lifecycleScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    if (iconFileUtils.saveIcon()) savedItem.icon = iconFileUtils.imgPath
+                    if (!returnActionItemMode) {
+                        if (editMode) {
+                            GestureActionDataManager.updateActionItem(applicationContext, itemListTag, savedItem)
+                        } else {
+                            savedItem.tag = expectItemTag ?: buildTag()
+                            GestureActionDataManager.addActionItem(applicationContext, itemListTag, savedItem)
+                        }
+                    }
+                }
+                if (returnActionItemMode) {
+                    setResult(RESULT_OK, Intent().putExtra(EXTRA_ACTION_ITEM, savedItem.toJson(false)))
+                }
+                finish()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Unable to save action", e)
+                Toast.makeText(this@GestureAddActionActivity, R.string.gesture_add_action_save_failed, Toast.LENGTH_LONG).show()
+            } finally {
+                savingAction = false
+                binding.fab.isEnabled = true
+                binding.fabPlaceholder.isEnabled = true
+            }
         }
-
-        finish()
     }
 
     fun ActivityGestureAddActionConfigBinding.getActionLink(): GestureActionLink {
@@ -710,7 +762,7 @@ class GestureAddActionActivity : AppCompatActivity() {
 
     override fun finish() {
         super.finish()
-        if (selectTriggerActionMode || externalActionMode) return
+        if (selectTriggerActionMode || externalActionMode || returnActionItemMode) return
         if (sourceActionView == ActionView.ActionViewType.MAIN) {
             EventBusManager.produceActionViewEvent(
                 lifecycleScope, ActionViewEvent(
@@ -735,5 +787,7 @@ class GestureAddActionActivity : AppCompatActivity() {
         const val TAG = "GestureAddActionActivity"
         const val EXTRA_EXTERNAL_ACTION_MODE = "extra_external_action_mode"
         const val EXTRA_EXTERNAL_ACTION_LINK = "extra_external_action_link"
+        const val EXTRA_RETURN_ACTION_ITEM = "extra_return_action_item"
+        const val EXTRA_ACTION_ITEM = "item"
     }
 }
