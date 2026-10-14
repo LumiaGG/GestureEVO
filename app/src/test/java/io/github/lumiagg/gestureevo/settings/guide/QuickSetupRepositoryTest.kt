@@ -54,20 +54,14 @@ class QuickSetupRepositoryTest {
     }
 
     @Test
-    fun wheelsUseOneInwardQuadrantAboveAndBelowTheScreenCenter() {
+    fun wheelsUseAdaptiveQuadrantByDefault() {
         listOf(20, 49, 50, 80).forEach { verticalPercent ->
             val triggers = buildQuickSetupTriggers(
                 QuickSetupConfig.default().copy(side = QuickSetupSide.BOTH, verticalPercent = verticalPercent),
                 "Guide"
             )
-            val expectedQuadrants = if (verticalPercent < 50) listOf(3, 2) else listOf(0, 1)
-            triggers.zip(expectedQuadrants).forEach { (trigger, expectedQuadrant) ->
-                val quadrant = trigger.getQuadrant()
-                assertEquals(1, quadrant.count { it })
-                assertEquals(expectedQuadrant, quadrant.indexOf(true))
-                val state = ActionViewState().apply { setAngleByQuadrant(quadrant) }
-                assertEquals(90f, state.sweepAngle, 0f)
-                assertEquals(expectedQuadrant * 90f, state.startAngle, 0f)
+            triggers.forEach { trigger ->
+                assertEquals(0, trigger.quadrantValue)
             }
         }
     }

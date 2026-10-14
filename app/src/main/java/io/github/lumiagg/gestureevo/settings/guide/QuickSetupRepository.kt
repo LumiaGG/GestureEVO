@@ -56,7 +56,8 @@ object QuickSetupRepository {
             val wheelItems = buildQuickSetupWheelItems(config)
             val wheelJson = GestureActionItem.toJsonList(wheelItems)
             val configJson = config.toJson()
-            val wheelConfig = buildQuickSetupWheelConfig(config).toJson()
+            val baseConfig = GestureActionDataManager.readActionConfig(appContext, ActionConfig.DEFAULT_TAG, false)
+            val wheelConfig = buildQuickSetupWheelConfig(config, baseConfig).toJson()
             val triggerKey = stringPreferencesKey(KEY_FREE_TRIGGERS)
             val wheelTagsKey = stringPreferencesKey(GestureActionDataManager.KEY_ACTION_ITEMS_TAG_LIST)
 
@@ -133,10 +134,22 @@ internal suspend fun commitQuickSetup(
     coroutineContext.ensureActive()
 }
 
-internal fun buildQuickSetupWheelConfig(config: QuickSetupConfig): ActionConfig = ActionConfig().apply {
+internal fun buildQuickSetupWheelConfig(
+    config: QuickSetupConfig,
+    baseConfig: ActionConfig = ActionConfig()
+): ActionConfig = ActionConfig().apply {
     tag = QuickSetupRepository.WHEEL_TAG
-    actionOffsetX = config.wheelOffsetXDp.dp2px
-    initRadius = config.wheelRadiusDp.dp2px
+    itemDiameter = baseConfig.itemDiameter
+    initRadius = baseConfig.initRadius
+    itemWarpOffset = baseConfig.itemWarpOffset
+    iconPadding = baseConfig.iconPadding
+    iconCornerRadius = baseConfig.iconCornerRadius
+    iconImageRoundPercent = baseConfig.iconImageRoundPercent
+    transparentIconBackground = baseConfig.transparentIconBackground
+    actionOffsetX = baseConfig.actionOffsetX
+    actionOffsetY = baseConfig.actionOffsetY
+    rectangleLayoutEnabled = baseConfig.rectangleLayoutEnabled
+    rectangleColumns = baseConfig.rectangleColumns
 }
 
 internal fun buildQuickSetupWheelItems(config: QuickSetupConfig): List<GestureActionItem> =
@@ -200,13 +213,6 @@ internal fun buildQuickSetupTriggers(config: QuickSetupConfig, name: String): Li
             setState(FreeTriggerConfig.FLAG_PORTRAIT, true)
             setState(FreeTriggerConfig.FLAG_LANDSCAPE, true)
             setState(FreeTriggerConfig.FLAG_WHEEL_FOLLOW_TRIGGER_POINT, false)
-            val quadrant = when {
-                side == QuickSetupSide.LEFT && config.verticalPercent < 50 -> 3
-                side == QuickSetupSide.LEFT -> 0
-                config.verticalPercent < 50 -> 2
-                else -> 1
-            }
-            setQuadrant(List(4) { it == quadrant })
         }
     }
 }

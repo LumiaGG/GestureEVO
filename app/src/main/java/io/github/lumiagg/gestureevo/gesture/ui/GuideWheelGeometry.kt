@@ -51,6 +51,52 @@ internal fun quadrantForEdge(isLeft: Boolean, isUpper: Boolean): Int = when {
     else -> 1
 }
 
+internal data class WheelAdaptiveShape(
+    val startAngle: Float,
+    val sweepAngle: Float,
+    val isSemicircle: Boolean,
+    val isUpper: Boolean,
+    val quadrant: Int
+)
+
+internal fun resolveWheelAdaptiveShape(isLeft: Boolean, verticalPercent: Int): WheelAdaptiveShape {
+    return when {
+        verticalPercent < 25 -> {
+            val quadrant = if (isLeft) 3 else 2
+            val startAngle = if (isLeft) 270f else 180f
+            WheelAdaptiveShape(
+                startAngle = startAngle,
+                sweepAngle = 90f,
+                isSemicircle = false,
+                isUpper = true,
+                quadrant = quadrant
+            )
+        }
+        verticalPercent > 75 -> {
+            val quadrant = if (isLeft) 0 else 1
+            val startAngle = if (isLeft) 0f else 90f
+            WheelAdaptiveShape(
+                startAngle = startAngle,
+                sweepAngle = 90f,
+                isSemicircle = false,
+                isUpper = false,
+                quadrant = quadrant
+            )
+        }
+        else -> {
+            val startAngle = if (isLeft) 270f else 90f
+            val quadrant = if (isLeft) 3 else 1
+            WheelAdaptiveShape(
+                startAngle = startAngle,
+                sweepAngle = 180f,
+                isSemicircle = true,
+                isUpper = verticalPercent < 50,
+                quadrant = quadrant
+            )
+        }
+    }
+}
+
 internal data class WheelSlot(
     val index: Int,
     val x: Float,
@@ -101,8 +147,8 @@ internal fun distributeConcentricSlots(
     var remaining = itemCount
 
     if (includeCenterItem && remaining > 0) {
-        relativePositions.add(RingItem(-baseRadius / 2f, -baseRadius / 2f))
-        relativeSizes.add(baseRadius)
+        relativePositions.add(RingItem(-itemDiameter / 2f, -itemDiameter / 2f))
+        relativeSizes.add(itemDiameter)
         ringIndices.add(0)
         remaining--
     }
@@ -153,21 +199,19 @@ internal fun calculateFittedWheelLayout(
     height: Float,
     itemCount: Int,
     isLeft: Boolean,
-    isUpper: Boolean,
-    baseRadius: Float,
-    baseItemDiameter: Float,
-    baseItemWarpOffset: Float = 0f,
+    verticalPercent: Int = 50,
+    baseRadius: Float = 130f,
+    baseItemDiameter: Float = 55f,
+    baseItemWarpOffset: Float = 10f,
     margin: Float = 16f
 ): FittedWheelLayout {
-    val quadrant = quadrantForEdge(isLeft, isUpper)
+    val shape = resolveWheelAdaptiveShape(isLeft, verticalPercent)
     val mirror = isLeft
-    val startAngle = quadrant * 90f
-    val sweepAngle = 90f
 
     val distribution = distributeConcentricSlots(
         itemCount = itemCount,
-        startAngle = startAngle,
-        sweepAngle = sweepAngle,
+        startAngle = shape.startAngle,
+        sweepAngle = shape.sweepAngle,
         baseRadius = baseRadius,
         itemDiameter = baseItemDiameter,
         itemWarpOffset = baseItemWarpOffset,
@@ -178,12 +222,12 @@ internal fun calculateFittedWheelLayout(
     if (distribution.positions.isEmpty()) {
         return FittedWheelLayout(
             cx = if (isLeft) margin else width - margin,
-            cy = if (isUpper) margin else height - margin,
-            startAngle = startAngle,
-            sweepAngle = sweepAngle,
-            quadrant = quadrant,
+            cy = if (shape.isUpper) margin else height - margin,
+            startAngle = shape.startAngle,
+            sweepAngle = shape.sweepAngle,
+            quadrant = shape.quadrant,
             isLeft = isLeft,
-            isUpper = isUpper,
+            isUpper = shape.isUpper,
             slots = emptyList(),
             ringRadii = emptyList(),
             maxRadius = baseRadius,
@@ -209,7 +253,12 @@ internal fun calculateFittedWheelLayout(
         width - margin - scaledRight
     }
 
-    val cy = if (isUpper) {
+    val cy = if (shape.isSemicircle) {
+        val preferredY = height * (verticalPercent / 100f)
+        val minY = margin - scaledTop
+        val maxY = height - margin - scaledBottom
+        if (minY <= maxY) preferredY.coerceIn(minY, maxY) else height / 2f
+    } else if (shape.isUpper) {
         margin - scaledTop
     } else {
         height - margin - scaledBottom
@@ -237,11 +286,11 @@ internal fun calculateFittedWheelLayout(
     return FittedWheelLayout(
         cx = cx,
         cy = cy,
-        startAngle = startAngle,
-        sweepAngle = sweepAngle,
-        quadrant = quadrant,
+        startAngle = shape.startAngle,
+        sweepAngle = shape.sweepAngle,
+        quadrant = shape.quadrant,
         isLeft = isLeft,
-        isUpper = isUpper,
+        isUpper = shape.isUpper,
         slots = slots,
         ringRadii = scaledRadii,
         maxRadius = maxRadius,

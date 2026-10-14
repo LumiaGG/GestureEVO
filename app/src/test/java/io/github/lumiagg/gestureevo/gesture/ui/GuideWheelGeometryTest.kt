@@ -1,6 +1,7 @@
 package io.github.lumiagg.gestureevo.gesture.ui
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -67,9 +68,9 @@ class GuideWheelGeometryTest {
             itemDiameter = 40f
         )
         assertEquals(1, single.positions.size)
-        assertEquals(-50f, single.positions[0].x, 0.01f)
-        assertEquals(-50f, single.positions[0].y, 0.01f)
-        assertEquals(100f, single.sizes[0], 0.01f)
+        assertEquals(-20f, single.positions[0].x, 0.01f)
+        assertEquals(-20f, single.positions[0].y, 0.01f)
+        assertEquals(40f, single.sizes[0], 0.01f)
         assertEquals(listOf(0), single.ringIndices)
         assertTrue(single.ringRadii.isEmpty())
 
@@ -90,16 +91,56 @@ class GuideWheelGeometryTest {
     }
 
     @Test
+    fun resolveWheelAdaptiveShapeAdaptsToTriggerPosition() {
+        // Middle of screen -> 180° semicircle
+        val leftMid = resolveWheelAdaptiveShape(isLeft = true, verticalPercent = 50)
+        assertEquals(270f, leftMid.startAngle, 0.01f)
+        assertEquals(180f, leftMid.sweepAngle, 0.01f)
+        assertTrue(leftMid.isSemicircle)
+
+        val rightMid = resolveWheelAdaptiveShape(isLeft = false, verticalPercent = 50)
+        assertEquals(90f, rightMid.startAngle, 0.01f)
+        assertEquals(180f, rightMid.sweepAngle, 0.01f)
+        assertTrue(rightMid.isSemicircle)
+
+        // Top corner -> 90° quarter circle
+        val leftTop = resolveWheelAdaptiveShape(isLeft = true, verticalPercent = 15)
+        assertEquals(270f, leftTop.startAngle, 0.01f)
+        assertEquals(90f, leftTop.sweepAngle, 0.01f)
+        assertFalse(leftTop.isSemicircle)
+        assertTrue(leftTop.isUpper)
+
+        val rightTop = resolveWheelAdaptiveShape(isLeft = false, verticalPercent = 15)
+        assertEquals(180f, rightTop.startAngle, 0.01f)
+        assertEquals(90f, rightTop.sweepAngle, 0.01f)
+        assertFalse(rightTop.isSemicircle)
+        assertTrue(rightTop.isUpper)
+
+        // Bottom corner -> 90° quarter circle
+        val leftBottom = resolveWheelAdaptiveShape(isLeft = true, verticalPercent = 85)
+        assertEquals(0f, leftBottom.startAngle, 0.01f)
+        assertEquals(90f, leftBottom.sweepAngle, 0.01f)
+        assertFalse(leftBottom.isSemicircle)
+        assertFalse(leftBottom.isUpper)
+
+        val rightBottom = resolveWheelAdaptiveShape(isLeft = false, verticalPercent = 85)
+        assertEquals(90f, rightBottom.startAngle, 0.01f)
+        assertEquals(90f, rightBottom.sweepAngle, 0.01f)
+        assertFalse(rightBottom.isSemicircle)
+        assertFalse(rightBottom.isUpper)
+    }
+
+    @Test
     fun calculateFittedWheelLayoutFitsAnyContainerSizeAndEdge() {
         listOf(true, false).forEach { isLeft ->
-            listOf(true, false).forEach { isUpper ->
+            listOf(15, 50, 85).forEach { verticalPercent ->
                 listOf(1, 4, 8, 15, 25).forEach { count ->
                     val layout = calculateFittedWheelLayout(
                         width = 400f,
                         height = 300f,
                         itemCount = count,
                         isLeft = isLeft,
-                        isUpper = isUpper,
+                        verticalPercent = verticalPercent,
                         baseRadius = 80f,
                         baseItemDiameter = 40f,
                         baseItemWarpOffset = 5f,
@@ -121,7 +162,7 @@ class GuideWheelGeometryTest {
     private fun nativeWheel(
         radius: Float, itemDiameter: Float, itemWarpOffset: Float, itemCount: Int, quadrant: Int, mirror: Boolean
     ): GuideWheelBounds {
-        val positions = mutableListOf(RingItem(-radius / 2, -radius / 2))
+        val positions = mutableListOf(RingItem(-itemDiameter / 2, -itemDiameter / 2))
         var remaining = itemCount
         var ringRadius = radius
         var reverse = false
@@ -133,6 +174,6 @@ class GuideWheelGeometryTest {
             ringRadius += (itemDiameter * 1.3).toFloat()
             reverse = !reverse
         }
-        return guideWheelBounds(positions, listOf(radius.toInt()) + List(itemCount) { itemDiameter.toInt() })
+        return guideWheelBounds(positions, List(itemCount + 1) { itemDiameter.toInt() })
     }
 }

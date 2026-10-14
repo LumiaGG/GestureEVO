@@ -63,18 +63,10 @@ class GuideWheelSampleView @JvmOverloads constructor(
         strokeWidth = 1f.dp2px
     }
 
-    private val guideArcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = 1.5f.dp2px
-        pathEffect = DashPathEffect(floatArrayOf(5f.dp2px, 5f.dp2px), 0f)
-    }
-
     private val triggerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
 
-    private val fanPath = Path()
-    private val fanRect = RectF()
     private val cardRect = RectF()
 
     private val sideToggleChip: TextView
@@ -206,10 +198,10 @@ class GuideWheelSampleView @JvmOverloads constructor(
             height = h,
             itemCount = totalItems,
             isLeft = isEffectiveLeft(),
-            isUpper = config.verticalPercent < 50,
-            baseRadius = 78f.dp2px,
-            baseItemDiameter = 38f.dp2px,
-            baseItemWarpOffset = 5f.dp2px,
+            verticalPercent = config.verticalPercent,
+            baseRadius = 130f.dp2px,
+            baseItemDiameter = 55f.dp2px,
+            baseItemWarpOffset = 10f.dp2px,
             margin = 16f.dp2px
         )
     }
@@ -229,14 +221,14 @@ class GuideWheelSampleView @JvmOverloads constructor(
         // 1. Build action item views (Center item + Ring items)
         config.wheelItems.forEachIndexed { index, action ->
             val isCenter = (index == 0)
-            val size = if (index < layout.slots.size) layout.slots[index].size else 38f.dp2px
+            val size = if (index < layout.slots.size) layout.slots[index].size else 55f.dp2px
             val itemView = createActionItemView(index, action, isCenter, size)
             actionViews.add(itemView)
             addView(itemView)
         }
 
         // 2. Build Add item ("+") at the end of the outer ring
-        val addSize = layout.slots.lastOrNull()?.size ?: 38f.dp2px
+        val addSize = layout.slots.lastOrNull()?.size ?: 55f.dp2px
         val addBtn = createAddButtonView(addSize)
         addView = addBtn
         addView(addBtn)
@@ -247,12 +239,14 @@ class GuideWheelSampleView @JvmOverloads constructor(
 
     private fun createActionItemView(index: Int, action: QuickAction, isCenterItem: Boolean, size: Float): View {
         val sizeInt = size.toInt().coerceAtLeast(1)
+        val pad = (size * 0.2f).toInt().coerceAtLeast(4f.dp2px.toInt())
+        val corner = size * 0.45f // Real wheel default iconCornerRadius ratio (25dp / 55dp ≈ 0.45f)
         return ImageView(context).apply {
             layoutParams = LayoutParams(sizeInt, sizeInt)
-            val pad = (size * 0.22f).toInt().coerceAtLeast(4f.dp2px.toInt())
             setPadding(pad, pad, pad, pad)
             background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = corner
                 setColor(
                     if (isCenterItem) DynamicColorUtils.primaryFixedColor
                     else DynamicColorUtils.secondaryContainerColor
@@ -272,12 +266,14 @@ class GuideWheelSampleView @JvmOverloads constructor(
 
     private fun createAddButtonView(size: Float): View {
         val sizeInt = size.toInt().coerceAtLeast(1)
+        val pad = (size * 0.2f).toInt().coerceAtLeast(4f.dp2px.toInt())
+        val corner = size * 0.45f
         return ImageView(context).apply {
             layoutParams = LayoutParams(sizeInt, sizeInt)
-            val pad = (size * 0.22f).toInt().coerceAtLeast(4f.dp2px.toInt())
             setPadding(pad, pad, pad, pad)
             background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = corner
                 setColor(DynamicColorUtils.surfaceContainerHighColor)
                 setStroke(1f.dp2px.toInt().coerceAtLeast(1), ColorUtils.setAlphaComponent(DynamicColorUtils.primaryColor, 120))
             }
@@ -565,49 +561,16 @@ class GuideWheelSampleView @JvmOverloads constructor(
         canvas.drawRoundRect(cardRect, corner, corner, borderPaint)
 
         val layout = currentLayout ?: calculateWheelLayout(w, h, allDisplayViews().size)
-        val cx = layout.cx
         val cy = layout.cy
-        val startAngle = layout.startAngle
-        val sweepAngle = layout.sweepAngle
 
-        // 2. Draw fan sector radial gradient background
-        val fanRadius = layout.maxRadius.coerceAtLeast(100f.dp2px)
-        fanRect.set(cx - fanRadius, cy - fanRadius, cx + fanRadius, cy + fanRadius)
-        fanPath.reset()
-        fanPath.moveTo(cx, cy)
-        fanPath.arcTo(fanRect, startAngle, sweepAngle)
-        fanPath.close()
-
-        val primaryColor = DynamicColorUtils.primaryColor
-        val fanGradient = RadialGradient(
-            cx, cy, fanRadius,
-            intArrayOf(
-                ColorUtils.setAlphaComponent(primaryColor, 45),
-                ColorUtils.setAlphaComponent(primaryColor, 15),
-                Color.TRANSPARENT
-            ),
-            floatArrayOf(0f, 0.7f, 1f),
-            Shader.TileMode.CLAMP
-        )
-        bgPaint.shader = fanGradient
-        canvas.drawPath(fanPath, bgPaint)
-        bgPaint.shader = null
-
-        // 3. Draw guideline dashed arcs for EACH ring
-        guideArcPaint.color = ColorUtils.setAlphaComponent(primaryColor, 55)
-        layout.ringRadii.forEach { radius ->
-            val arcRect = RectF(cx - radius, cy - radius, cx + radius, cy + radius)
-            canvas.drawArc(arcRect, startAngle, sweepAngle, false, guideArcPaint)
-        }
-
-        // 4. Draw trigger edge indicator pill at the edge
+        // 2. Draw trigger edge indicator pill at the edge
         val triggerWidth = 5f.dp2px
         val triggerHeight = 44f.dp2px
         val triggerLeft = if (layout.isLeft) 4f.dp2px else w - 4f.dp2px - triggerWidth
         val triggerTop = (cy - triggerHeight / 2f).coerceIn(4f.dp2px, h - triggerHeight - 4f.dp2px)
         val triggerRect = RectF(triggerLeft, triggerTop, triggerLeft + triggerWidth, triggerTop + triggerHeight)
 
-        triggerPaint.color = primaryColor
+        triggerPaint.color = DynamicColorUtils.primaryColor
         canvas.drawRoundRect(triggerRect, triggerWidth / 2f, triggerWidth / 2f, triggerPaint)
     }
 }
