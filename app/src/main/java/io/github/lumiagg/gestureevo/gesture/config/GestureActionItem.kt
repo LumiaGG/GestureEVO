@@ -25,7 +25,7 @@ class GestureActionItem {
             field = value
             // Update cached URI and metadata
             if (value != null) {
-                firstStageUri = value.toUri()
+                firstStageUri = runCatching { value.toUri() }.getOrNull()
                 firstStageAction = firstStageUri?.toGestureActionType() ?: GestureActionType.NONE
                 firstStagePkg = firstStageUri?.getQueryParameter("pkg")
             } else {
@@ -39,7 +39,7 @@ class GestureActionItem {
             field = value
             // Update cached URI and metadata
             if (value != null) {
-                secondStageUri = value.toUri()
+                secondStageUri = runCatching { value.toUri() }.getOrNull()
                 secondStageAction = secondStageUri?.toGestureActionType() ?: GestureActionType.NONE
                 secondStagePkg = secondStageUri?.getQueryParameter("pkg")
             } else {

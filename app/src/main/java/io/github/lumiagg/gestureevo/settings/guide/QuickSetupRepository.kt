@@ -3,6 +3,7 @@ package io.github.lumiagg.gestureevo.settings.guide
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.os.Build
+import androidx.core.net.toUri
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import io.github.lumiagg.gestureevo.R
@@ -21,8 +22,8 @@ import io.github.lumiagg.gestureevo.gesture.ui.GestureTypeEvent
 import io.github.lumiagg.gestureevo.utils.actionStore
 import io.github.lumiagg.gestureevo.utils.gestureStore
 import io.github.lumiagg.gestureevo.utils.readKey
+import io.github.lumiagg.gestureevo.utils.toGestureActionType
 import io.github.lumiagg.gestureevo.utils.uriBuilder
-import io.github.lumiagg.gestureevo.utils.dp2px
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
@@ -32,70 +33,158 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 
 object QuickSetupRepository {
+    internal const val PREVIEW_LEFT_TRIGGER_TAG = "guide_preview_trigger_left"
+    internal const val PREVIEW_RIGHT_TRIGGER_TAG = "guide_preview_trigger_right"
     internal const val LEFT_TRIGGER_TAG = "settings_guide_trigger_left"
     internal const val RIGHT_TRIGGER_TAG = "settings_guide_trigger_right"
-    internal const val WHEEL_TAG = "settings_guide_wheel"
+    internal const val LEGACY_WHEEL_TAG = "settings_guide_wheel"
+    internal const val WHEEL_TAG = ActionConfig.DEFAULT_TAG
     private const val KEY_CONFIG = "settings_guide_quick_config"
     private const val KEY_FREE_TRIGGERS = "key_free_triggers"
     private val applyMutex = Mutex()
 
     suspend fun load(context: Context): QuickSetupConfig? = withContext(Dispatchers.IO) {
-        QuickSetupConfig.fromJson(context.applicationContext.gestureStore.readKey(KEY_CONFIG, ""))
+        val appContext = context.applicationContext
+        val saved = QuickSetupConfig.fromJson(appContext.gestureStore.readKey(KEY_CONFIG, ""))
+        if (saved != null) return@withContext saved
+
+        try {
+            loadFromDefault(appContext)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun loadFromDefault(context: Context): QuickSetupConfig? {
+        val triggers = FreeTriggerConfig.toModelList(context.gestureStore.readKey(KEY_FREE_TRIGGERS, "")).orEmpty()
+        val defaultTriggerName = context.getString(R.string.default_trigger_name)
+        val defaultTrigger = triggers.find { it.name == defaultTriggerName } ?: triggers.firstOrNull() ?: return null
+
+        val side = when {
+            defaultTrigger.getState(FreeTriggerConfig.FLAG_MIRROR) -> QuickSetupSide.BOTH
+            defaultTrigger.xRelativeValue == 0f -> QuickSetupSide.LEFT
+            else -> QuickSetupSide.RIGHT
+        }
+        val verticalPercent = (defaultTrigger.yRelativeValue * 100).toInt().coerceIn(10, 90)
+        val triggerHeightDp = defaultTrigger.height.coerceIn(40, 200)
+
+        // Read default wheel items
+        val wheelItemsJson = context.actionStore.readKey(ActionConfig.DEFAULT_TAG, "")
+        val rawWheelItems = GestureActionItem.toModelList(wheelItemsJson).orEmpty()
+        val parsedWheelItems = rawWheelItems.map(::parseQuickAction).filter {
+            it.type != QuickActionType.NONE && it.type != QuickActionType.WHEEL
+        }
+        val wheelItems = if (parsedWheelItems.size >= 2) parsedWheelItems else QuickSetupConfig.default().wheelItems
+
+        // Read trigger gestures
+        val triggerActionsJson = context.actionStore.readKey(defaultTrigger.tag, "")
+        val triggerActions = GestureActionItem.toModelList(triggerActionsJson).orEmpty()
+        val gestureMap = mutableMapOf<QuickGesture, QuickAction>()
+        QuickGesture.entries.forEach { gesture ->
+            val gestureType = quickGestureType(gesture, side)
+            val actionKey = GestureTypeEvent(gestureType, GesturePhase.TD).toActionKey()
+            val item = triggerActions.find { it.tag == actionKey }
+            val quickAction = item?.let(::parseQuickAction)
+            if (quickAction != null && quickAction.type != QuickActionType.NONE) {
+                gestureMap[gesture] = quickAction
+            }
+        }
+        val gestures = if (gestureMap.keys == QuickGesture.entries.toSet() && gestureMap.values.any { it.type == QuickActionType.WHEEL }) {
+            gestureMap
+        } else {
+            QuickSetupConfig.default().gestures
+        }
+
+        return QuickSetupConfig(
+            side = side,
+            verticalPercent = verticalPercent,
+            triggerHeightDp = triggerHeightDp,
+            gestures = gestures,
+            wheelItems = wheelItems
+        )
     }
 
     suspend fun apply(context: Context, config: QuickSetupConfig) = withContext(Dispatchers.IO) {
         applyMutex.withLock {
             config.validate(Build.VERSION.SDK_INT)
             val appContext = context.applicationContext
-            val name = appContext.getString(R.string.guide_title)
-            val triggers = buildQuickSetupTriggers(config, name)
-            val triggerActions = triggers.associate { trigger ->
-                val side = if (trigger.tag == LEFT_TRIGGER_TAG) QuickSetupSide.LEFT else QuickSetupSide.RIGHT
-                trigger.tag to GestureActionItem.toJsonList(buildTriggerActions(config, side))
+            val defaultTriggerName = appContext.getString(R.string.default_trigger_name)
+
+            val existingTriggers = readTriggers(appContext.gestureStore.readKey(KEY_FREE_TRIGGERS, ""))
+            val defaultTrigger = resolveDefaultTrigger(existingTriggers, defaultTriggerName) {
+                FreeTriggerDataManager.createDefaultTrigger(appContext)
             }
+            applyDefaultTriggerConfig(defaultTrigger, config, defaultTriggerName)
+            val finalTriggers = mergeQuickSetupTriggers(existingTriggers, defaultTrigger)
+
+            val triggerActions = buildTriggerActions(config, config.side)
+            val triggerActionsJson = GestureActionItem.toJsonList(triggerActions)
+
             val wheelItems = buildQuickSetupWheelItems(config)
             val wheelJson = GestureActionItem.toJsonList(wheelItems)
             val configJson = config.toJson()
             val baseConfig = GestureActionDataManager.readActionConfig(appContext, ActionConfig.DEFAULT_TAG, false)
             val wheelConfig = buildQuickSetupWheelConfig(config, baseConfig).toJson()
+
             val triggerKey = stringPreferencesKey(KEY_FREE_TRIGGERS)
             val wheelTagsKey = stringPreferencesKey(GestureActionDataManager.KEY_ACTION_ITEMS_TAG_LIST)
 
             // Resolve existing data before writing, so malformed user configuration is never replaced.
-            readTriggers(appContext.gestureStore.readKey(KEY_FREE_TRIGGERS, ""))
             readWheelTags(appContext.actionStore.readKey(GestureActionDataManager.KEY_ACTION_ITEMS_TAG_LIST, ""))
 
-            // Finish the writes and runtime refresh if the practice screen is recreated mid-save.
             commitQuickSetup(writeConfiguration = {
                 appContext.actionStore.edit { preferences ->
                     val tags = readWheelTags(preferences[wheelTagsKey].orEmpty())
-                    preferences[wheelTagsKey] = ActionItemsTag.toJsonList(mergeQuickSetupWheelTags(tags, name))
-                    preferences[stringPreferencesKey(WHEEL_TAG)] = wheelJson
-                    preferences[stringPreferencesKey("${GestureActionDataManager.KEY_ACTION_CONFIG_PREFIX}$WHEEL_TAG")] = wheelConfig
-                    triggerActions.forEach { (tag, json) ->
-                        preferences[stringPreferencesKey(tag)] = json
-                    }
+                    preferences[wheelTagsKey] = ActionItemsTag.toJsonList(mergeQuickSetupWheelTags(tags))
+
+                    // Apply directly to default wheel
+                    preferences[stringPreferencesKey(ActionConfig.DEFAULT_TAG)] = wheelJson
+                    preferences[stringPreferencesKey("${GestureActionDataManager.KEY_ACTION_CONFIG_PREFIX}${ActionConfig.DEFAULT_TAG}")] = wheelConfig
+
+                    // Apply directly to default trigger
+                    preferences[stringPreferencesKey(defaultTrigger.tag)] = triggerActionsJson
+
+                    // Clean up legacy guide triggers & wheel if present
+                    preferences.remove(stringPreferencesKey(LEGACY_WHEEL_TAG))
+                    preferences.remove(stringPreferencesKey("${GestureActionDataManager.KEY_ACTION_CONFIG_PREFIX}$LEGACY_WHEEL_TAG"))
+                    preferences.remove(stringPreferencesKey(LEFT_TRIGGER_TAG))
+                    preferences.remove(stringPreferencesKey(RIGHT_TRIGGER_TAG))
                 }
 
-                // Publish enabled triggers only after their actions and wheel are available.
                 appContext.gestureStore.edit { preferences ->
-                    val existing = readTriggers(preferences[triggerKey].orEmpty())
-                    preferences[triggerKey] = FreeTriggerConfig.toJsonList(mergeQuickSetupTriggers(existing, triggers))
+                    preferences[triggerKey] = FreeTriggerConfig.toJsonList(finalTriggers)
                     preferences[stringPreferencesKey(KEY_CONFIG)] = configJson
                 }
                 FreeTriggerDataManager.invalidateCache()
             }, publishConfiguration = {
-                produceFreeTriggerEvent(FreeTriggerEvent(isConfig = false, reloadWheelTag = WHEEL_TAG))
+                produceFreeTriggerEvent(FreeTriggerEvent(isConfig = false, reloadWheelTag = ActionConfig.DEFAULT_TAG))
             })
         }
     }
 
-    private fun buildTriggerActions(config: QuickSetupConfig, side: QuickSetupSide): List<GestureActionItem> {
-        val selected = config.gestures.mapKeys { (gesture, _) -> quickGestureType(gesture, side) }
-        // Missing actions otherwise fall back to the shared default wheel at runtime.
+    internal fun buildTriggerActions(config: QuickSetupConfig, side: QuickSetupSide): List<GestureActionItem> {
+        val actionMap = mutableMapOf<GestureType, QuickAction>()
+        config.gestures.forEach { (gesture, action) ->
+            when (gesture) {
+                QuickGesture.TAP -> actionMap[GestureType.SINGLE_CLICK] = action
+                QuickGesture.LONG_PRESS -> actionMap[GestureType.LONG_PRESS] = action
+                QuickGesture.SWIPE_UP -> actionMap[GestureType.SWIPE_UP] = action
+                QuickGesture.SWIPE_DOWN -> actionMap[GestureType.SWIPE_DOWN] = action
+                QuickGesture.SWIPE_IN -> {
+                    when (side) {
+                        QuickSetupSide.LEFT -> actionMap[GestureType.SWIPE_RIGHT] = action
+                        QuickSetupSide.RIGHT -> actionMap[GestureType.SWIPE_LEFT] = action
+                        QuickSetupSide.BOTH -> {
+                            actionMap[GestureType.SWIPE_RIGHT] = action
+                            actionMap[GestureType.SWIPE_LEFT] = action
+                        }
+                    }
+                }
+            }
+        }
         return GestureType.entries.filter { it != GestureType.TOUCH }.flatMap { type ->
             GesturePhase.entries.map { phase ->
-                val action = if (phase == GesturePhase.TD) selected[type] else null
+                val action = if (phase == GesturePhase.TD) actionMap[type] else null
                 buildActionItem(
                     action ?: QuickAction(QuickActionType.NONE),
                     GestureTypeEvent(type, phase).toActionKey()
@@ -109,9 +198,7 @@ object QuickSetupRepository {
         return GestureActionItem().apply {
             tag = itemTag
             name = action.appName
-            firstStageLink = uriBuilder(spec.type).apply {
-                spec.parameters.forEach { (key, value) -> appendQueryParameter(key, value) }
-            }.build().toString()
+            firstStageLink = buildActionUriString(spec.type, spec.parameters)
         }
     }
 
@@ -203,7 +290,7 @@ internal fun buildQuickSetupTriggers(config: QuickSetupConfig, name: String): Li
     }
     return sides.map { side ->
         FreeTriggerConfig().apply {
-            tag = if (side == QuickSetupSide.LEFT) QuickSetupRepository.LEFT_TRIGGER_TAG else QuickSetupRepository.RIGHT_TRIGGER_TAG
+            tag = if (side == QuickSetupSide.LEFT) QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG else QuickSetupRepository.PREVIEW_RIGHT_TRIGGER_TAG
             this.name = name
             enable = true
             width = 18
@@ -217,15 +304,136 @@ internal fun buildQuickSetupTriggers(config: QuickSetupConfig, name: String): Li
     }
 }
 
+internal fun buildActionUriString(type: GestureActionType, parameters: Map<String, String>): String {
+    if (parameters.isEmpty()) {
+        return "gesture-evo://action/${type.name}"
+    }
+    val query = parameters.entries.joinToString("&") { (k, v) ->
+        "${java.net.URLEncoder.encode(k, "UTF-8")}=${java.net.URLEncoder.encode(v, "UTF-8")}"
+    }
+    return "gesture-evo://action/${type.name}?$query"
+}
+
+internal fun parseActionLink(link: String): Pair<GestureActionType, Map<String, String>> {
+    if (link.isBlank()) return GestureActionType.NONE to emptyMap()
+    val pathAndQuery = link.substringAfter("gesture-evo://action/", "")
+    val typeName = pathAndQuery.substringBefore("?")
+    val type = GestureActionType.valueOfSafe(typeName)
+    val query = if (pathAndQuery.contains("?")) pathAndQuery.substringAfter("?") else ""
+    val params = if (query.isNotBlank()) {
+        query.split("&").associate { param ->
+            val parts = param.split("=", limit = 2)
+            val key = java.net.URLDecoder.decode(parts[0], "UTF-8")
+            val value = if (parts.size > 1) java.net.URLDecoder.decode(parts[1], "UTF-8") else ""
+            key to value
+        }
+    } else {
+        emptyMap()
+    }
+    return type to params
+}
+
+internal fun parseQuickAction(item: GestureActionItem): QuickAction {
+    val (actionType, params) = parseActionLink(item.firstStageLink.orEmpty())
+    return when (actionType) {
+        GestureActionType.NONE -> QuickAction(QuickActionType.NONE)
+        GestureActionType.SHOW_ACTION_VIEW -> QuickAction(QuickActionType.WHEEL)
+        GestureActionType.ACC_ACTION -> {
+            when (params["accAction"]?.toIntOrNull()) {
+                AccessibilityService.GLOBAL_ACTION_BACK -> QuickAction(QuickActionType.BACK)
+                AccessibilityService.GLOBAL_ACTION_HOME -> QuickAction(QuickActionType.HOME)
+                AccessibilityService.GLOBAL_ACTION_RECENTS -> QuickAction(QuickActionType.RECENTS)
+                AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS -> QuickAction(QuickActionType.NOTIFICATIONS)
+                AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS -> QuickAction(QuickActionType.QUICK_SETTINGS)
+                AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT -> QuickAction(QuickActionType.SCREENSHOT)
+                else -> QuickAction(QuickActionType.NONE)
+            }
+        }
+        GestureActionType.SEARCH -> QuickAction(QuickActionType.SEARCH)
+        GestureActionType.SCREEN_CONTENT -> QuickAction(QuickActionType.SCREEN_CONTENT)
+        GestureActionType.SCREEN_SEARCH -> QuickAction(QuickActionType.SCREEN_SEARCH)
+        GestureActionType.PIN_POOL -> QuickAction(QuickActionType.PIN_POOL)
+        GestureActionType.OPEN_APP -> {
+            val pkg = params["pkg"] ?: item.firstStagePkg
+            if (pkg.isNullOrBlank()) {
+                QuickAction(QuickActionType.NONE)
+            } else {
+                val userId = params["userId"]?.toIntOrNull() ?: 0
+                QuickAction(
+                    type = QuickActionType.OPEN_APP,
+                    packageName = pkg,
+                    appName = item.name,
+                    userId = userId
+                )
+            }
+        }
+        else -> QuickAction(QuickActionType.NONE)
+    }
+}
+
+internal fun resolveDefaultTrigger(
+    existing: List<FreeTriggerConfig>,
+    defaultTriggerName: String,
+    createFallback: () -> FreeTriggerConfig
+): FreeTriggerConfig {
+    val clean = existing.filterNot {
+        it.tag == QuickSetupRepository.LEFT_TRIGGER_TAG ||
+            it.tag == QuickSetupRepository.RIGHT_TRIGGER_TAG ||
+            it.tag == QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG ||
+            it.tag == QuickSetupRepository.PREVIEW_RIGHT_TRIGGER_TAG
+    }
+    return clean.find { it.name == defaultTriggerName }
+        ?: clean.firstOrNull()
+        ?: createFallback()
+}
+
+internal fun applyDefaultTriggerConfig(
+    trigger: FreeTriggerConfig,
+    config: QuickSetupConfig,
+    defaultTriggerName: String
+): FreeTriggerConfig = trigger.apply {
+    name = defaultTriggerName
+    enable = true
+    height = config.triggerHeightDp
+    yRelativeValue = config.verticalPercent / 100f
+    when (config.side) {
+        QuickSetupSide.LEFT -> {
+            xRelativeValue = 0f
+            setState(FreeTriggerConfig.FLAG_MIRROR, false)
+        }
+        QuickSetupSide.RIGHT -> {
+            xRelativeValue = 1f
+            setState(FreeTriggerConfig.FLAG_MIRROR, false)
+        }
+        QuickSetupSide.BOTH -> {
+            xRelativeValue = 0f
+            setState(FreeTriggerConfig.FLAG_MIRROR, true)
+        }
+    }
+    setState(FreeTriggerConfig.FLAG_PORTRAIT, true)
+    setState(FreeTriggerConfig.FLAG_LANDSCAPE, true)
+    setState(FreeTriggerConfig.FLAG_WHEEL_FOLLOW_TRIGGER_POINT, false)
+}
+
 internal fun mergeQuickSetupTriggers(
     existing: List<FreeTriggerConfig>,
-    replacements: List<FreeTriggerConfig>
-): List<FreeTriggerConfig> = existing.filterNot {
-    it.tag == QuickSetupRepository.LEFT_TRIGGER_TAG || it.tag == QuickSetupRepository.RIGHT_TRIGGER_TAG
-} + replacements
+    defaultTrigger: FreeTriggerConfig
+): List<FreeTriggerConfig> {
+    val clean = existing.filterNot {
+        it.tag == QuickSetupRepository.LEFT_TRIGGER_TAG ||
+            it.tag == QuickSetupRepository.RIGHT_TRIGGER_TAG ||
+            it.tag == QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG ||
+            it.tag == QuickSetupRepository.PREVIEW_RIGHT_TRIGGER_TAG
+    }
+    val index = clean.indexOfFirst { it.tag == defaultTrigger.tag }
+    return if (index >= 0) {
+        clean.toMutableList().apply { set(index, defaultTrigger) }
+    } else {
+        listOf(defaultTrigger) + clean
+    }
+}
 
-internal fun mergeQuickSetupWheelTags(existing: List<ActionItemsTag>, name: String): List<ActionItemsTag> =
-    existing.filterNot { it.tag == QuickSetupRepository.WHEEL_TAG } + ActionItemsTag().apply {
-        tag = QuickSetupRepository.WHEEL_TAG
-        this.name = name
+internal fun mergeQuickSetupWheelTags(existing: List<ActionItemsTag>): List<ActionItemsTag> =
+    existing.filterNot {
+        it.tag == QuickSetupRepository.LEGACY_WHEEL_TAG || it.tag == ActionConfig.DEFAULT_TAG
     }

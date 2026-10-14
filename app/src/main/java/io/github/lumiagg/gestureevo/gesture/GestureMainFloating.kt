@@ -483,6 +483,7 @@ class GestureMainFloating(private val context: GestureService) :
                 if (trigger.quadrantValue == 0) relayoutActionViewQuadrant(x, y)
                 else relayoutActionViewQuadrantByTrigger(trigger, x, y)
                 actionView.relayoutSelectedIcon(enable = false)
+                actionView.fitGuideWheelToScreen(guideWheelScreenBounds(actionView.width, actionView.height))
                 actionView.layoutGuidePreview()
                 onLayout?.invoke()
             }
@@ -823,7 +824,9 @@ class GestureMainFloating(private val context: GestureService) :
     ) {
         actionView.restoreGuideWheelScreenFit()
         actionView.state.mirror = downX <= viewWidth / 2
-        val guideTrigger = triggerConfig.tag == QuickSetupRepository.LEFT_TRIGGER_TAG ||
+        val guideTrigger = triggerConfig.tag == QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG ||
+            triggerConfig.tag == QuickSetupRepository.PREVIEW_RIGHT_TRIGGER_TAG ||
+            triggerConfig.tag == QuickSetupRepository.LEFT_TRIGGER_TAG ||
             triggerConfig.tag == QuickSetupRepository.RIGHT_TRIGGER_TAG
         if (guideTrigger) {
             val halfCenter = actionView.config.initRadius / 2

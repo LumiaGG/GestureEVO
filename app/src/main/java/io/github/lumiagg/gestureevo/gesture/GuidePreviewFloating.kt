@@ -50,7 +50,7 @@ class GuidePreviewFloating(private val context: GestureService) :
         ) {
             val current = request ?: return
             if (GuidePreviewSession.current.value != current) return
-            val side = if (triggerView.triggerConfig.tag == QuickSetupRepository.LEFT_TRIGGER_TAG) {
+            val side = if (triggerView.triggerConfig.tag == QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG) {
                 QuickSetupSide.LEFT
             } else {
                 QuickSetupSide.RIGHT
@@ -88,8 +88,8 @@ class GuidePreviewFloating(private val context: GestureService) :
         this.request = request
         val triggers = buildQuickSetupTriggers(request.config, context.getString(R.string.guide_title))
         val expectedTags = triggers.map { it.tag }.toSet()
-        val wheelTag = if (wheelSide == QuickSetupSide.LEFT) QuickSetupRepository.LEFT_TRIGGER_TAG
-            else QuickSetupRepository.RIGHT_TRIGGER_TAG
+        val wheelTag = if (wheelSide == QuickSetupSide.LEFT) QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG
+            else QuickSetupRepository.PREVIEW_RIGHT_TRIGGER_TAG
         val expectedWheels = if (request.showsWheel) setOf(wheelTag) else emptySet()
         (wheels.keys - expectedWheels).toList().forEach { tag ->
             removeWheelTouchViews(tag)
