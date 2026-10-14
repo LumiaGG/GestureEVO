@@ -280,8 +280,8 @@ class MainActionView : ActionView {
         ringsFlatten.clear()
         ringsFlatten.add(
             RingItem(
-                state.centerX - config.itemDiameter / 2,
-                state.centerY - config.itemDiameter / 2
+                state.centerX - (if (config.rectangleLayoutEnabled) config.itemDiameter else config.initRadius) / 2,
+                state.centerY - (if (config.rectangleLayoutEnabled) config.itemDiameter else config.initRadius) / 2
             )
         )
 
@@ -381,7 +381,12 @@ class MainActionView : ActionView {
             if (hideCenterItem) INVISIBLE else VISIBLE
         modelList.forEachIndexed { index, it ->
             if (index == 0) {
-                dragItemAction.updateItemSize(it, config.itemDiameter, showAnim = false)
+                val targetSize = if (config.rectangleLayoutEnabled) {
+                    config.itemDiameter
+                } else {
+                    config.initRadius
+                }
+                dragItemAction.updateItemSize(it, targetSize, showAnim = false)
             }
 
             it.view.setIsSelected(false)
@@ -797,8 +802,8 @@ class MainActionView : ActionView {
                 !draggedCenterItemChangedSize
             ) {
                 draggedCenterItemChangedSize = true
-                draggedModelItem?.view?.let { it.translationX += config.itemDiameter / 2 }
-                draggedModelItem?.view?.let { it.translationY += config.itemDiameter / 2 }
+                draggedModelItem?.view?.let { it.translationX += config.initRadius / 2 }
+                draggedModelItem?.view?.let { it.translationY += config.initRadius / 2 }
             }
             dragOutItem(draggedModelItem)
             updateRingItemsSize()
@@ -819,8 +824,8 @@ class MainActionView : ActionView {
                 y = y,
                 positions = ringsFlatten,
                 maxInsertIndex = maxInsertIndex
-            ) { _ ->
-                config.itemDiameter
+            ) { index ->
+                if (!config.rectangleLayoutEnabled && index == 0) config.initRadius else config.itemDiameter
             }
         }
 
@@ -859,8 +864,15 @@ class MainActionView : ActionView {
             if (draggedModelItem != null) {
                 updateItemSize(draggedModelItem!!, config.itemDiameter, showAnim)
             }
-            for ((_, modelItem) in modelList.withIndex()) {
-                updateItemSize(modelItem, config.itemDiameter, showAnim)
+            for ((index, modelItem) in modelList.withIndex()) {
+                val newSize = if (config.rectangleLayoutEnabled) {
+                    config.itemDiameter
+                } else if (index == 0) {
+                    config.initRadius
+                } else {
+                    config.itemDiameter
+                }
+                updateItemSize(modelItem, newSize, showAnim)
             }
         }
 

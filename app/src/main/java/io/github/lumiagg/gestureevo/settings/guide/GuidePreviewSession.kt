@@ -1,5 +1,6 @@
 package io.github.lumiagg.gestureevo.settings.guide
 
+import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -18,6 +19,7 @@ data class GuidePreviewRequest(
     val wheelSelection: Boolean = false,
     val wheelMode: GuideWheelMode = GuideWheelMode.HIDDEN,
     val wheelInputEnabled: Boolean = true,
+    val actionConfig: ActionConfig? = null,
 ) {
     val showsWheel: Boolean get() = wheelInputEnabled && (wheelSelection || wheelMode != GuideWheelMode.HIDDEN)
 }
@@ -54,8 +56,11 @@ object GuidePreviewSession {
         wheelSelection: Boolean = false,
         wheelMode: GuideWheelMode = GuideWheelMode.HIDDEN,
         wheelInputEnabled: Boolean = true,
+        actionConfig: ActionConfig? = null,
     ) {
-        mutableCurrent.value = GuidePreviewRequest(owner, config, practice, practiceId, wheelSelection, wheelMode, wheelInputEnabled)
+        mutableCurrent.value = GuidePreviewRequest(
+            owner, config, practice, practiceId, wheelSelection, wheelMode, wheelInputEnabled, actionConfig
+        )
     }
 
     fun clear(owner: String) {

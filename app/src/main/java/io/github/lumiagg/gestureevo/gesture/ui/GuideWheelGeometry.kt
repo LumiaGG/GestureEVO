@@ -147,8 +147,8 @@ internal fun distributeConcentricSlots(
     var remaining = itemCount
 
     if (includeCenterItem && remaining > 0) {
-        relativePositions.add(RingItem(-itemDiameter / 2f, -itemDiameter / 2f))
-        relativeSizes.add(itemDiameter)
+        relativePositions.add(RingItem(-baseRadius / 2f, -baseRadius / 2f))
+        relativeSizes.add(baseRadius)
         ringIndices.add(0)
         remaining--
     }

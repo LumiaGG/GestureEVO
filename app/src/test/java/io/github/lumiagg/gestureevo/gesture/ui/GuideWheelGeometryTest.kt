@@ -68,9 +68,9 @@ class GuideWheelGeometryTest {
             itemDiameter = 40f
         )
         assertEquals(1, single.positions.size)
-        assertEquals(-20f, single.positions[0].x, 0.01f)
-        assertEquals(-20f, single.positions[0].y, 0.01f)
-        assertEquals(40f, single.sizes[0], 0.01f)
+        assertEquals(-50f, single.positions[0].x, 0.01f)
+        assertEquals(-50f, single.positions[0].y, 0.01f)
+        assertEquals(100f, single.sizes[0], 0.01f)
         assertEquals(listOf(0), single.ringIndices)
         assertTrue(single.ringRadii.isEmpty())
 
@@ -162,7 +162,7 @@ class GuideWheelGeometryTest {
     private fun nativeWheel(
         radius: Float, itemDiameter: Float, itemWarpOffset: Float, itemCount: Int, quadrant: Int, mirror: Boolean
     ): GuideWheelBounds {
-        val positions = mutableListOf(RingItem(-itemDiameter / 2, -itemDiameter / 2))
+        val positions = mutableListOf(RingItem(-radius / 2, -radius / 2))
         var remaining = itemCount
         var ringRadius = radius
         var reverse = false
@@ -174,6 +174,6 @@ class GuideWheelGeometryTest {
             ringRadius += (itemDiameter * 1.3).toFloat()
             reverse = !reverse
         }
-        return guideWheelBounds(positions, List(itemCount + 1) { itemDiameter.toInt() })
+        return guideWheelBounds(positions, listOf(radius.toInt()) + List(itemCount) { itemDiameter.toInt() })
     }
 }

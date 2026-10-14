@@ -21,6 +21,8 @@ import com.google.android.material.textview.MaterialTextView
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.GuideGestureSetupBinding
 import io.github.lumiagg.gestureevo.databinding.GuideWheelSetupBinding
+import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
+import io.github.lumiagg.gestureevo.gesture.config.GestureActionDataManager
 import io.github.lumiagg.gestureevo.utils.CurrentPackageProvider
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
@@ -37,6 +39,7 @@ internal class QuickSetupController(
     private val onChanged: () -> Unit
 ) {
     private var config = QuickSetupConfig.default()
+    private var baseActionConfig = ActionConfig()
     private var savedConfig: QuickSetupConfig? = null
     private var loading = true
     private var updatingViews = false
@@ -63,10 +66,18 @@ internal class QuickSetupController(
             }))
         }
         gestureBinding.positionSlider.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) update(config.copy(verticalPercent = value.roundToInt()), rebuild = false)
+            if (fromUser) {
+                val newConfig = config.copy(verticalPercent = value.roundToInt())
+                update(newConfig, rebuild = false)
+                wheelBinding.wheelSampleView.updateTriggerConfig(newConfig)
+            }
         }
         gestureBinding.heightSlider.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) update(config.copy(triggerHeightDp = value.roundToInt()), rebuild = false)
+            if (fromUser) {
+                val newConfig = config.copy(triggerHeightDp = value.roundToInt())
+                update(newConfig, rebuild = false)
+                wheelBinding.wheelSampleView.updateTriggerConfig(newConfig)
+            }
         }
 
         gestureBinding.positionSlider.setLabelFormatter { activity.getString(R.string.display_percent, it.roundToInt()) }
@@ -102,12 +113,14 @@ internal class QuickSetupController(
         activity.lifecycleScope.launch {
             try {
                 savedConfig = QuickSetupRepository.load(activity)
+                baseActionConfig = GestureActionDataManager.readActionConfig(activity, ActionConfig.DEFAULT_TAG, false)
                 config = savedInstanceState?.getString(KEY_DRAFT)?.let(QuickSetupConfig::fromJson)
                     ?: savedConfig ?: QuickSetupConfig.default()
                 savedInstanceState?.getStringArrayList(KEY_PRACTICED)?.forEach { name ->
                     QuickGesture.entries.find { it.name == name }?.let(practiced::add)
                 }
                 loading = false
+                wheelBinding.wheelSampleView.setActionConfig(baseActionConfig)
                 render()
                 onChanged()
             } catch (e: CancellationException) {
@@ -150,7 +163,8 @@ internal class QuickSetupController(
             current?.takeIf { it.owner == previewOwner }?.practice,
             current?.takeIf { it.owner == previewOwner }?.practiceId,
             current?.takeIf { it.owner == previewOwner }?.wheelSelection == true,
-            wheelMode, wheelInputEnabled
+            wheelMode, wheelInputEnabled,
+            baseActionConfig
         )
     }
 

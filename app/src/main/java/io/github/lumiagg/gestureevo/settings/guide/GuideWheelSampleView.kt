@@ -24,6 +24,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.graphics.ColorUtils
 import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
 import io.github.lumiagg.gestureevo.gesture.ui.FittedWheelLayout
 import io.github.lumiagg.gestureevo.gesture.ui.calculateFittedWheelLayout
 import io.github.lumiagg.gestureevo.ui.ActionTextMenuItem
@@ -46,6 +47,7 @@ class GuideWheelSampleView @JvmOverloads constructor(
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
     private var config: QuickSetupConfig = QuickSetupConfig.default()
+    private var actionConfig: ActionConfig = ActionConfig()
     private var onEditItem: ((Int) -> Unit)? = null
     private var onRemoveItem: ((Int) -> Unit)? = null
     private var onAddItem: (() -> Unit)? = null
@@ -133,6 +135,40 @@ class GuideWheelSampleView @JvmOverloads constructor(
         })
     }
 
+    fun setActionConfig(actionConfig: ActionConfig) {
+        this.actionConfig = actionConfig
+        rebuildViews(animate = false)
+        invalidate()
+    }
+
+    fun updateTriggerConfig(newConfig: QuickSetupConfig) {
+        val oldConfig = this.config
+        this.config = newConfig
+        if (config.side != QuickSetupSide.BOTH) {
+            previewSideOverride = null
+            sideToggleChip.visibility = GONE
+        } else {
+            sideToggleChip.visibility = VISIBLE
+            updateToggleText()
+        }
+
+        val w = width.toFloat().takeIf { it > 0 } ?: return
+        val h = height.toFloat().takeIf { it > 0 } ?: return
+        val views = allDisplayViews()
+        val oldLayout = currentLayout
+        val newLayout = calculateWheelLayout(w, h, views.size)
+        currentLayout = newLayout
+
+        val shapeChanged = oldLayout == null ||
+            oldLayout.startAngle != newLayout.startAngle ||
+            oldLayout.sweepAngle != newLayout.sweepAngle ||
+            oldLayout.isLeft != newLayout.isLeft
+
+        positionItemViews(animate = shapeChanged)
+        updatePromptPosition()
+        invalidate()
+    }
+
     fun setConfig(
         config: QuickSetupConfig,
         onEditItem: (Int) -> Unit,
@@ -199,9 +235,9 @@ class GuideWheelSampleView @JvmOverloads constructor(
             itemCount = totalItems,
             isLeft = isEffectiveLeft(),
             verticalPercent = config.verticalPercent,
-            baseRadius = 130f.dp2px,
-            baseItemDiameter = 55f.dp2px,
-            baseItemWarpOffset = 10f.dp2px,
+            baseRadius = actionConfig.initRadius,
+            baseItemDiameter = actionConfig.itemDiameter,
+            baseItemWarpOffset = actionConfig.itemWarpOffset,
             margin = 16f.dp2px
         )
     }
@@ -218,17 +254,21 @@ class GuideWheelSampleView @JvmOverloads constructor(
         val layout = calculateWheelLayout(w, h, totalCount)
         currentLayout = layout
 
+        val baseSize = actionConfig.itemDiameter * layout.scale
+        val centerSize = actionConfig.initRadius * layout.scale
+
         // 1. Build action item views (Center item + Ring items)
         config.wheelItems.forEachIndexed { index, action ->
             val isCenter = (index == 0)
-            val size = if (index < layout.slots.size) layout.slots[index].size else 55f.dp2px
+            val defaultSize = if (isCenter) centerSize else baseSize
+            val size = if (index < layout.slots.size) layout.slots[index].size else defaultSize
             val itemView = createActionItemView(index, action, isCenter, size)
             actionViews.add(itemView)
             addView(itemView)
         }
 
         // 2. Build Add item ("+") at the end of the outer ring
-        val addSize = layout.slots.lastOrNull()?.size ?: 55f.dp2px
+        val addSize = layout.slots.lastOrNull()?.size ?: baseSize
         val addBtn = createAddButtonView(addSize)
         addView = addBtn
         addView(addBtn)
@@ -239,8 +279,10 @@ class GuideWheelSampleView @JvmOverloads constructor(
 
     private fun createActionItemView(index: Int, action: QuickAction, isCenterItem: Boolean, size: Float): View {
         val sizeInt = size.toInt().coerceAtLeast(1)
-        val pad = (size * 0.2f).toInt().coerceAtLeast(4f.dp2px.toInt())
-        val corner = size * 0.45f // Real wheel default iconCornerRadius ratio (25dp / 55dp ≈ 0.45f)
+        val corner = (actionConfig.iconCornerRadius * (size / actionConfig.itemDiameter.coerceAtLeast(1f)))
+            .coerceAtMost(size / 2f)
+        val pad = (actionConfig.iconPadding * (size / actionConfig.itemDiameter.coerceAtLeast(1f)))
+            .toInt().coerceAtLeast(4f.dp2px.toInt())
         return ImageView(context).apply {
             layoutParams = LayoutParams(sizeInt, sizeInt)
             setPadding(pad, pad, pad, pad)
@@ -266,8 +308,10 @@ class GuideWheelSampleView @JvmOverloads constructor(
 
     private fun createAddButtonView(size: Float): View {
         val sizeInt = size.toInt().coerceAtLeast(1)
-        val pad = (size * 0.2f).toInt().coerceAtLeast(4f.dp2px.toInt())
-        val corner = size * 0.45f
+        val corner = (actionConfig.iconCornerRadius * (size / actionConfig.itemDiameter.coerceAtLeast(1f)))
+            .coerceAtMost(size / 2f)
+        val pad = (actionConfig.iconPadding * (size / actionConfig.itemDiameter.coerceAtLeast(1f)))
+            .toInt().coerceAtLeast(4f.dp2px.toInt())
         return ImageView(context).apply {
             layoutParams = LayoutParams(sizeInt, sizeInt)
             setPadding(pad, pad, pad, pad)
@@ -299,12 +343,17 @@ class GuideWheelSampleView @JvmOverloads constructor(
 
             val slot = layout.slots[i]
             val slotSizeInt = slot.size.toInt().coerceAtLeast(1)
+            val corner = (actionConfig.iconCornerRadius * (slot.size / actionConfig.itemDiameter.coerceAtLeast(1f)))
+                .coerceAtMost(slot.size / 2f)
+            val pad = (actionConfig.iconPadding * (slot.size / actionConfig.itemDiameter.coerceAtLeast(1f)))
+                .toInt().coerceAtLeast(4f.dp2px.toInt())
+
+            (view.background as? GradientDrawable)?.cornerRadius = corner
+            view.setPadding(pad, pad, pad, pad)
 
             if (view.layoutParams.width != slotSizeInt || view.layoutParams.height != slotSizeInt) {
                 view.layoutParams.width = slotSizeInt
                 view.layoutParams.height = slotSizeInt
-                val pad = (slot.size * 0.22f).toInt().coerceAtLeast(4f.dp2px.toInt())
-                view.setPadding(pad, pad, pad, pad)
                 view.requestLayout()
             }
 
@@ -565,9 +614,10 @@ class GuideWheelSampleView @JvmOverloads constructor(
 
         // 2. Draw trigger edge indicator pill at the edge
         val triggerWidth = 5f.dp2px
-        val triggerHeight = 44f.dp2px
+        val triggerHeight = (h * (config.triggerHeightDp.toFloat() / 700f)).coerceIn(24f.dp2px, 80f.dp2px)
         val triggerLeft = if (layout.isLeft) 4f.dp2px else w - 4f.dp2px - triggerWidth
-        val triggerTop = (cy - triggerHeight / 2f).coerceIn(4f.dp2px, h - triggerHeight - 4f.dp2px)
+        val triggerCenterY = if (layout.sweepAngle < 180f) layout.cy else (h * (config.verticalPercent / 100f))
+        val triggerTop = (triggerCenterY - triggerHeight / 2f).coerceIn(4f.dp2px, h - triggerHeight - 4f.dp2px)
         val triggerRect = RectF(triggerLeft, triggerTop, triggerLeft + triggerWidth, triggerTop + triggerHeight)
 
         triggerPaint.color = DynamicColorUtils.primaryColor
