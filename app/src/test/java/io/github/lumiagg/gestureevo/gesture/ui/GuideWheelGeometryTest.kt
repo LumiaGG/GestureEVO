@@ -207,6 +207,37 @@ class GuideWheelGeometryTest {
         }
     }
 
+    @Test
+    fun multiRingWheelPreservesComfortableScaleInAdaptedContainer() {
+        // Multi-ring wheel (e.g. 23 items across 3 rings, semicircle at 55% verticalPercent)
+        val layout = calculateFittedWheelLayout(
+            width = 380f,
+            height = 500f,
+            itemCount = 23,
+            isLeft = false,
+            verticalPercent = 55,
+            baseRadius = 130f,
+            baseItemDiameter = 55f,
+            baseItemWarpOffset = 10f,
+            margin = 16f,
+            marginTop = 46f,
+            marginBottom = 16f
+        )
+
+        assertEquals(23, layout.slots.size)
+        // With previous rigid distance scaling, scale collapsed down to ~0.42.
+        // With adaptive fit and flexible center, scale should remain >= 0.70.
+        assertTrue("Scale must remain comfortable (>= 0.70), was ${layout.scale}", layout.scale >= 0.70f)
+
+        // All slots must remain strictly within margins
+        layout.slots.forEach { slot ->
+            assertTrue("slot ${slot.index} left >= 16", slot.x >= 16f - 0.5f)
+            assertTrue("slot ${slot.index} right <= 364", slot.x + slot.size <= 380f - 16f + 0.5f)
+            assertTrue("slot ${slot.index} top >= 46", slot.y >= 46f - 0.5f)
+            assertTrue("slot ${slot.index} bottom <= 484", slot.y + slot.size <= 500f - 16f + 0.5f)
+        }
+    }
+
     private fun nativeWheel(
         radius: Float, itemDiameter: Float, itemWarpOffset: Float, itemCount: Int, quadrant: Int, mirror: Boolean
     ): GuideWheelBounds {

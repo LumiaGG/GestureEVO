@@ -107,7 +107,7 @@ internal class QuickSetupController(
 
         gestureBinding.applyQuickSetupButton.setText(R.string.quick_practice_start)
         gestureBinding.applyQuickSetupButton.setIconResource(R.drawable.baseline_gesture_24)
-        gestureBinding.applyQuickSetupButton.setOnClickListener { practiceSequence(0) }
+        gestureBinding.applyQuickSetupButton.setOnClickListener { practiceSequence() }
 
         activity.lifecycleScope.launch {
             try {
@@ -340,14 +340,40 @@ internal class QuickSetupController(
         )
     }
 
-    private fun practiceSequence(index: Int) {
+    private fun practiceSequence() {
+        if (loading) return
+        if (CurrentPackageProvider.accessibilityService() == null) {
+            wheelBinding.quickSetupMessage.setText(R.string.quick_setup_preview_permission)
+            onChanged()
+            return
+        }
+        try {
+            config.validate(Build.VERSION.SDK_INT)
+        } catch (_: IllegalArgumentException) {
+            wheelBinding.quickSetupMessage.setText(R.string.quick_setup_invalid)
+            return
+        }
         val gestures = QuickGesture.entries.filter { config.gestures.getValue(it).type != QuickActionType.NONE }
-        if (index >= gestures.size) return
-        val next: (() -> Unit)? = if (index + 1 < gestures.size) ({ practiceSequence(index + 1) }) else null
-        practice(gestures[index], next)
+        if (gestures.isEmpty()) return
+        val draft = config
+        showGuidePracticeSequence(
+            activity = activity,
+            gestures = gestures,
+            initialIndex = 0,
+            config = draft,
+            previewOwner = previewOwner,
+            actionConfig = baseActionConfig,
+            onRecognized = { gesture ->
+                QuickSetupRepository.apply(activity, draft)
+                savedConfig = draft
+                practiced.add(gesture)
+                render()
+                onChanged()
+            }
+        )
     }
 
-    private fun practice(gesture: QuickGesture, next: (() -> Unit)? = null) {
+    private fun practice(gesture: QuickGesture) {
         if (loading) return
         if (CurrentPackageProvider.accessibilityService() == null) {
             wheelBinding.quickSetupMessage.setText(R.string.quick_setup_preview_permission)
@@ -367,7 +393,7 @@ internal class QuickSetupController(
             practiced.add(gesture)
             render()
             onChanged()
-        }, onNext = next)
+        })
     }
 
     private fun iconButton(icon: Int, description: String, click: () -> Unit): View =

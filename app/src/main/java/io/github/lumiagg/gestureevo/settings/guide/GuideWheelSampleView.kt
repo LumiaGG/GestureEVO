@@ -295,12 +295,22 @@ class GuideWheelSampleView @JvmOverloads constructor(
             val bounds = guideWheelBounds(naturalDist.positions, naturalDist.sizes)
             val extentUp = maxOf(0f, -bounds.top)
             val extentDown = maxOf(0f, bounds.bottom)
+            val totalWheelH = (bounds.bottom - bounds.top).coerceAtLeast(1f)
+            val naturalH = totalWheelH + topReserved + bottomReserved
+            val screenH = context.resources.displayMetrics.heightPixels.toFloat()
+
             if (shape.isSemicircle) {
-                val neededH = 2f * maxOf(extentUp + topReserved, extentDown + bottomReserved)
-                neededH.coerceIn(300f.dp2px, 420f.dp2px)
+                val maxH = minOf(screenH * 0.65f, 520f.dp2px)
+                val minH = 300f.dp2px
+                val vRatio = (config.verticalPercent / 100f).coerceIn(0.25f, 0.75f)
+                val neededFromUp = (extentUp + topReserved) / vRatio
+                val neededFromDown = (extentDown + bottomReserved) / (1f - vRatio)
+                val targetH = maxOf(naturalH, minOf(neededFromUp, neededFromDown))
+                targetH.coerceIn(minH, maxH)
             } else {
-                val neededH = (bounds.bottom - bounds.top) + topReserved + bottomReserved
-                neededH.coerceIn(220f.dp2px, 320f.dp2px)
+                val maxH = minOf(screenH * 0.45f, 340f.dp2px)
+                val minH = 220f.dp2px
+                naturalH.coerceIn(minH, maxH)
             }
         } else {
             280f.dp2px

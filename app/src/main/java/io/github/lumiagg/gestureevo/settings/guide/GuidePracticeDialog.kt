@@ -43,12 +43,38 @@ internal fun showGuidePractice(
     config: QuickSetupConfig,
     previewOwner: String,
     actionConfig: ActionConfig? = null,
-    onRecognized: suspend () -> Unit,
-    onNext: (() -> Unit)? = null
+    onRecognized: suspend (QuickGesture) -> Unit,
+    onDismissed: (() -> Unit)? = null
 ) {
+    showGuidePracticeSequence(
+        activity = activity,
+        gestures = listOf(gesture),
+        initialIndex = 0,
+        config = config,
+        previewOwner = previewOwner,
+        actionConfig = actionConfig,
+        onRecognized = onRecognized,
+        onDismissed = onDismissed
+    )
+}
+
+internal fun showGuidePracticeSequence(
+    activity: AppCompatActivity,
+    gestures: List<QuickGesture>,
+    initialIndex: Int = 0,
+    config: QuickSetupConfig,
+    previewOwner: String,
+    actionConfig: ActionConfig? = null,
+    onRecognized: suspend (QuickGesture) -> Unit,
+    onDismissed: (() -> Unit)? = null
+) {
+    if (gestures.isEmpty()) return
     val context = DynamicColorUtils.dynamicThemedContext(activity)
     val dialog = Dialog(context, R.style.Theme_GestureEVO)
     dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+
+    var currentIndex = initialIndex.coerceIn(0, gestures.size - 1)
+    var currentGesture = gestures[currentIndex]
     var practiceId = UUID.randomUUID().toString()
 
     val root = FrameLayout(context).apply {
@@ -89,7 +115,6 @@ internal fun showGuidePractice(
         )
     }
     val badgeView = TextView(context).apply {
-        text = context.getString(R.string.quick_practice_dialog_title)
         setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
         setTextColor(DynamicColorUtils.primaryColor)
         background = GradientDrawable().apply {
@@ -123,7 +148,6 @@ internal fun showGuidePractice(
 
     // Gesture Title
     val titleView = TextView(context).apply {
-        text = gesture.label(context)
         setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_HeadlineSmall)
         setTextColor(DynamicColorUtils.onSurfaceColor)
         gravity = Gravity.CENTER
@@ -133,7 +157,6 @@ internal fun showGuidePractice(
 
     // Animated Demo
     val demoView = GuideGestureDemoView(context).apply {
-        show(gesture, config.side)
         val w = 100f.dp2px.toInt()
         val h = 150f.dp2px.toInt()
         layoutParams = LinearLayout.LayoutParams(w, h).apply {
@@ -143,51 +166,42 @@ internal fun showGuidePractice(
     cardContent.addView(demoView)
 
     // Assigned Action Badge
-    val targetAction = config.gestures[gesture]
-    if (targetAction != null) {
-        val actionBadge = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 14f.dp2px
-                setColor(DynamicColorUtils.surfaceContainerHighColor)
-            }
-            val padH = 12f.dp2px.toInt()
-            val padV = 6f.dp2px.toInt()
-            setPadding(padH, padV, padH, padV)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                bottomMargin = 10f.dp2px.toInt()
-            }
+    val actionBadge = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 14f.dp2px
+            setColor(DynamicColorUtils.surfaceContainerHighColor)
         }
-        val actionIcon = ImageView(context).apply {
-            val size = 20f.dp2px.toInt()
-            layoutParams = LinearLayout.LayoutParams(size, size).apply {
-                marginEnd = 6f.dp2px.toInt()
-            }
-            setImageDrawable(targetAction.icon(context))
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            if (targetAction.type != QuickActionType.OPEN_APP || targetAction.packageName == null) {
-                imageTintList = ColorStateList.valueOf(DynamicColorUtils.primaryColor)
-            }
+        val padH = 12f.dp2px.toInt()
+        val padV = 6f.dp2px.toInt()
+        setPadding(padH, padV, padH, padV)
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            bottomMargin = 10f.dp2px.toInt()
         }
-        actionBadge.addView(actionIcon)
-
-        val actionText = TextView(context).apply {
-            text = context.getString(R.string.quick_practice_trigger_hint, targetAction.label(context))
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
-            setTextColor(DynamicColorUtils.onSurfaceColor)
-        }
-        actionBadge.addView(actionText)
-        cardContent.addView(actionBadge)
     }
+    val actionIcon = ImageView(context).apply {
+        val size = 20f.dp2px.toInt()
+        layoutParams = LinearLayout.LayoutParams(size, size).apply {
+            marginEnd = 6f.dp2px.toInt()
+        }
+        scaleType = ImageView.ScaleType.FIT_CENTER
+    }
+    actionBadge.addView(actionIcon)
+
+    val actionText = TextView(context).apply {
+        setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
+        setTextColor(DynamicColorUtils.onSurfaceColor)
+    }
+    actionBadge.addView(actionText)
+    cardContent.addView(actionBadge)
 
     // Instruction Text
     val instructionView = TextView(context).apply {
-        text = gesture.instruction(context)
         setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium)
         setTextColor(DynamicColorUtils.onSurfaceVariantColor)
         gravity = Gravity.CENTER
@@ -197,7 +211,6 @@ internal fun showGuidePractice(
 
     // Status Banner
     val statusBanner = TextView(context).apply {
-        text = context.getString(R.string.quick_practice_status_waiting)
         setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium)
         setTextColor(DynamicColorUtils.onSurfaceVariantColor)
         gravity = Gravity.CENTER
@@ -234,25 +247,15 @@ internal fun showGuidePractice(
         null,
         com.google.android.material.R.attr.materialButtonOutlinedStyle
     ).apply {
-        text = context.getString(if (onNext != null) R.string.quick_practice_skip else R.string.quick_practice_exit)
         layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
             marginEnd = 8f.dp2px.toInt()
-        }
-        setOnClickListener {
-            dialog.dismiss()
-            onNext?.invoke()
         }
     }
     buttonLayout.addView(skipButton)
 
     val nextButton = MaterialButton(context).apply {
-        text = context.getString(if (onNext != null) R.string.quick_practice_next else R.string.quick_practice_done)
         isVisible = false
         layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        setOnClickListener {
-            dialog.dismiss()
-            onNext?.invoke()
-        }
     }
     buttonLayout.addView(nextButton)
     cardContent.addView(buttonLayout)
@@ -290,7 +293,6 @@ internal fun showGuidePractice(
     }
     root.addView(pointerPill, pointerParams)
 
-    // Animated bouncing for the pointer
     val bounceDistance = 10f.dp2px
     val bounceAnimator = ObjectAnimator.ofFloat(
         pointerPill,
@@ -301,7 +303,6 @@ internal fun showGuidePractice(
     ).apply {
         duration = 1000
         repeatCount = ValueAnimator.INFINITE
-        start()
     }
 
     ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
@@ -315,10 +316,84 @@ internal fun showGuidePractice(
     var disposed = false
     var awaitingWheel = false
     var saveJob: Job? = null
+    var transitionJob: Job? = null
 
     fun restorePreview() {
         if (GuidePreviewSession.current.value?.let { it.owner == previewOwner && it.practiceId == practiceId } == true) {
             GuidePreviewSession.show(previewOwner, config, actionConfig = actionConfig)
+        }
+    }
+
+    fun displayGesture(index: Int) {
+        transitionJob?.cancel()
+        currentIndex = index
+        currentGesture = gestures[currentIndex]
+        recognized = false
+        saving = false
+        awaitingWheel = false
+        practiceId = UUID.randomUUID().toString()
+
+        val isLast = currentIndex + 1 >= gestures.size
+        badgeView.text = if (gestures.size > 1) {
+            "${context.getString(R.string.quick_practice_dialog_title)} (${currentIndex + 1}/${gestures.size})"
+        } else {
+            context.getString(R.string.quick_practice_dialog_title)
+        }
+
+        titleView.text = currentGesture.label(context)
+        demoView.show(currentGesture, config.side)
+
+        val targetAction = config.gestures[currentGesture]
+        if (targetAction != null) {
+            actionBadge.isVisible = true
+            actionIcon.setImageDrawable(targetAction.icon(context))
+            if (targetAction.type != QuickActionType.OPEN_APP || targetAction.packageName == null) {
+                actionIcon.imageTintList = ColorStateList.valueOf(DynamicColorUtils.primaryColor)
+            } else {
+                actionIcon.imageTintList = null
+            }
+            actionText.text = context.getString(R.string.quick_practice_trigger_hint, targetAction.label(context))
+        } else {
+            actionBadge.isVisible = false
+        }
+
+        instructionView.text = currentGesture.instruction(context)
+        statusBanner.text = context.getString(R.string.quick_practice_status_waiting)
+        (statusBanner.background as? GradientDrawable)?.setColor(DynamicColorUtils.surfaceContainerHighColor)
+        statusBanner.setTextColor(DynamicColorUtils.onSurfaceVariantColor)
+
+        skipButton.text = context.getString(if (!isLast) R.string.quick_practice_skip else R.string.quick_practice_exit)
+        skipButton.isVisible = true
+        skipButton.isEnabled = true
+        closeButton.isEnabled = true
+        dialog.setCancelable(true)
+
+        nextButton.isVisible = false
+        nextButton.text = context.getString(if (!isLast) R.string.quick_practice_next else R.string.quick_practice_done)
+
+        pointerPill.isVisible = true
+        if (!bounceAnimator.isRunning) {
+            bounceAnimator.start()
+        }
+
+        GuidePreviewSession.show(previewOwner, config, currentGesture, practiceId, actionConfig = actionConfig)
+    }
+
+    skipButton.setOnClickListener {
+        transitionJob?.cancel()
+        if (currentIndex + 1 < gestures.size) {
+            displayGesture(currentIndex + 1)
+        } else {
+            dialog.dismiss()
+        }
+    }
+
+    nextButton.setOnClickListener {
+        transitionJob?.cancel()
+        if (currentIndex + 1 < gestures.size) {
+            displayGesture(currentIndex + 1)
+        } else {
+            dialog.dismiss()
         }
     }
 
@@ -332,7 +407,7 @@ internal fun showGuidePractice(
 
         saveJob = activity.lifecycleScope.launch {
             try {
-                onRecognized()
+                onRecognized(currentGesture)
                 if (disposed) return@launch
 
                 VibratorUtils.vibrator(activity, true)
@@ -343,15 +418,21 @@ internal fun showGuidePractice(
                 (statusBanner.background as? GradientDrawable)?.setColor(DynamicColorUtils.secondaryContainerColor)
                 statusBanner.setTextColor(DynamicColorUtils.primaryColor)
 
+                val hasNext = currentIndex + 1 < gestures.size
+                nextButton.text = context.getString(if (hasNext) R.string.quick_practice_next else R.string.quick_practice_done)
                 nextButton.isVisible = true
                 skipButton.isVisible = false
                 restorePreview()
 
-                if (onNext != null) {
+                transitionJob?.cancel()
+                transitionJob = launch {
                     delay(800)
                     if (!disposed && dialog.isShowing) {
-                        dialog.dismiss()
-                        onNext.invoke()
+                        if (hasNext) {
+                            displayGesture(currentIndex + 1)
+                        } else {
+                            dialog.dismiss()
+                        }
                     }
                 }
             } catch (e: CancellationException) {
@@ -363,7 +444,7 @@ internal fun showGuidePractice(
                     recognized = false
                     awaitingWheel = false
                     practiceId = UUID.randomUUID().toString()
-                    GuidePreviewSession.show(previewOwner, config, gesture, practiceId, actionConfig = actionConfig)
+                    GuidePreviewSession.show(previewOwner, config, currentGesture, practiceId, actionConfig = actionConfig)
                 }
             } finally {
                 saving = false
@@ -379,11 +460,11 @@ internal fun showGuidePractice(
     val gestureJob = activity.lifecycleScope.launch {
         GuidePreviewSession.gestures.collect { result ->
             if (disposed || recognized || result.owner != previewOwner || result.practiceId != practiceId) return@collect
-            if (config.gestures[gesture]?.type == QuickActionType.WHEEL && result.wheelItemIndex == null) {
+            if (config.gestures[currentGesture]?.type == QuickActionType.WHEEL && result.wheelItemIndex == null) {
                 if (!awaitingWheel) {
                     awaitingWheel = true
                     statusBanner.text = context.getString(R.string.quick_practice_choose_wheel)
-                    GuidePreviewSession.show(previewOwner, config, gesture, practiceId, wheelSelection = true, actionConfig = actionConfig)
+                    GuidePreviewSession.show(previewOwner, config, currentGesture, practiceId, wheelSelection = true, actionConfig = actionConfig)
                 }
                 return@collect
             }
@@ -395,7 +476,7 @@ internal fun showGuidePractice(
     val lifecycleObserver = object : DefaultLifecycleObserver {
         override fun onStart(owner: LifecycleOwner) {
             if (!disposed && !recognized) {
-                GuidePreviewSession.show(previewOwner, config, gesture, practiceId, wheelSelection = awaitingWheel, actionConfig = actionConfig)
+                GuidePreviewSession.show(previewOwner, config, currentGesture, practiceId, wheelSelection = awaitingWheel, actionConfig = actionConfig)
             }
         }
         override fun onDestroy(owner: LifecycleOwner) { dialog.dismiss() }
@@ -407,16 +488,18 @@ internal fun showGuidePractice(
         bounceAnimator.cancel()
         gestureJob.cancel()
         saveJob?.cancel()
+        transitionJob?.cancel()
         restorePreview()
         activity.lifecycle.removeObserver(lifecycleObserver)
+        onDismissed?.invoke()
     }
 
     dialog.setContentView(root)
+    displayGesture(currentIndex)
     dialog.show()
     dialog.window?.let { window ->
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
     }
     ViewCompat.requestApplyInsets(root)
-    GuidePreviewSession.show(previewOwner, config, gesture, practiceId, actionConfig = actionConfig)
 }

@@ -250,35 +250,48 @@ internal fun calculateFittedWheelLayout(
     val usableW = (width - 2f * margin).coerceAtLeast(10f)
     val usableH = (height - marginTop - marginBottom).coerceAtLeast(10f)
 
-    // Horizontal scale constraint
+    // Optimal scale that fits width and height
     val scaleX = usableW / totalWidth
+    val scaleH = usableH / totalHeight
+    val fitScale = minOf(1f, scaleX, scaleH)
 
-    // Determine scale and cy with directional distance checks
+    // Determine scale and cy with directional distance checks and flexible center
     val scale: Float
     val cy: Float
 
     if (shape.isSemicircle) {
         val preferredY = (height * (verticalPercent / 100f)).coerceIn(marginTop, height - marginBottom)
-        val availableUp = (preferredY - marginTop).coerceAtLeast(10f)
-        val availableDown = (height - marginBottom - preferredY).coerceAtLeast(10f)
+        val minCy = marginTop + extentUp * fitScale
+        val maxCy = height - marginBottom - extentDown * fitScale
 
-        // Scale down if distance in either direction (or total height/width) is insufficient
-        val scaleUp = if (extentUp > 0f) availableUp / extentUp else 1f
-        val scaleDown = if (extentDown > 0f) availableDown / extentDown else 1f
-        val scaleH = usableH / totalHeight
-
-        scale = minOf(1f, scaleX, scaleH, scaleUp, scaleDown).coerceAtLeast(0.1f)
-
-        val minY = marginTop + extentUp * scale
-        val maxY = height - marginBottom - extentDown * scale
-        cy = if (minY <= maxY) preferredY.coerceIn(minY, maxY) else (marginTop + height - marginBottom) / 2f
+        if (minCy <= maxCy) {
+            if (preferredY in minCy..maxCy) {
+                scale = fitScale
+                cy = preferredY
+            } else if (preferredY < minCy) {
+                val maxAllowedShift = usableH * 0.10f
+                val shift = minOf(minCy - preferredY, maxAllowedShift)
+                val targetCy = minCy - shift
+                val scaleUp = if (extentUp > 0f) (targetCy - marginTop) / extentUp else fitScale
+                scale = minOf(fitScale, scaleUp).coerceAtLeast(0.1f)
+                cy = targetCy
+            } else {
+                val maxAllowedShift = usableH * 0.10f
+                val shift = minOf(preferredY - maxCy, maxAllowedShift)
+                val targetCy = maxCy + shift
+                val scaleDown = if (extentDown > 0f) (height - marginBottom - targetCy) / extentDown else fitScale
+                scale = minOf(fitScale, scaleDown).coerceAtLeast(0.1f)
+                cy = targetCy
+            }
+        } else {
+            scale = fitScale.coerceAtLeast(0.1f)
+            cy = (marginTop + height - marginBottom) / 2f
+        }
     } else if (shape.isUpper) {
-        val scaleY = usableH / totalHeight
-        scale = minOf(1f, scaleX, scaleY).coerceAtLeast(0.1f)
+        scale = fitScale.coerceAtLeast(0.1f)
         cy = marginTop + extentUp * scale
     } else {
-        val scaleY = usableH / totalHeight
-        scale = minOf(1f, scaleX, scaleY).coerceAtLeast(0.1f)
+        scale = fitScale.coerceAtLeast(0.1f)
         cy = height - marginBottom - extentDown * scale
     }
 
