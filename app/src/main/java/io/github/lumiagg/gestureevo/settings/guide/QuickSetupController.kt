@@ -99,14 +99,6 @@ internal class QuickSetupController(
         gestureBinding.applyQuickSetupButton.setIconResource(R.drawable.baseline_gesture_24)
         gestureBinding.applyQuickSetupButton.setOnClickListener { practiceSequence(0) }
 
-        wheelBinding.addWheelItemButton.setOnClickListener {
-            chooseWheelAction { selected ->
-                if (config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS) {
-                    update(config.copy(wheelItems = config.wheelItems + selected))
-                }
-            }
-        }
-
         activity.lifecycleScope.launch {
             try {
                 savedConfig = QuickSetupRepository.load(activity)
@@ -196,7 +188,6 @@ internal class QuickSetupController(
             else -> R.string.quick_setup_saved
         })
         gestureBinding.applyQuickSetupButton.isEnabled = !loading
-        wheelBinding.addWheelItemButton.isEnabled = !loading && config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS
         wheelBinding.resetDefaultsButton.isEnabled = !loading
         gestureBinding.sideGroup.isEnabled = !loading
         for (index in 0 until gestureBinding.sideGroup.childCount) gestureBinding.sideGroup.getChildAt(index).isEnabled = !loading
@@ -277,77 +268,18 @@ internal class QuickSetupController(
             },
             onRemoveItem = { index ->
                 removeWheelItem(index)
-            }
-        )
-
-        wheelBinding.wheelItemsContainer.removeAllViews()
-        config.wheelItems.forEachIndexed { index, action ->
-            val row = LinearLayout(activity).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setBackgroundResource(R.drawable.bg_settings_tile)
-                setPadding(dp(12), dp(8), dp(8), dp(8))
-                isClickable = true
-                isFocusable = true
-                setOnClickListener {
-                    chooseWheelAction(currentAction = action) { selected ->
-                        val newItems = config.wheelItems.toMutableList()
-                        newItems[index] = selected
-                        update(config.copy(wheelItems = newItems))
+            },
+            onAddItem = {
+                if (config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS) {
+                    chooseWheelAction { selected ->
+                        update(config.copy(wheelItems = config.wheelItems + selected))
                     }
                 }
+            },
+            onReorderItems = { newItems ->
+                update(config.copy(wheelItems = newItems))
             }
-
-            // Index badge
-            val idxView = TextView(activity).apply {
-                text = "${index + 1}"
-                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
-                setTextColor(DynamicColorUtils.primaryColor)
-                setPadding(dp(4), 0, dp(8), 0)
-            }
-            row.addView(idxView)
-
-            // Icon badge
-            val iconBadge = ImageView(activity).apply {
-                val size = dp(36)
-                layoutParams = LinearLayout.LayoutParams(size, size).apply {
-                    marginEnd = dp(10)
-                }
-                val pad = dp(6)
-                setPadding(pad, pad, pad, pad)
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(DynamicColorUtils.secondaryContainerColor)
-                }
-                setImageDrawable(action.icon(activity))
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                if (action.type != QuickActionType.OPEN_APP || action.packageName == null) {
-                    imageTintList = ColorStateList.valueOf(DynamicColorUtils.primaryColor)
-                }
-            }
-            row.addView(iconBadge)
-
-            // Text
-            val textCol = LinearLayout(activity).apply {
-                orientation = LinearLayout.VERTICAL
-            }
-            textCol.addView(label(action.label(activity), title = true))
-            textCol.addView(label(action.description(activity)))
-            row.addView(textCol, LinearLayout.LayoutParams(0, -2, 1f))
-
-            // Delete item button (only if > 2 items)
-            if (config.wheelItems.size > 2) {
-                row.addView(iconButton(
-                    R.drawable.baseline_clear_24,
-                    activity.getString(R.string.quick_setup_remove)
-                ) {
-                    removeWheelItem(index)
-                })
-            }
-
-            wheelBinding.wheelItemsContainer.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
-        }
-        wheelBinding.addWheelItemButton.isVisible = config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS
+        )
     }
 
     private fun chooseWheelAction(currentAction: QuickAction? = null, selected: (QuickAction) -> Unit) {

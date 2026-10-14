@@ -1117,7 +1117,8 @@
     <string name="quick_setup_wheel_card_title">3. Shortcut wheel</string>
     <string name="quick_setup_wheel_card_summary">Configure first-level menu items; add or remove actions</string>
     <string name="quick_setup_wheel_desc">Swipe inward from the edge to open the shortcut wheel. Configure 2 to 8 favorite actions.</string>
-    <string name="quick_setup_wheel_sample_hint">Tap an item to edit or delete</string>
+    <string name="quick_setup_wheel_sample_hint">Hold and drag to reorder · Tap to edit</string>
+    <string name="quick_setup_wheel_sample_drag_hint">Release at target position</string>
     <string name="quick_setup_wheel_sample_side_left">Both sides · Left preview (tap to switch)</string>
     <string name="quick_setup_wheel_sample_side_right">Both sides · Right preview (tap to switch)</string>
     <string name="quick_setup_side">Trigger edge</string>

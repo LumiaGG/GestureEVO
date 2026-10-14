@@ -15,11 +15,12 @@ import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.graphics.ColorUtils
 import io.github.lumiagg.gestureevo.R
@@ -28,13 +29,14 @@ import io.github.lumiagg.gestureevo.ui.ActionTextMenuPopup
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
+import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
 /**
  * Built-in interactive wheel sample view that matches the real wheel's adaptive shape
- * (quadrants 0..3 based on trigger side and vertical position) and editing interaction
- * (tap item to pop up edit/delete menu, without secondary submenu).
+ * (quadrants 0..3 based on trigger side and vertical position), drag-to-reorder, and add icon.
  */
 class GuideWheelSampleView @JvmOverloads constructor(
     context: Context,
@@ -45,15 +47,17 @@ class GuideWheelSampleView @JvmOverloads constructor(
     private var config: QuickSetupConfig = QuickSetupConfig.default()
     private var onEditItem: ((Int) -> Unit)? = null
     private var onRemoveItem: ((Int) -> Unit)? = null
+    private var onAddItem: (() -> Unit)? = null
+    private var onReorderItems: ((List<QuickAction>) -> Unit)? = null
 
     // For BOTH sides, allows toggling preview between left and right
     private var previewSideOverride: Boolean? = null
 
-    private val originMargin = 20f.dp2px
-    private val itemRadius = 145f.dp2px
-    private val fanRadius = 190f.dp2px
-    private val itemSize = 52f.dp2px.toInt()
-    private val iconSize = 40f.dp2px.toInt()
+    private val originMargin = 16f.dp2px
+    private val itemRadius = 185f.dp2px
+    private val fanRadius = 225f.dp2px
+    private val bubbleSize = 42f.dp2px.toInt()
+    private val iconSize = 24f.dp2px.toInt()
 
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -79,24 +83,37 @@ class GuideWheelSampleView @JvmOverloads constructor(
     private val cardRect = RectF()
 
     private val sideToggleChip: TextView
-    private val hintView: TextView
+    private val promptView: TextView
 
-    private val itemViews = mutableListOf<View>()
+    // Action item views + optional Add button view at the end
+    private val actionViews = mutableListOf<View>()
+    private var addView: View? = null
+
+    // Drag-to-reorder state
+    private var activeTouchIndex = -1
+    private var activeTouchView: View? = null
+    private var downX = 0f
+    private var downY = 0f
+    private var isDragging = false
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+    private val longPressTimeout = 260L
+    private var longPressRunnable: Runnable? = null
 
     init {
         setWillNotDraw(false)
         clipChildren = false
 
-        // Hint label in the corner
-        hintView = TextView(context).apply {
+        // Prompt / tooltip at the corner
+        promptView = TextView(context).apply {
             text = context.getString(R.string.quick_setup_wheel_sample_hint)
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelMedium)
             setTextColor(DynamicColorUtils.onSurfaceVariantColor)
-            alpha = 0.85f
-            val pad = 12f.dp2px.toInt()
-            setPadding(pad, pad, pad, pad)
+            alpha = 0.9f
+            val padH = 14f.dp2px.toInt()
+            val padV = 10f.dp2px.toInt()
+            setPadding(padH, padV, padH, padV)
         }
-        addView(hintView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+        addView(promptView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
 
         // Side toggle chip for BOTH mode
         sideToggleChip = TextView(context).apply {
@@ -129,12 +146,16 @@ class GuideWheelSampleView @JvmOverloads constructor(
     fun setConfig(
         config: QuickSetupConfig,
         onEditItem: (Int) -> Unit,
-        onRemoveItem: (Int) -> Unit
+        onRemoveItem: (Int) -> Unit,
+        onAddItem: () -> Unit,
+        onReorderItems: (List<QuickAction>) -> Unit
     ) {
         val oldConfig = this.config
         this.config = config
         this.onEditItem = onEditItem
         this.onRemoveItem = onRemoveItem
+        this.onAddItem = onAddItem
+        this.onReorderItems = onReorderItems
 
         // Reset override if side changed from BOTH
         if (config.side != QuickSetupSide.BOTH) {
@@ -168,17 +189,6 @@ class GuideWheelSampleView @JvmOverloads constructor(
         QuickSetupSide.BOTH -> previewSideOverride ?: false
     }
 
-    private fun calculateQuadrant(): Int {
-        val isLeft = isEffectiveLeft()
-        val isUpper = config.verticalPercent < 50
-        return when {
-            isLeft && isUpper -> 3   // Top-Left -> fans Bottom-Right
-            isLeft && !isUpper -> 0  // Bottom-Left -> fans Top-Right
-            !isLeft && isUpper -> 2  // Top-Right -> fans Bottom-Left
-            else -> 1                // Bottom-Right -> fans Top-Left
-        }
-    }
-
     private fun getOriginAndAngles(w: Float, h: Float): OriginAngles {
         val isLeft = isEffectiveLeft()
         val isUpper = config.verticalPercent < 50
@@ -204,109 +214,103 @@ class GuideWheelSampleView @JvmOverloads constructor(
     )
 
     private fun rebuildViews(animate: Boolean) {
-        itemViews.forEach { removeView(it) }
-        itemViews.clear()
+        actionViews.forEach { removeView(it) }
+        actionViews.clear()
+        addView?.let { removeView(it) }
+        addView = null
 
-        val items = config.wheelItems
-        items.forEachIndexed { index, action ->
-            val itemView = createWheelItemView(index, action)
-            itemViews.add(itemView)
+        // 1. Build action item bubble views (clean circular bubbles, no text underneath)
+        config.wheelItems.forEachIndexed { index, action ->
+            val itemView = createActionItemView(index, action)
+            actionViews.add(itemView)
             addView(itemView)
         }
 
-        positionItemViews(animate)
-        updateHintPosition()
-    }
-
-    private fun createWheelItemView(index: Int, action: QuickAction): View {
-        val root = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            isClickable = true
-            isFocusable = true
-            layoutParams = LayoutParams(itemSize, LayoutParams.WRAP_CONTENT)
+        // 2. Build Add item ("+") if items < MAX_WHEEL_ITEMS (8 items)
+        if (config.wheelItems.size < QuickSetupConfig.MAX_WHEEL_ITEMS) {
+            val addBtn = createAddButtonView()
+            addView = addBtn
+            addView(addBtn)
         }
 
-        // Circular icon badge
-        val iconBadge = ImageView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
-            val pad = 8f.dp2px.toInt()
+        positionItemViews(animate)
+        updatePromptPosition()
+    }
+
+    private fun createActionItemView(index: Int, action: QuickAction): View {
+        return ImageView(context).apply {
+            layoutParams = LayoutParams(bubbleSize, bubbleSize)
+            val pad = 9f.dp2px.toInt()
             setPadding(pad, pad, pad, pad)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(DynamicColorUtils.secondaryContainerColor)
             }
-            elevation = 4f.dp2px
+            elevation = 3f.dp2px
             setImageDrawable(action.icon(context))
             scaleType = ImageView.ScaleType.FIT_CENTER
             if (action.type != QuickActionType.OPEN_APP || action.packageName == null) {
                 imageTintList = ColorStateList.valueOf(DynamicColorUtils.primaryColor)
             }
         }
-        root.addView(iconBadge)
+    }
 
-        // Label
-        val labelView = TextView(context).apply {
-            text = action.label(context)
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelSmall)
-            setTextColor(DynamicColorUtils.onSurfaceColor)
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(itemSize, LayoutParams.WRAP_CONTENT).apply {
-                topMargin = 2f.dp2px.toInt()
+    private fun createAddButtonView(): View {
+        return ImageView(context).apply {
+            layoutParams = LayoutParams(bubbleSize, bubbleSize)
+            val pad = 9f.dp2px.toInt()
+            setPadding(pad, pad, pad, pad)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(DynamicColorUtils.surfaceContainerHighColor)
+                setStroke(1f.dp2px.toInt().coerceAtLeast(1), ColorUtils.setAlphaComponent(DynamicColorUtils.primaryColor, 120))
             }
+            elevation = 2f.dp2px
+            setImageResource(R.drawable.baseline_add_24)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            imageTintList = ColorStateList.valueOf(DynamicColorUtils.primaryColor)
         }
-        root.addView(labelView)
+    }
 
-        // Tap item -> show ActionTextMenuPopup (Edit / Delete)
-        root.setOnClickListener { v ->
-            VibratorUtils.vibrator(context, false)
-            val popup = ActionTextMenuPopup(context, hostView = this)
-            val menuItems = mutableListOf<ActionTextMenuItem>()
+    private fun allDisplayViews(): List<View> {
+        val list = mutableListOf<View>()
+        list.addAll(actionViews)
+        addView?.let { list.add(it) }
+        return list
+    }
 
-            menuItems.add(ActionTextMenuItem(context.getString(R.string.action_view_item_menu_edit)) {
-                onEditItem?.invoke(index)
-            })
-
-            if (config.wheelItems.size > 2) {
-                menuItems.add(ActionTextMenuItem(
-                    context.getString(R.string.action_view_item_menu_delete),
-                    destructive = true
-                ) {
-                    onRemoveItem?.invoke(index)
-                })
-            }
-
-            popup.show(iconBadge, menuItems)
+    private fun calculateSlotAngles(w: Float, h: Float): List<Float> {
+        val (cx, cy, startAngle, sweepAngle, mirror) = getOriginAndAngles(w, h)
+        val count = allDisplayViews().size.coerceAtLeast(1)
+        val step = sweepAngle / count
+        val offset = step / 2f
+        return (0 until count).map { i ->
+            val sliceIndex = if (mirror) (count - 1 - i) else i
+            startAngle + offset + sliceIndex * step
         }
-
-        return root
     }
 
     private fun positionItemViews(animate: Boolean) {
         val w = width.toFloat().takeIf { it > 0 } ?: return
         val h = height.toFloat().takeIf { it > 0 } ?: return
-        val (cx, cy, startAngle, sweepAngle, mirror) = getOriginAndAngles(w, h)
-
-        val count = itemViews.size
-        if (count == 0) return
-
-        val step = sweepAngle / count
-        val offset = step / 2f
+        val (cx, cy) = getOriginAndAngles(w, h)
+        val angles = calculateSlotAngles(w, h)
+        val views = allDisplayViews()
 
         val animators = mutableListOf<ObjectAnimator>()
 
-        itemViews.forEachIndexed { i, view ->
-            val sliceIndex = if (mirror) (count - 1 - i) else i
-            val angle = startAngle + offset + sliceIndex * step
+        views.forEachIndexed { i, view ->
+            if (i >= angles.size) return@forEachIndexed
+            if (isDragging && view == activeTouchView) return@forEachIndexed
+
+            val angle = angles[i]
             val rad = Math.toRadians(angle.toDouble())
 
             val targetCenterX = cx + itemRadius * cos(rad).toFloat()
             val targetCenterY = cy + itemRadius * sin(rad).toFloat()
 
-            val targetX = targetCenterX - itemSize / 2f
-            val targetY = targetCenterY - (iconSize / 2f)
+            val targetX = targetCenterX - bubbleSize / 2f
+            val targetY = targetCenterY - bubbleSize / 2f
 
             if (animate && view.x != 0f && view.y != 0f) {
                 animators.add(ObjectAnimator.ofFloat(view, "x", view.x, targetX))
@@ -320,29 +324,227 @@ class GuideWheelSampleView @JvmOverloads constructor(
         if (animators.isNotEmpty()) {
             AnimatorSet().apply {
                 playTogether(animators as Collection<android.animation.Animator>)
-                duration = 220
+                duration = 200
                 interpolator = OvershootInterpolator(1.1f)
                 start()
             }
         }
     }
 
-    private fun updateHintPosition() {
+    private fun updatePromptPosition() {
         val isLeft = isEffectiveLeft()
         val isUpper = config.verticalPercent < 50
-        val lp = hintView.layoutParams as LayoutParams
+        val lp = promptView.layoutParams as LayoutParams
 
-        // Position hint in the corner opposite to the origin
+        // Position prompt in the corner opposite to the origin
         val gravityH = if (isLeft) Gravity.END else Gravity.START
         val gravityV = if (isUpper) Gravity.BOTTOM else Gravity.TOP
         lp.gravity = gravityH or gravityV
-        hintView.layoutParams = lp
+        promptView.layoutParams = lp
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         positionItemViews(animate = false)
-        updateHintPosition()
+        updatePromptPosition()
+    }
+
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        // Intercept touch when dragging so parent ScrollView doesn't steal touches
+        return isDragging || super.onInterceptTouchEvent(ev)
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> handleActionDown(event)
+            MotionEvent.ACTION_MOVE -> handleActionMove(event)
+            MotionEvent.ACTION_UP -> handleActionUp(event)
+            MotionEvent.ACTION_CANCEL -> handleActionCancel()
+        }
+        return true
+    }
+
+    private fun handleActionDown(event: MotionEvent) {
+        cancelLongPress()
+        downX = event.x
+        downY = event.y
+
+        val views = allDisplayViews()
+        val hitRadius = bubbleSize / 2f + 12f.dp2px
+        activeTouchIndex = -1
+        activeTouchView = null
+
+        views.forEachIndexed { i, view ->
+            val vcx = view.x + bubbleSize / 2f
+            val vcy = view.y + bubbleSize / 2f
+            val dx = event.x - vcx
+            val dy = event.y - vcy
+            if (dx * dx + dy * dy <= hitRadius * hitRadius) {
+                activeTouchIndex = i
+                activeTouchView = view
+                return@forEachIndexed
+            }
+        }
+
+        val touchedView = activeTouchView ?: return
+        val isAddButton = (touchedView == addView)
+
+        if (!isAddButton && activeTouchIndex in config.wheelItems.indices) {
+            // Update prompt to show current action label
+            promptView.text = config.wheelItems[activeTouchIndex].label(context)
+            promptView.setTextColor(DynamicColorUtils.primaryColor)
+
+            // Schedule long press to begin dragging
+            longPressRunnable = Runnable {
+                isDragging = true
+                parent?.requestDisallowInterceptTouchEvent(true)
+                VibratorUtils.vibrator(context, false)
+                touchedView.animate().scaleX(1.25f).scaleY(1.25f).translationZ(16f.dp2px).setDuration(120).start()
+                bringChildToFront(touchedView)
+                promptView.text = context.getString(R.string.quick_setup_wheel_sample_drag_hint)
+            }
+            postDelayed(longPressRunnable, longPressTimeout)
+        }
+    }
+
+    private fun handleActionMove(event: MotionEvent) {
+        val dx = event.x - downX
+        val dy = event.y - downY
+
+        if (!isDragging) {
+            if (dx * dx + dy * dy > touchSlop * touchSlop) {
+                cancelLongPress()
+            }
+            return
+        }
+
+        // Dragging in progress: follow finger
+        parent?.requestDisallowInterceptTouchEvent(true)
+        activeTouchView?.let { view ->
+            view.x = event.x - bubbleSize / 2f
+            view.y = event.y - bubbleSize / 2f
+        }
+    }
+
+    private fun handleActionUp(event: MotionEvent) {
+        cancelLongPress()
+        val touchedView = activeTouchView
+        val touchedIdx = activeTouchIndex
+        val wasDragging = isDragging
+
+        isDragging = false
+        parent?.requestDisallowInterceptTouchEvent(false)
+        resetPrompt()
+
+        if (touchedView == null) return
+
+        touchedView.animate().scaleX(1.0f).scaleY(1.0f).translationZ(0f).setDuration(150).start()
+
+        if (wasDragging && touchedIdx in config.wheelItems.indices) {
+            // Calculate nearest slot among action items (exclude Add button)
+            val targetSlot = findNearestSlotIndex(event.x, event.y, maxSlot = config.wheelItems.size - 1)
+            if (targetSlot in config.wheelItems.indices && targetSlot != touchedIdx) {
+                val newItems = config.wheelItems.toMutableList()
+                val moved = newItems.removeAt(touchedIdx)
+                newItems.add(targetSlot.coerceIn(0, newItems.size), moved)
+                VibratorUtils.vibrator(context, true)
+                onReorderItems?.invoke(newItems)
+            } else {
+                positionItemViews(animate = true)
+            }
+        } else {
+            // Tap!
+            val dx = event.x - downX
+            val dy = event.y - downY
+            if (dx * dx + dy * dy <= touchSlop * touchSlop * 4) {
+                if (touchedView == addView) {
+                    VibratorUtils.vibrator(context, false)
+                    onAddItem?.invoke()
+                } else if (touchedIdx in config.wheelItems.indices) {
+                    VibratorUtils.vibrator(context, false)
+                    showItemMenu(touchedView, touchedIdx)
+                }
+            } else {
+                positionItemViews(animate = true)
+            }
+        }
+
+        activeTouchView = null
+        activeTouchIndex = -1
+    }
+
+    private fun handleActionCancel() {
+        cancelLongPress()
+        if (isDragging) {
+            isDragging = false
+            parent?.requestDisallowInterceptTouchEvent(false)
+            activeTouchView?.animate()?.scaleX(1.0f)?.scaleY(1.0f)?.translationZ(0f)?.setDuration(150)?.start()
+            positionItemViews(animate = true)
+        }
+        resetPrompt()
+        activeTouchView = null
+        activeTouchIndex = -1
+    }
+
+    override fun cancelLongPress() {
+        super.cancelLongPress()
+        longPressRunnable?.let { removeCallbacks(it) }
+        longPressRunnable = null
+    }
+
+    private fun resetPrompt() {
+        promptView.text = context.getString(R.string.quick_setup_wheel_sample_hint)
+        promptView.setTextColor(DynamicColorUtils.onSurfaceVariantColor)
+    }
+
+    private fun findNearestSlotIndex(touchX: Float, touchY: Float, maxSlot: Int): Int {
+        val w = width.toFloat().takeIf { it > 0 } ?: return 0
+        val h = height.toFloat().takeIf { it > 0 } ?: return 0
+        val (cx, cy) = getOriginAndAngles(w, h)
+        val angles = calculateSlotAngles(w, h)
+        if (angles.isEmpty()) return 0
+
+        val touchAngleRad = atan2((touchY - cy).toDouble(), (touchX - cx).toDouble())
+        var touchAngleDeg = Math.toDegrees(touchAngleRad).toFloat()
+        if (touchAngleDeg < 0) touchAngleDeg += 360f
+
+        var nearestIndex = 0
+        var minDiff = Float.MAX_VALUE
+
+        val limit = maxSlot.coerceAtMost(angles.lastIndex)
+        for (i in 0..limit) {
+            var diff = abs(touchAngleDeg - angles[i]) % 360f
+            if (diff > 180f) diff = 360f - diff
+            if (diff < minDiff) {
+                minDiff = diff
+                nearestIndex = i
+            }
+        }
+        return nearestIndex
+    }
+
+    private fun showItemMenu(anchorView: View, index: Int) {
+        val popup = ActionTextMenuPopup(context, hostView = this)
+        val menuItems = mutableListOf<ActionTextMenuItem>()
+        val action = config.wheelItems[index]
+
+        // Action title header
+        menuItems.add(ActionTextMenuItem(action.label(context)) {})
+
+        menuItems.add(ActionTextMenuItem(context.getString(R.string.action_view_item_menu_edit)) {
+            onEditItem?.invoke(index)
+        })
+
+        if (config.wheelItems.size > 2) {
+            menuItems.add(ActionTextMenuItem(
+                context.getString(R.string.action_view_item_menu_delete),
+                destructive = true
+            ) {
+                onRemoveItem?.invoke(index)
+            })
+        }
+
+        popup.show(anchorView, menuItems)
     }
 
     override fun onDraw(canvas: Canvas) {
