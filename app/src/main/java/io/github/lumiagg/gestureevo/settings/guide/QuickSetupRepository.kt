@@ -31,6 +31,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
+import kotlin.math.roundToInt
 
 object QuickSetupRepository {
     internal const val PREVIEW_LEFT_TRIGGER_TAG = "guide_preview_trigger_left"
@@ -65,7 +66,7 @@ object QuickSetupRepository {
             defaultTrigger.xRelativeValue == 0f -> QuickSetupSide.LEFT
             else -> QuickSetupSide.RIGHT
         }
-        val verticalPercent = (defaultTrigger.yRelativeValue * 100).toInt().coerceIn(10, 90)
+        val verticalPercent = (defaultTrigger.yRelativeValue * 100).roundToInt().coerceIn(10, 90)
         val triggerHeightDp = defaultTrigger.height.coerceIn(40, 200)
 
         // Read default wheel items

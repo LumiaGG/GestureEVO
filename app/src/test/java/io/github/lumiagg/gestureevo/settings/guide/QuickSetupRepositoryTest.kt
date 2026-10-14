@@ -15,6 +15,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.roundToInt
 
 class QuickSetupRepositoryTest {
     @Test
@@ -223,5 +224,27 @@ class QuickSetupRepositoryTest {
     fun appActionKeepsTheSelectedProfile() {
         val spec = quickActionSpec(QuickAction(QuickActionType.OPEN_APP, "example.app", "Work", 10))
         assertEquals(mapOf("pkg" to "example.app", "userId" to "10"), spec.parameters)
+    }
+
+    @Test
+    fun defaultTriggerArbitraryHeightAndPositionArePreserved() {
+        val defaultTriggerName = "默认触发器"
+        val trigger = FreeTriggerConfig().apply {
+            tag = "default-trigger"
+            name = defaultTriggerName
+            height = 134
+            yRelativeValue = 0.573f
+        }
+        val config = QuickSetupConfig.default().copy(
+            verticalPercent = (trigger.yRelativeValue * 100).roundToInt().coerceIn(10, 90),
+            triggerHeightDp = trigger.height.coerceIn(40, 200)
+        )
+        assertEquals(57, config.verticalPercent)
+        assertEquals(134, config.triggerHeightDp)
+        config.validate(24)
+
+        applyDefaultTriggerConfig(trigger, config, defaultTriggerName)
+        assertEquals(134, trigger.height)
+        assertEquals(0.57f, trigger.yRelativeValue, 0.001f)
     }
 }
