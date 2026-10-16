@@ -223,6 +223,9 @@ class SettingsSectionCard @JvmOverloads constructor(
 
         fun visit(view: View) {
             if (duplicatedTexts.isEmpty()) return
+            // Only remove legacy duplicate headings, never labels inside interactive controls.
+            if (view is SettingsNavRow || view is SettingsSwitchRow ||
+                view is android.widget.Button || view is android.widget.CompoundButton) return
             if (view is TextView) {
                 val text = view.text?.toString().orEmpty()
                 if (duplicatedTexts.remove(text)) {

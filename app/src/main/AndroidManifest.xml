@@ -177,6 +177,7 @@
             android:process=":exception_process"
             android:taskAffinity="${applicationId}.TASK.ExceptionDisplay"
             android:theme="@style/Theme.GestureEVO" />
+        <activity android:name=".settings.LogManagerActivity" android:exported="false" />
 
         <service
             android:name=".gesture.GestureService"

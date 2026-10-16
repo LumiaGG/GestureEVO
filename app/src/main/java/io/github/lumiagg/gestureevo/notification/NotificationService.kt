@@ -1,5 +1,8 @@
 package io.github.lumiagg.gestureevo.notification
 
+import io.github.lumiagg.gestureevo.diagnostics.AppLogger
+import io.github.lumiagg.gestureevo.diagnostics.LogLevel
+import io.github.lumiagg.gestureevo.diagnostics.LogModule
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Intent
@@ -49,6 +52,19 @@ class NotificationService : NotificationListenerService() {
 
     override fun onBind(intent: Intent?): IBinder? {
         return super.onBind(intent)
+    }
+
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        AppLogger.event(
+            LogModule.SERVICE, "notification_listener_connected")
+    }
+
+    override fun onListenerDisconnected() {
+        AppLogger.event(
+            LogModule.SERVICE, "notification_listener_disconnected",
+            LogLevel.WARN)
+        super.onListenerDisconnected()
     }
 
     override fun onCreate() {

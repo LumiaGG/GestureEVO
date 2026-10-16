@@ -1,5 +1,8 @@
 package io.github.lumiagg.gestureevo.gesture
 
+import io.github.lumiagg.gestureevo.diagnostics.AppLogger
+import io.github.lumiagg.gestureevo.diagnostics.LogLevel
+import io.github.lumiagg.gestureevo.diagnostics.LogModule
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.content.BroadcastReceiver
@@ -54,11 +57,15 @@ class GestureService : AccessibilityService(), CoroutineScope {
     }
 
     override fun onInterrupt() {
-
+        AppLogger.event(
+            LogModule.SERVICE, "accessibility_interrupted",
+            LogLevel.WARN)
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        AppLogger.event(
+            LogModule.SERVICE, "accessibility_connected")
         CurrentPackageProvider.setService(this)
         initReceiver()
         launch(Dispatchers.Main) {
@@ -101,6 +108,9 @@ class GestureService : AccessibilityService(), CoroutineScope {
     }
 
     override fun onDestroy() {
+        AppLogger.event(
+            LogModule.SERVICE, "accessibility_destroyed",
+            LogLevel.WARN)
         super.onDestroy()
         gestureManager?.destroy()
         gestureManager = null
@@ -152,7 +162,9 @@ class GestureService : AccessibilityService(), CoroutineScope {
                                     screenshot.hardwareBuffer.close()
                                 }
                             }.onFailure {
-                                Log.e(TAG, "takeScreenshot onSuccess processing failed", it)
+                                AppLogger.event(
+                                    LogModule.SERVICE, "screenshot_failed",
+                                    LogLevel.ERROR, error = it)
                             }.getOrNull()
                             if (bitmap != null) {
                                 Log.d(TAG, "takeScreenshot success")

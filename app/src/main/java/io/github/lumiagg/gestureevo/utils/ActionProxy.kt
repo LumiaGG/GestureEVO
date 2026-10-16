@@ -1,6 +1,10 @@
 package io.github.lumiagg.gestureevo.utils
 
 import FreeFormUtils
+import io.github.lumiagg.gestureevo.diagnostics.AppLogger
+import io.github.lumiagg.gestureevo.diagnostics.LogLevel
+import io.github.lumiagg.gestureevo.diagnostics.LogModule
+import io.github.lumiagg.gestureevo.diagnostics.SystemLogCapture
 import android.accessibilityservice.AccessibilityService
 import android.app.ActivityOptions
 import android.content.ActivityNotFoundException
@@ -64,6 +68,7 @@ import java.lang.reflect.InvocationTargetException
 import java.util.UUID
 
 class ActionProxy(private val context: Context, linkString: String) {
+    private val trace = UUID.randomUUID().toString()
     private val link = linkString.toUri()
 
     val event: GestureActionType = link.toGestureActionType()
@@ -79,7 +84,12 @@ class ActionProxy(private val context: Context, linkString: String) {
     val triggerSideParam: String? = link.getQueryParameter("triggerSide")
 
     suspend fun execute(anchor: TriggerSide.Point? = null, side: String? = null) {
-        Log.d("ActionProxy", "$link  event: $event")
+        val startedAt = android.os.SystemClock.elapsedRealtime()
+        SystemLogCapture.rememberTarget(pkg)
+        AppLogger.event(LogModule.ACTION, "action_triggered", trace = trace,
+            fields = mapOf("type" to event.name, "package" to pkg, "foreground" to AppLogger.foreground))
+        if (AppLogger.detailed) AppLogger.event(LogModule.ACTION, "action_environment", LogLevel.DEBUG,
+            trace = trace, fields = AppLogger.actionState())
         val effectiveSide = side ?: triggerSideParam
         if (anchor != null) {
             TriggerSide.record(anchor)
@@ -88,6 +98,14 @@ class ActionProxy(private val context: Context, linkString: String) {
         }
         try {
             executeAction()
+            AppLogger.event(LogModule.ACTION, "action_dispatch_returned", trace = trace,
+                fields = mapOf("durationMs" to android.os.SystemClock.elapsedRealtime() - startedAt))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            AppLogger.event(LogModule.ACTION, "action_cancelled", LogLevel.WARN, trace)
+            throw e
+        } catch (e: Exception) {
+            AppLogger.event(LogModule.ACTION, "action_failed", LogLevel.ERROR, trace, error = e)
+            throw e
         } finally {
             TriggerSide.take()
         }
@@ -241,6 +259,8 @@ class ActionProxy(private val context: Context, linkString: String) {
         withContext(Dispatchers.Default) {
             ensureAppEnabledIfFrozen(pkg, context)
             val intent = context.packageManager.getLaunchIntentForPackage(pkg) ?: let {
+                AppLogger.event(LogModule.ACTION, "launch_intent_missing", LogLevel.WARN, trace,
+                    mapOf("package" to pkg))
                 return@withContext false
             }
             val useMiFreeForm = context.settingsStore.readKey(KEY_USE_MI_WINDOW, false)
@@ -262,6 +282,8 @@ class ActionProxy(private val context: Context, linkString: String) {
             }
             val launchUri = UrlDetector.normalizeForOpening(uri) ?: uri
             val intent = Intent.parseUri(launchUri, Intent.URI_ALLOW_UNSAFE)
+            AppLogger.event(LogModule.ACTION, "shortcut_parsed", LogLevel.DEBUG, trace,
+                mapOf("package" to (intent.component?.packageName ?: pkgName), "component" to intent.component?.flattenToShortString()))
             intent.addFlags(FLAG_ACTIVITY_NEW_TASK)
             if (pkgName.isNotEmpty()) {
                 intent.setPackage(pkgName)
@@ -276,8 +298,10 @@ class ActionProxy(private val context: Context, linkString: String) {
                 recordOpenCount(targetPkg)
             }
             return launched
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
-            e.printStackTrace()
+            AppLogger.event(LogModule.ACTION, "shortcut_launch_failed", LogLevel.ERROR, trace, error = e)
         }
         return false
     }
@@ -345,14 +369,19 @@ class ActionProxy(private val context: Context, linkString: String) {
             val launcherApps =
                 context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
             try {
+                AppLogger.event(LogModule.ACTION, "launch_requested", trace = trace,
+                    fields = mapOf("method" to "work_profile", "component" to componentName?.flattenToShortString()))
                 launcherApps.startMainActivity(
                     componentName,
                     userManager.getUserForSerialNumber(userId),
                     null,
                     if (freeform) getActivityOptions().toBundle() else null
                 )
+                AppLogger.event(LogModule.ACTION, "launch_request_submitted", trace = trace,
+                    fields = mapOf("method" to "work_profile"))
                 return@withContext true
             } catch (e: Exception) {
+                AppLogger.event(LogModule.ACTION, "launch_failed", LogLevel.ERROR, trace, error = e)
             }
             return@withContext false
         }
@@ -366,6 +395,12 @@ class ActionProxy(private val context: Context, linkString: String) {
             } else if (freeform) {
                 intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
             }
+            val target = intent.component?.packageName ?: intent.`package`
+            SystemLogCapture.rememberTarget(target)
+            val metadata = mapOf("package" to target, "component" to intent.component?.flattenToShortString(),
+                "action" to intent.action, "flags" to intent.flags, "freeform" to freeform,
+                "foreground" to AppLogger.foreground, "method" to if (freeform) "freeform" else "startActivity")
+            AppLogger.event(LogModule.ACTION, "launch_requested", trace = trace, fields = metadata)
             try {
                 if (freeform) {
                     when (getFreeFormCode(context)) {
@@ -376,9 +411,12 @@ class ActionProxy(private val context: Context, linkString: String) {
                 } else {
                     context.startActivity(intent)
                 }
+                AppLogger.event(LogModule.ACTION, "launch_request_submitted", trace = trace, fields = metadata)
                 return@withContext true
             } catch (ignored: ActivityNotFoundException) {
+                AppLogger.event(LogModule.ACTION, "activity_not_found", LogLevel.ERROR, trace, metadata, ignored)
             } catch (ignored: SecurityException) {
+                AppLogger.event(LogModule.ACTION, "launch_permission_denied", LogLevel.ERROR, trace, metadata, ignored)
             }
             return@withContext false
         }
@@ -403,6 +441,8 @@ class ActionProxy(private val context: Context, linkString: String) {
             intentV1.putExtra("packageName", intent.`package`)
             intentV1.putExtra("activityName", intent.component?.flattenToString())
             context.sendBroadcast(intentV1)
+            AppLogger.event(LogModule.ACTION, "launch_broadcast_submitted", trace = trace,
+                fields = mapOf("method" to "mi_freeform", "package" to intent.`package`))
             true
         }
 

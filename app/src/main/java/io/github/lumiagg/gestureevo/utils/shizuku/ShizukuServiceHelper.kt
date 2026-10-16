@@ -1,5 +1,8 @@
 package io.github.lumiagg.gestureevo.utils.shizuku
 
+import io.github.lumiagg.gestureevo.diagnostics.AppLogger
+import io.github.lumiagg.gestureevo.diagnostics.LogLevel
+import io.github.lumiagg.gestureevo.diagnostics.LogModule
 import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
@@ -40,6 +43,9 @@ object ShizukuServiceHelper {
     }
 
     private fun onConnectionLost() {
+        AppLogger.event(
+            LogModule.SHIZUKU, "service_disconnected",
+            LogLevel.WARN)
         _service = null
         bindingRequested = false
         notifyConnectionListeners()
@@ -76,6 +82,8 @@ object ShizukuServiceHelper {
                 return
             }
             _service = IUserService.Stub.asInterface(binder)
+            AppLogger.event(
+                LogModule.SHIZUKU, "service_connected")
             notifyConnectionListeners()
         }
 
@@ -98,7 +106,7 @@ object ShizukuServiceHelper {
         .daemon(false)
         .processNameSuffix("service")
         .debuggable(BuildConfig.DEBUG)
-        .version(BuildConfig.VERSION_CODE)
+        .version(BuildConfig.VERSION_CODE + 2) // Diagnostic stream protocol changed; replace a previously bound user service.
 
     fun bindUserService(onBound: (() -> Unit)?) {
         if (isServiceBound) {

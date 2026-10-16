@@ -556,6 +556,14 @@ object SettingsSearchRegistry {
             keywords = listOf("统计", "数据统计", "stats")
         ),
         entry(
+            id = "data_logs",
+            titleResId = R.string.log_manager_title,
+            pageTitleResId = R.string.data_backup_title,
+            targetActivity = DataBackActivity::class.java,
+            targetViewId = R.id.logsCard,
+            keywords = listOf("日志", "诊断", "崩溃", "log", "diagnostics", "crash")
+        ),
+        entry(
             id = "data_alias",
             titleResId = R.string.data_app_alias_title,
             pageTitleResId = R.string.data_backup_title,

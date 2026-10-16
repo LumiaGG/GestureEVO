@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="log_open_manager">View logs</string>
+    <string name="log_open_manager_summary">Search records, manage diagnostics and export files</string>
+    <string name="log_problem_title">Diagnose a problem</string>
+    <string name="log_problem_history_short">History</string>
+    <string name="log_search_short">Search logs</string>
+    <string name="log_all_time">Any time</string>
+    <string name="log_records_title">Activity log</string>
+    <string name="log_settings_title">Logging settings</string>
+    <string name="log_detailed_short">Detailed diagnostics</string>
+    <string name="log_detailed_hint">Records additional details and turns off automatically after 30 minutes.</string>
+    <string name="log_status_on">Logging on</string>
+    <string name="log_status_off">Logging paused</string>
+    <string name="log_problem_enable_start">Enable and record</string>
+    <string name="log_health_normal">Healthy</string>
+    <string name="log_health_warning">Logging issue</string>
+    <string name="log_health_paused">Paused</string>
+    <string name="log_storage_compact">%1$d files · %2$d KB</string>
+    <string name="log_status_title">Storage and logging status</string>
+    <string name="log_trace_short">Trace %1$s</string>
+    <string name="log_session_short">Problem %1$s</string>
+    <string name="log_event_process_started">App process started</string>
+    <string name="log_event_logging_enabled">Logging enabled</string>
+    <string name="log_event_diagnostics_enabled">Detailed diagnostics enabled</string>
+    <string name="log_event_diagnostics_disabled">Detailed diagnostics disabled</string>
+    <string name="log_event_problem_started">Problem recording started</string>
+    <string name="log_event_problem_finished">Problem recording finished</string>
+    <string name="log_event_action_triggered">Action triggered</string>
+    <string name="log_event_action_dispatched">Action dispatch returned</string>
+    <string name="log_event_action_failed">Action failed</string>
+    <string name="log_event_shortcut_parsed">Shortcut parsed</string>
+    <string name="log_event_launch_requested">Target launch requested</string>
+    <string name="log_event_launch_submitted">Launch request submitted</string>
+    <string name="log_event_permission_denied">Launch permission denied</string>
+    <string name="log_event_activity_missing">Target activity not found</string>
+    <string name="log_event_intent_missing">Launch intent not found</string>
+    <string name="log_event_uncaught_exception">Uncaught app exception</string>
+    <string-array name="log_level_names">
+        <item>Debug</item><item>Info</item><item>Warning</item><item>Error</item>
+    </string-array>
+</resources>
