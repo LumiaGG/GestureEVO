@@ -1,5 +1,8 @@
 package io.github.lumiagg.gestureevo.utils
 
+import io.github.lumiagg.gestureevo.diagnostics.AppLogger
+import io.github.lumiagg.gestureevo.diagnostics.LogLevel
+import io.github.lumiagg.gestureevo.diagnostics.LogModule
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.util.Log
@@ -62,12 +65,24 @@ object MlKitOcr {
                 if (img.width < 32 || img.height < 32) return@withLock nodes
                 running.set(true)
                 try {
-                    Log.d(TAG, "detect start")
+                    AppLogger.event(
+                        LogModule.OCR, "detect_started",
+                        LogLevel.DEBUG,
+                        fields = mapOf("width" to img.width, "height" to img.height))
                     withBuiltInEngine(retainPreloaded = false) { engine ->
                         processWithEngine(engine, img, nodes)
                     }
-                    Log.d(TAG, "detect complete, ${nodes.size} nodes")
+                    AppLogger.event(
+                        LogModule.OCR, "detect_completed",
+                        LogLevel.DEBUG, fields = mapOf("count" to nodes.size))
                     nodes
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    AppLogger.event(
+                        LogModule.OCR, "detect_failed",
+                        LogLevel.ERROR, error = e)
+                    throw e
                 } finally {
                     running.set(false)
                 }
@@ -154,6 +169,7 @@ object MlKitOcr {
     private fun createEngine(): OcrEngine? {
         return OcrEngine.create(EvoApplication.application, AcceleratorType.CPU)
             .getOrElse { error ->
+                AppLogger.event(LogModule.OCR, "engine_initialization_failed", LogLevel.ERROR, error = error)
                 Log.e(TAG, "OCR engine init failed", error)
                 null
             }

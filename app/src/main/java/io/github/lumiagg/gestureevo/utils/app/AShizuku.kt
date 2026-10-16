@@ -1,5 +1,8 @@
 package io.github.lumiagg.gestureevo.utils.app
 
+import io.github.lumiagg.gestureevo.diagnostics.AppLogger
+import io.github.lumiagg.gestureevo.diagnostics.LogLevel
+import io.github.lumiagg.gestureevo.diagnostics.LogModule
 import android.content.Context
 import android.content.pm.PackageManager
 import android.system.Os
@@ -24,6 +27,10 @@ object AShizuku {
         try {
             val service = ShizukuServiceHelper.awaitService()
             val result = service.execute(mutableListOf("/system/bin/sh", "-c", command), null, null)
+            AppLogger.event(
+                LogModule.SHIZUKU, "command_returned",
+                if (result.isSuccess) LogLevel.DEBUG else LogLevel.WARN,
+                fields = mapOf("method" to "shizuku", "exitCode" to result.exitCode))
             result.isSuccess to if (result.isSuccess) {
                 result.output.orEmpty()
             } else {
@@ -32,6 +39,9 @@ object AShizuku {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            AppLogger.event(
+                LogModule.SHIZUKU, "command_failed",
+                LogLevel.ERROR, error = e)
             Log.w(TAG, "Shizuku command failed", e)
             false to (e.message ?: "Unknown error")
         }

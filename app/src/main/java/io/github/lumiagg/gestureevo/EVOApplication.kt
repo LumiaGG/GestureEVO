@@ -1,5 +1,6 @@
 package io.github.lumiagg.gestureevo
 
+import io.github.lumiagg.gestureevo.diagnostics.AppLogger
 import android.app.Application
 import android.content.ComponentCallbacks2
 import android.content.res.Configuration
@@ -39,6 +40,7 @@ class EvoApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         application = this
+        AppLogger.initialize(this)
         val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler(AppCrashHandler(this, previousHandler))
         val preferences = runBlocking { settingsStore.data.first() }

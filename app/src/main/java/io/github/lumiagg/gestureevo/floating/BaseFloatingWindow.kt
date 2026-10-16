@@ -1,5 +1,8 @@
 package io.github.lumiagg.gestureevo.floating
 
+import io.github.lumiagg.gestureevo.diagnostics.AppLogger
+import io.github.lumiagg.gestureevo.diagnostics.LogLevel
+import io.github.lumiagg.gestureevo.diagnostics.LogModule
 import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
@@ -71,6 +74,9 @@ abstract class BaseFloatingWindow(
             windowManager.addView(view, layoutParams)
             onAttached()
         }.onFailure { err ->
+            AppLogger.event(
+                LogModule.OVERLAY, "overlay_attach_failed",
+                LogLevel.WARN, fields = mapOf("source" to logTag), error = err)
             Log.d(logTag, "addView failed: $err")
             onFailure(err)
             attachRetryJobs[view] = coroutineScope.postOnMain {

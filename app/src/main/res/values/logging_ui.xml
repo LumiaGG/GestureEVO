@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="log_open_manager">查看日志</string>
+    <string name="log_open_manager_summary">搜索记录、管理诊断与导出文件</string>
+    <string name="log_problem_title">问题诊断</string>
+    <string name="log_problem_history_short">历史记录</string>
+    <string name="log_search_short">搜索日志</string>
+    <string name="log_all_time">全部时间</string>
+    <string name="log_records_title">运行记录</string>
+    <string name="log_settings_title">记录设置</string>
+    <string name="log_detailed_short">详细诊断</string>
+    <string name="log_detailed_hint">开启后记录更多执行细节，30 分钟后自动关闭。</string>
+    <string name="log_status_on">日志已开启</string>
+    <string name="log_status_off">日志已暂停</string>
+    <string name="log_problem_enable_start">开启并记录问题</string>
+    <string name="log_health_normal">状态正常</string>
+    <string name="log_health_warning">记录异常</string>
+    <string name="log_health_paused">已暂停</string>
+    <string name="log_storage_compact">%1$d 个文件 · %2$d KB</string>
+    <string name="log_status_title">存储与记录状态</string>
+    <string name="log_trace_short">关联 %1$s</string>
+    <string name="log_session_short">问题 %1$s</string>
+    <string name="log_event_process_started">应用进程已启动</string>
+    <string name="log_event_logging_enabled">已开启运行日志</string>
+    <string name="log_event_diagnostics_enabled">已开启详细诊断</string>
+    <string name="log_event_diagnostics_disabled">已关闭详细诊断</string>
+    <string name="log_event_problem_started">开始记录问题</string>
+    <string name="log_event_problem_finished">问题记录已结束</string>
+    <string name="log_event_action_triggered">动作已触发</string>
+    <string name="log_event_action_dispatched">动作调度已返回</string>
+    <string name="log_event_action_failed">动作执行失败</string>
+    <string name="log_event_shortcut_parsed">已解析快捷方式</string>
+    <string name="log_event_launch_requested">请求启动目标</string>
+    <string name="log_event_launch_submitted">已提交启动请求</string>
+    <string name="log_event_permission_denied">启动权限被拒绝</string>
+    <string name="log_event_activity_missing">未找到目标页面</string>
+    <string name="log_event_intent_missing">未找到启动入口</string>
+    <string name="log_event_uncaught_exception">应用发生未捕获异常</string>
+    <string-array name="log_level_names">
+        <item>调试</item><item>信息</item><item>警告</item><item>错误</item>
+    </string-array>
+</resources>
