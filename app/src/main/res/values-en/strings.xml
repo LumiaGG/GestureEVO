@@ -449,6 +449,8 @@
     <string name="inspire_settings_pin_pool_local_rule_extraction_desc">Enable reminder time guessing and image notification title/content extraction. Processing uses local OCR and rules only; content is not uploaded.</string>
     <string name="inspire_settings_pin_pool_save_screen_content_title">Auto-save images to Pin pool</string>
     <string name="inspire_settings_pin_pool_save_screen_content_desc">Also save screen-content and content-page images into the Pin pool Auto-save category</string>
+    <string name="inspire_settings_pin_pool_auto_copy_clipboard_title">Also write to clipboard</string>
+    <string name="inspire_settings_pin_pool_auto_copy_clipboard_desc">Write these images to the system clipboard as they are saved. This replaces the current clipboard content</string>
     <string name="inspire_settings_pin_pool_auto_delete_title">Auto-delete</string>
     <string name="inspire_settings_pin_pool_auto_delete_desc">Expired, unpinned Auto-save items are removed when Pin pool opens. 0 means never auto-delete</string>
     <string name="inspire_settings_pin_pool_auto_delete_off">Do not auto-delete</string>

@@ -770,6 +770,15 @@ object SettingsSearchRegistry {
             keywords = listOf("Pin池", "屏幕内容", "自动保存", "保存图片", "复制图片", "分类", "pin pool", "screen content", "auto-save")
         ),
         entry(
+            id = "inspire_pin_pool_auto_copy_clipboard",
+            titleResId = R.string.inspire_settings_pin_pool_auto_copy_clipboard_title,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.pin_pool_auto_copy_clipboard_row,
+            summaryResId = R.string.inspire_settings_pin_pool_auto_copy_clipboard_desc,
+            keywords = listOf("Pin池", "剪贴板", "复制", "自动写入", "粘贴", "pin pool", "clipboard", "auto copy")
+        ),
+        entry(
             id = "inspire_pin_pool_auto_delete",
             titleResId = R.string.inspire_settings_pin_pool_auto_delete_title,
             pageTitleResId = R.string.inspire_settings_title,

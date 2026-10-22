@@ -488,6 +488,8 @@
     <string name="inspire_settings_pin_pool_local_rule_extraction_desc">启用定时提醒时间猜测和图片通知标题/内容提取；仅基于本地 OCR 与规则处理，不上传内容</string>
     <string name="inspire_settings_pin_pool_save_screen_content_title">自动保存图片到Pin池</string>
     <string name="inspire_settings_pin_pool_save_screen_content_desc">将屏幕内容、内容页及图片编辑器中保存或复制的图片同时放入 Pin 池的「自动保存」分类</string>
+    <string name="inspire_settings_pin_pool_auto_copy_clipboard_title">自动写入剪贴板</string>
+    <string name="inspire_settings_pin_pool_auto_copy_clipboard_desc">上述图片在保存时同时写入系统剪贴板，会覆盖剪贴板中的现有内容</string>
     <string name="inspire_settings_pin_pool_auto_delete_title">定期删除</string>
     <string name="inspire_settings_pin_pool_auto_delete_desc">自动保存分类中过期且未置顶的内容会在打开 Pin 池时清理，0 表示不自动删除</string>
     <string name="inspire_settings_pin_pool_auto_delete_off">不自动删除</string>
