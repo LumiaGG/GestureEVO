@@ -4,9 +4,11 @@ import androidx.core.graphics.scale
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import io.github.lumiagg.gestureevo.db.PinPoolModel
 import io.github.lumiagg.gestureevo.db.getPinPoolDao
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity
+import io.github.lumiagg.gestureevo.utils.ClipboardUtils
 import io.github.lumiagg.gestureevo.utils.MoshiUtils
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.removeKey
@@ -22,6 +24,7 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 object PinPoolStore {
+    private const val TAG = "PinPoolStore"
     private const val KEY_PIN_POOL_ITEMS = "pin_pool_items"
     private const val PIN_DIR_NAME = "pin_pool"
     private val migrateMutex = Mutex()
@@ -90,11 +93,38 @@ object PinPoolStore {
             item
         }
 
-    suspend fun addScreenContentImageIfEnabled(context: Context, bitmap: Bitmap): PinPoolItem? {
+    suspend fun addScreenContentImageIfEnabled(
+        context: Context,
+        bitmap: Bitmap,
+        clipboardAlreadyWritten: Boolean = false,
+    ): PinPoolItem? {
         val enabled = context.settingsStore.readKey(
             InspireSettingsActivity.KEY_PIN_POOL_SAVE_SCREEN_CONTENT_IMAGES,
             true
         )
+        val autoCopyToClipboard = context.settingsStore.readKey(
+            InspireSettingsActivity.KEY_PIN_POOL_AUTO_COPY_IMAGE_TO_CLIPBOARD,
+            InspireSettingsActivity.DEFAULT_PIN_POOL_AUTO_COPY_IMAGE_TO_CLIPBOARD
+        )
+        val shouldWriteClipboard = autoCopyToClipboard && !clipboardAlreadyWritten
+        if (!enabled && !shouldWriteClipboard) return null
+        if (shouldWriteClipboard) {
+            // Runs before the Pin pool dedupe check: the image was just saved by the user,
+            // so the clipboard should follow even when the pool already holds this image.
+            withContext(Dispatchers.IO) {
+                try {
+                    ClipboardUtils.copyImageToClipboard(
+                        context,
+                        bitmap,
+                        fileName = "pin_pool_auto_copy.png"
+                    )
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to write saved image to clipboard", e)
+                }
+            }
+        }
         if (!enabled) return null
         return withContext(Dispatchers.IO) {
             ensureMigrated(context)

@@ -1,8 +1,6 @@
 package io.github.lumiagg.gestureevo.inspire
 
 import android.content.ActivityNotFoundException
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -10,7 +8,6 @@ import android.graphics.Color
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
-import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
@@ -31,6 +28,7 @@ import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.K
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_SEARCH_LINK
 import io.github.lumiagg.gestureevo.settings.ui.DomainAppManager
 import io.github.lumiagg.gestureevo.utils.ActionProxy
+import io.github.lumiagg.gestureevo.utils.ClipboardUtils
 import io.github.lumiagg.gestureevo.utils.GalleryImageManager
 import io.github.lumiagg.gestureevo.utils.GestureActionLink
 import io.github.lumiagg.gestureevo.utils.ToastHelper
@@ -163,57 +161,44 @@ object InspireHelperUtils {
         showToast: Boolean = true,
         autoSaveToPinPool: Boolean = false
     ) {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-
-        // Create temporary file to save bitmap
-        val imagesFolder = File(context.cacheDir, "images")
-        imagesFolder.mkdirs()
-        val file = File(imagesFolder, "shared_image.png")
-
-        try {
-            // Write bitmap to file
-            val stream = FileOutputStream(file)
-            bitmap.compress(Bitmap.CompressFormat.PNG, 90, stream)
-            stream.close()
-
-            // Create FileProvider content URI
-            val contentUri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
-            )
-
-            // Create ClipData and set to clipboard
-            val clip = ClipData.newUri(
-                context.contentResolver,
-                context.getString(R.string.inspire_clipboard_image_label),
-                contentUri
-            )
-            clipboard.setPrimaryClip(clip)
-            if (autoSaveToPinPool) {
-                try {
-                    PinPoolStore.addScreenContentImageIfEnabled(context, bitmap)
-                } catch (e: kotlinx.coroutines.CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.w("InspireHelperUtils", "Failed to auto-save copied image to Pin pool", e)
-                }
-            }
-            if (showToast) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.inspire_clipboard_image_copied),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        val written = ClipboardUtils.copyImageToClipboard(
+            context = context,
+            bitmap = bitmap,
+            fileName = "shared_image.png",
+            quality = 90,
+            label = context.getString(R.string.inspire_clipboard_image_label),
+        )
+        if (!written) {
+            Log.w("InspireHelperUtils", "Failed to copy image to clipboard")
+            // The baseline always reported copy failures, even when the success toast was muted.
             withContext(Dispatchers.Main) {
                 Toast.makeText(
                     context,
                     context.getString(R.string.inspire_clipboard_image_copy_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            return
+        }
+        if (autoSaveToPinPool) {
+            try {
+                // The clipboard already holds this image, so the Pin pool hook must not write it again.
+                PinPoolStore.addScreenContentImageIfEnabled(
+                    context,
+                    bitmap,
+                    clipboardAlreadyWritten = true,
+                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("InspireHelperUtils", "Failed to auto-save copied image to Pin pool", e)
+            }
+        }
+        if (showToast) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.inspire_clipboard_image_copied),
                     Toast.LENGTH_SHORT
                 ).show()
             }
