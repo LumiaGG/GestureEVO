@@ -12,7 +12,9 @@
 
 ## 验证与提交
 
-运行 `python tools/check_repository.py`、`python -m unittest discover -s tools/tests` 和 `gradlew.bat :app:compileDebugKotlin :app:compileDebugJavaWithJavac :app:testDebugUnitTest`（Unix 使用 `./gradlew`）。原生或资源修改还需 `:app:assembleDebug`。纯文档修改检查链接和格式即可。
+PR 和普通主分支推送自动运行轻量仓库检查，包括仓库规范、Python 工具及工作流校验，不触发 Android 编译。完整 Android lint、单元测试和 Debug 打包仅在 GitHub Actions 中手动运行 `Repository checks` 时执行；在主分支上手动运行时也会提交依赖图。正式发布通过独立的 `Signed release` 流程执行单元测试、签名构建和签名验证。
+
+本地验证按修改范围和维护者要求执行，不要求每次修改都编译。需要完整验证时，可运行 `python tools/check_repository.py`、`python -m unittest discover -s tools/tests` 和 `gradlew.bat :app:compileDebugKotlin :app:compileDebugJavaWithJavac :app:testDebugUnitTest`（Unix 使用 `./gradlew`）；需要检查原生代码或最终 APK 时再运行 `:app:assembleDebug`。纯文档修改检查链接和格式即可。在提交说明中如实记录未执行的检查。
 
 提交说明写清触发条件、修改后的行为、验证结果及未验证的设备范围。避免提交 SDK 路径、IDE 状态、日志、构建产物、签名文件或账号数据。保持 Room 历史 schema；它们是迁移依据。
 
