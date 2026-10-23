@@ -5,12 +5,10 @@ import io.github.lumiagg.gestureevo.databinding.BottomSheetIconSelectBinding
 
 import android.content.Intent
 import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabsService
 import androidx.core.graphics.createBitmap
@@ -34,6 +32,7 @@ import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import io.github.lumiagg.gestureevo.utils.icon.IconFileUtils
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
+import io.github.lumiagg.gestureevo.utils.icon.IconImageIO
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,7 +52,7 @@ class SearchEngineAddActivity : AppCompatActivity() {
 
         setupToolbar()
         initView()
-        initData()
+        initData(savedInstanceState)
     }
 
     private fun setupToolbar() {
@@ -316,12 +315,12 @@ class SearchEngineAddActivity : AppCompatActivity() {
         }
     }
 
-    private fun initData() {
+    private fun initData(savedInstanceState: Bundle?) {
         editMode = intent.getBooleanExtra("editMode", false)
         setupToolbar()
 
-        if (editMode) {
-            intent.getStringExtra("engine")?.let { engineJson ->
+        if (editMode || savedInstanceState?.containsKey("engine_draft") == true) {
+            (savedInstanceState?.getString("engine_draft") ?: intent.getStringExtra("engine"))?.let { engineJson ->
                 SearchEngine.toModel(engineJson)?.let { engine ->
                     searchEngine = engine
                     fillEngineData()
@@ -331,6 +330,13 @@ class SearchEngineAddActivity : AppCompatActivity() {
             searchEngine.tag = SearchEngineDataManager.buildTag()
             updateEngineIconPreview()
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        searchEngine.name = binding.etEngineName.text.toString()
+        searchEngine.engineType = currentEngineType
+        outState.putString("engine_draft", searchEngine.toJson())
+        super.onSaveInstanceState(outState)
     }
 
     private fun fillEngineData() {
@@ -413,7 +419,9 @@ class SearchEngineAddActivity : AppCompatActivity() {
         bottomSheetView.findViewById<View>(R.id.select_gallery)
             .setOnClickListener {
                 bottomSheet.dismiss()
-                selectImageLauncher.launch("image/*")
+                selectImageLauncher.launch(IconEditorRequest(
+                    imageBadge = searchEngine.engineType == EngineType.SHARE_IMAGE_TO_APP && showImageBadge,
+                ))
             }
 
         bottomSheetView.findViewById<View>(R.id.select_app_icon)
@@ -421,9 +429,10 @@ class SearchEngineAddActivity : AppCompatActivity() {
                 bottomSheet.dismiss()
                 DefaultSelectAPPBottomSheet(this, lifecycleScope, object : SelectAPPCallBack {
                     override fun selectCompleted(model: APPModel) {
-                        IconHelper.getIcon(applicationContext, model.pkgName)?.let { drawable ->
-                            updateAndSaveIcon(drawable)
-                        }
+                        selectImageLauncher.launch(IconEditorRequest(
+                            appPackage = model.pkgName,
+                            imageBadge = searchEngine.engineType == EngineType.SHARE_IMAGE_TO_APP && showImageBadge,
+                        ))
                     }
                 }).show()
             }
@@ -431,55 +440,38 @@ class SearchEngineAddActivity : AppCompatActivity() {
         bottomSheetView.findViewById<View>(R.id.select_text_icon)
             .setOnClickListener {
                 bottomSheet.dismiss()
-                showEditTextBottomSheet(
-                    activity = this,
-                    coroutineScope = lifecycleScope,
-                    title = getString(R.string.search_engine_text_icon_title),
-                    hint = getString(R.string.search_engine_text_icon_hint),
-                    onConfirm = { inputText ->
-                        searchEngine.textIcon = inputText.trim()
-                        searchEngine.iconType = IconType.TEXT
-                        updateEngineIconPreview()
-                    }
-                )
+                selectTextIconLauncher.launch(TextIconEditorRequest(
+                    text = if (searchEngine.iconType == IconType.TEXT) searchEngine.textIcon.orEmpty() else "",
+                    imageBadge = searchEngine.engineType == EngineType.SHARE_IMAGE_TO_APP && showImageBadge,
+                ))
             }
 
         bottomSheet.setContentView(bottomSheetView)
         bottomSheet.show()
     }
 
-    private val selectImageLauncher = registerForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { selectedUri ->
-            lifecycleScope.launch(Dispatchers.IO) {
-                try {
-                    searchEngine.iconType = IconType.URI
-                    iconFileUtils.setGalleryIcon(selectedUri)
-                    withContext(Dispatchers.Main) {
-                        iconFileUtils.getImgBitmap()?.let { bitmap ->
-                            binding.engineIcon.setImage(bitmap)
-                            updateEngineIconBadgePreview()
-                        } ?: run {
-                            Toast.makeText(
-                                this@SearchEngineAddActivity,
-                                getString(R.string.search_engine_icon_uri_failed),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            this@SearchEngineAddActivity,
-                            getString(
-                                R.string.search_engine_icon_image_failed,
-                                e.localizedMessage ?: ""
-                            ),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
+    private val selectTextIconLauncher = registerForActivityResult(TextIconEditorContract()) { text ->
+        if (text != null) {
+            iconFileUtils.clear()
+            searchEngine.textIcon = text
+            searchEngine.iconType = IconType.TEXT
+            searchEngine.icon = null
+            updateEngineIconPreview()
+        }
+    }
+
+    private val selectImageLauncher = registerForActivityResult(IconEditorContract()) { path ->
+        if (path != null) lifecycleScope.launch {
+            val bitmap = withContext(Dispatchers.IO) { IconImageIO.read(path) }
+            if (bitmap != null) {
+                iconFileUtils.setImgBitmap(bitmap)
+                iconFileUtils.imgPath = path
+                searchEngine.iconType = IconType.URI
+                searchEngine.icon = path
+                binding.engineIcon.setImage(bitmap)
+                updateEngineIconBadgePreview()
+            } else {
+                Toast.makeText(this@SearchEngineAddActivity, R.string.icon_editor_load_failed, Toast.LENGTH_SHORT).show()
             }
         }
     }

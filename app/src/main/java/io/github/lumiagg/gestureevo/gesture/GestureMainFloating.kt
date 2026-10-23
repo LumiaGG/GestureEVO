@@ -272,6 +272,8 @@ class GestureMainFloating(private val context: GestureService) :
                     addFlags(FLAG_ACTIVITY_NEW_TASK)
                     putExtra("tag", tag)
                     putExtra("source", source.name)
+                    putExtra(GestureAddActionActivity.EXTRA_ICON_WHEEL_STYLE,
+                        (if (source == ActionView.ActionViewType.SUB) actionView.subActionView.config else actionView.config).toJson(false))
                 })
             }
 
@@ -282,6 +284,8 @@ class GestureMainFloating(private val context: GestureService) :
                     addFlags(FLAG_ACTIVITY_NEW_TASK)
                     putExtra("tag", tag)
                     putExtra("source", source.name)
+                    putExtra(GestureAddActionActivity.EXTRA_ICON_WHEEL_STYLE,
+                        (if (source == ActionView.ActionViewType.SUB) actionView.subActionView.config else actionView.config).toJson(false))
                     putExtra("editMode", true)
                     putExtra("item", item.toJson())
                 })
