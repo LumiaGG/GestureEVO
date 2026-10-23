@@ -6,10 +6,11 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
-import android.provider.MediaStore
 import android.util.Log
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import java.io.File
+import java.io.FileOutputStream
 import java.util.Locale
 
 /**
@@ -51,21 +52,50 @@ object ClipboardUtils {
     }
 
     /**
-     * Copies a bitmap image to the clipboard.
+     * Copies a bitmap image to the clipboard through the app FileProvider.
+     *
+     * The PNG is written into the `cacheDir/images` directory declared in `file_paths.xml`,
+     * so no storage permission is required and nothing is inserted into MediaStore.
+     *
+     * This is the single low-level implementation for image clipboard writes; callers keep
+     * their own user-facing feedback around it.
      *
      * @param context Context
      * @param bitmap The image to copy
+     * @param fileName Cache file name; give each caller its own to avoid clobbering
+     * @param quality PNG compression hint, passed to [Bitmap.compress]
+     * @param label ClipData label
+     * @return true when the clipboard was updated
      */
-    fun copyImage(context: Context, bitmap: Bitmap) {
-        val clipboard = clipboard(context) ?: return
-        val uri = BitmapUtils.getUriFromBitmap(context, bitmap)
-        if (uri == Uri.EMPTY) return
-        val clip = ClipData.newUri(
-            context.contentResolver,
-            "image",
-            uri
-        )
-        clipboard.setPrimaryClip(clip)
+    fun copyImageToClipboard(
+        context: Context,
+        bitmap: Bitmap,
+        fileName: String = "clipboard_auto_image.png",
+        quality: Int = 100,
+        label: String = "image",
+    ): Boolean {
+        val clipboard = clipboard(context) ?: return false
+        return try {
+            val imagesFolder = File(context.cacheDir, "images").apply { mkdirs() }
+            val file = File(imagesFolder, fileName)
+            val written = FileOutputStream(file).use { output ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, quality, output)
+            }
+            if (!written) {
+                Log.w(TAG, "Unable to compress bitmap for the clipboard")
+                return false
+            }
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+            clipboard.setPrimaryClip(ClipData.newUri(context.contentResolver, label, uri))
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Unable to copy image to clipboard (${e.javaClass.simpleName})")
+            false
+        }
     }
 
     /**
@@ -146,34 +176,6 @@ object ClipboardUtils {
         } catch (e: Exception) {
             Log.w(TAG, "Unable to inspect image URI (${e.javaClass.simpleName})")
             false
-        }
-    }
-}
-
-/**
- * Bitmap conversion utility functions.
- */
-object BitmapUtils {
-    /**
-     * Converts a Bitmap to a content or media URI.
-     *
-     * @param context Context
-     * @param bitmap Bitmap to convert
-     * @return Content URI of the saved image
-     */
-    @Suppress("DEPRECATION")
-    fun getUriFromBitmap(context: Context, bitmap: Bitmap): Uri {
-        return try {
-            val path = MediaStore.Images.Media.insertImage(
-                context.contentResolver,
-                bitmap,
-                "ClipboardImage_${System.currentTimeMillis()}",
-                null
-            )
-            path?.toUri() ?: Uri.EMPTY
-        } catch (e: Exception) {
-            Log.e("BitmapUtils", "Unable to save clipboard bitmap (${e.javaClass.simpleName})")
-            Uri.EMPTY
         }
     }
 }

@@ -69,6 +69,9 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val DEFAULT_PIN_POOL_LOCAL_RULE_EXTRACTION = false
         const val KEY_PIN_POOL_SAVE_SCREEN_CONTENT_IMAGES =
             "key_pin_pool_save_screen_content_images"
+        const val KEY_PIN_POOL_AUTO_COPY_IMAGE_TO_CLIPBOARD =
+            "key_pin_pool_auto_copy_image_to_clipboard"
+        const val DEFAULT_PIN_POOL_AUTO_COPY_IMAGE_TO_CLIPBOARD = false
         const val KEY_PIN_POOL_AUTO_DELETE_DAYS = "key_pin_pool_auto_delete_days"
         const val PIN_POOL_AUTO_DELETE_DAYS_MAX = 30
         const val PIN_POOL_DISPLAY_MODE_FULLSCREEN = "fullscreen"
@@ -162,6 +165,10 @@ class InspireSettingsActivity : AppCompatActivity() {
             true
         )
         binding.pinPoolSaveScreenContentSwitch.isChecked = autoSaveEnabled
+        binding.pinPoolAutoCopyClipboardSwitch.isChecked = settingsStore.readKey(
+            KEY_PIN_POOL_AUTO_COPY_IMAGE_TO_CLIPBOARD,
+            DEFAULT_PIN_POOL_AUTO_COPY_IMAGE_TO_CLIPBOARD
+        )
         updatePinPoolAutoDeleteVisibility(autoSaveEnabled)
         updatePinPoolAutoDeleteText(
             settingsStore.readKey(KEY_PIN_POOL_AUTO_DELETE_DAYS, 0)
@@ -404,6 +411,12 @@ class InspireSettingsActivity : AppCompatActivity() {
 
         binding.pinPoolAutoDeleteRow.setOnClickListener {
             showPinPoolAutoDeleteBottomSheet()
+        }
+
+        binding.pinPoolAutoCopyClipboardSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_PIN_POOL_AUTO_COPY_IMAGE_TO_CLIPBOARD, isChecked)
+            }
         }
     }
 
