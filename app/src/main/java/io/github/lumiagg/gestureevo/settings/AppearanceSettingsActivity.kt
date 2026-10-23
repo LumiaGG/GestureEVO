@@ -23,20 +23,17 @@ import io.github.lumiagg.gestureevo.settings.ui.showColorPickerDialog
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.app.appDisplayName
-import io.github.lumiagg.gestureevo.utils.icon.IconFileUtils
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
 import io.github.lumiagg.gestureevo.utils.icon.IconPackRepository
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.saveKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.io.IOException
 
 class AppearanceSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityAppearanceSettingsBinding
-    private val overrideIconFileUtils by lazy { IconFileUtils(this) }
     private var pendingOverridePackage: APPModel? = null
 
     companion object {
@@ -68,6 +65,9 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityAppearanceSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        savedInstanceState?.getString("pending_icon_override_package")?.let {
+            pendingOverridePackage = APPModel("", it)
+        }
 
         setupToolbar()
         lifecycleScope.launch {
@@ -544,7 +544,7 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         bottomSheetView.findViewById<View>(R.id.select_gallery)
             .setOnClickListener {
                 bottomSheet.dismiss()
-                selectOverrideImageLauncher.launch("image/*")
+                selectOverrideImageLauncher.launch(IconEditorRequest())
             }
 
         bottomSheetView.findViewById<View>(R.id.select_app_icon)
@@ -552,41 +552,8 @@ class AppearanceSettingsActivity : AppCompatActivity() {
                 bottomSheet.dismiss()
                 DefaultSelectAPPBottomSheet(this, lifecycleScope, object : SelectAPPCallBack {
                     override fun selectCompleted(source: APPModel) {
-                        lifecycleScope.launch(Dispatchers.IO) {
-                            val drawable =
-                                IconHelper.getIcon(applicationContext, source.pkgName)
-                            if (drawable == null) {
-                                withContext(Dispatchers.Main) {
-                                    ToastHelper.showInUIThread(
-                                        applicationContext,
-                                        R.string.appearance_settings_icon_override_failed
-                                    )
-                                }
-                                return@launch
-                            }
-                            overrideIconFileUtils.clear()
-                            overrideIconFileUtils.setImgDrawable(drawable)
-                            if (overrideIconFileUtils.saveIcon()) {
-                                IconHelper.setAppIconOverride(
-                                    applicationContext,
-                                    model.pkgName,
-                                    overrideIconFileUtils.imgPath
-                                )
-                                withContext(Dispatchers.Main) {
-                                    ToastHelper.showInUIThread(
-                                        applicationContext,
-                                        R.string.appearance_settings_icon_override_saved
-                                    )
-                                }
-                            } else {
-                                withContext(Dispatchers.Main) {
-                                    ToastHelper.showInUIThread(
-                                        applicationContext,
-                                        R.string.appearance_settings_icon_override_failed
-                                    )
-                                }
-                            }
-                        }
+                        pendingOverridePackage = model
+                        selectOverrideImageLauncher.launch(IconEditorRequest(appPackage = source.pkgName))
                     }
                 }).show()
             }
@@ -607,45 +574,21 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         bottomSheet.show()
     }
 
-    private val selectOverrideImageLauncher = registerForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.GetContent()
-    ) { uri ->
-        val target = pendingOverridePackage ?: return@registerForActivityResult
-        uri?.let { selectedUri ->
-            lifecycleScope.launch(Dispatchers.IO) {
-                try {
-                    overrideIconFileUtils.clear()
-                    overrideIconFileUtils.setGalleryIcon(selectedUri)
-                    if (overrideIconFileUtils.saveIcon()) {
-                        IconHelper.setAppIconOverride(
-                            applicationContext,
-                            target.pkgName,
-                            overrideIconFileUtils.imgPath
-                        )
-                        withContext(Dispatchers.Main) {
-                            ToastHelper.showInUIThread(
-                                applicationContext,
-                                R.string.appearance_settings_icon_override_saved
-                            )
-                        }
-                    } else {
-                        withContext(Dispatchers.Main) {
-                            ToastHelper.showInUIThread(
-                                applicationContext,
-                                R.string.appearance_settings_icon_override_failed
-                            )
-                        }
-                    }
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        ToastHelper.showInUIThread(
-                            applicationContext,
-                            R.string.appearance_settings_icon_override_failed
-                        )
-                    }
-                }
-                pendingOverridePackage = null
+    private val selectOverrideImageLauncher = registerForActivityResult(IconEditorContract()) { path ->
+        val target = pendingOverridePackage
+        pendingOverridePackage = null
+        if (path != null && target != null) lifecycleScope.launch {
+            try {
+                IconHelper.setAppIconOverride(applicationContext, target.pkgName, path)
+                ToastHelper.showInUIThread(applicationContext, R.string.appearance_settings_icon_override_saved)
+            } catch (_: IOException) {
+                ToastHelper.showInUIThread(applicationContext, R.string.appearance_settings_icon_override_failed)
             }
-        } ?: run { pendingOverridePackage = null }
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("pending_icon_override_package", pendingOverridePackage?.pkgName)
+        super.onSaveInstanceState(outState)
     }
 }

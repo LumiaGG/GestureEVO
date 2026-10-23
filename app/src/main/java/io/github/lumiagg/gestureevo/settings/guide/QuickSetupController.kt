@@ -415,6 +415,7 @@ internal class QuickSetupController(
                     putExtra(GestureAddActionActivity.EXTRA_RETURN_ACTION_ITEM, true)
                     putExtra("editMode", true)
                     putExtra("triggerActionMode", gesture != null)
+                    if (wheel) putExtra(GestureAddActionActivity.EXTRA_ICON_WHEEL_STYLE, baseActionConfig.toJson(false))
                     putExtra(GestureAddActionActivity.EXTRA_ACTION_ITEM, (currentAction ?: GestureActionItem()).toJson(false))
                 })
             }

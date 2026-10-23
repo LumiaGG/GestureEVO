@@ -8,7 +8,6 @@ import android.content.ComponentName
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -32,6 +31,7 @@ import io.github.lumiagg.gestureevo.db.APPModel
 import io.github.lumiagg.gestureevo.gesture.ActionViewEvent
 import io.github.lumiagg.gestureevo.gesture.EventBusManager
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionDataManager
+import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionDataManager.buildTag
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionItem
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionType
@@ -55,6 +55,7 @@ import io.github.lumiagg.gestureevo.utils.MultiUserAPP
 import io.github.lumiagg.gestureevo.utils.TempDndPermissionRequester
 import io.github.lumiagg.gestureevo.utils.icon.IconFileUtils
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
+import io.github.lumiagg.gestureevo.utils.icon.IconImageIO
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -290,48 +291,40 @@ class GestureAddActionActivity : AppCompatActivity() {
         return listPopupWindow
     }
 
-    private val selectImageLauncher = registerForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { selectedUri ->
-            binding.actionIcon.let { view ->
-                lifecycleScope.launch(Dispatchers.IO) {
-                    try {
-                        actionItem.iconType = IconType.URI
-                        iconFileUtils.setGalleryIcon(selectedUri)
-                        withContext(Dispatchers.Main) {
-                            iconFileUtils.getImgBitmap()?.let { bitmap ->
-                                view.setImage(bitmap)
-                            } ?: {
-                                Toast.makeText(
-                                    this@GestureAddActionActivity,
-                                    getString(R.string.gesture_add_action_uri_failed),
-                                    Toast.LENGTH_SHORT
-                                ).show()
+    private val selectImageLauncher = registerForActivityResult(IconEditorContract()) { path ->
+        if (path != null) lifecycleScope.launch {
+            val bitmap = withContext(Dispatchers.IO) { IconImageIO.read(path) }
+            if (bitmap != null) {
+                iconFileUtils.setImgBitmap(bitmap)
+                iconFileUtils.imgPath = path
+                actionItem.iconType = IconType.URI
+                actionItem.icon = path
+                binding.actionIcon.setImage(bitmap)
+            } else {
+                Toast.makeText(this@GestureAddActionActivity, R.string.icon_editor_load_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun selectGalleryIcon() {
+        lifecycleScope.launch {
+            val style = if (selectTriggerActionMode) null else {
+                intent.getStringExtra(EXTRA_ICON_WHEEL_STYLE) ?: run {
+                    val tag = itemListTag.takeUnless { it.isBlank() || it == "null" } ?: ActionConfig.DEFAULT_TAG
+                    val main = GestureActionDataManager.readActionConfig(this@GestureAddActionActivity, tag, false)
+                    val config = if (sourceActionView == ActionView.ActionViewType.SUB) {
+                        GestureActionDataManager.readActionConfig(this@GestureAddActionActivity, tag, true).apply {
+                            if (subActionFollowConfig) {
+                                itemDiameter = main.itemDiameter * 0.8f
+                                iconPadding = main.iconPadding * 0.8f
+                                iconCornerRadius = main.iconCornerRadius * 0.8f
                             }
                         }
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                this@GestureAddActionActivity,
-                                getString(
-                                    R.string.gesture_add_action_image_failed,
-                                    e.localizedMessage ?: ""
-                                ),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
+                    } else main
+                    config.toJson(false)
                 }
             }
-        } ?: let {
-            lifecycleScope.launch(Dispatchers.Main) {
-                Toast.makeText(
-                    this@GestureAddActionActivity,
-                    getString(R.string.gesture_add_action_uri_missing),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
+            selectImageLauncher.launch(IconEditorRequest(wheelStyle = style))
         }
     }
 
@@ -357,7 +350,7 @@ class GestureAddActionActivity : AppCompatActivity() {
         bottomSheetView.findViewById<View>(R.id.select_gallery)
             .setOnClickListener {
                 bottomSheet.dismiss()
-                selectImageLauncher.launch("image/*")
+                selectGalleryIcon()
             }
 
         bottomSheetView.findViewById<View>(R.id.select_app_icon)
@@ -789,5 +782,6 @@ class GestureAddActionActivity : AppCompatActivity() {
         const val EXTRA_EXTERNAL_ACTION_LINK = "extra_external_action_link"
         const val EXTRA_RETURN_ACTION_ITEM = "extra_return_action_item"
         const val EXTRA_ACTION_ITEM = "item"
+        const val EXTRA_ICON_WHEEL_STYLE = "icon_wheel_style"
     }
 }
