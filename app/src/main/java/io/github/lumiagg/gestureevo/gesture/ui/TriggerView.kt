@@ -416,8 +416,10 @@ class TriggerView @JvmOverloads constructor(
         // Reset gesture state
         private fun resetGestureState(
             clearPendingSingleClick: Boolean = false,
-            clearDoubleTapState: Boolean = false
+            clearDoubleTapState: Boolean = false,
+            preserveTapSuppression: Boolean = false
         ) {
+            val shouldSuppressTap = preserveTapSuppression && gestureState.hasExceededSwipeThreshold
             gestureState.apply {
                 hasSwipeTriggered = false
                 hasBackTriggered = false
@@ -431,7 +433,7 @@ class TriggerView @JvmOverloads constructor(
                 activePointerId = MotionEvent.INVALID_POINTER_ID
                 initialDxSign = 0
                 initialDySign = 0
-                hasExceededSwipeThreshold = false
+                hasExceededSwipeThreshold = shouldSuppressTap
                 hasRearmedSwipe = false
                 if (clearDoubleTapState) {
                     awaitingDoubleTap = false
@@ -473,7 +475,9 @@ class TriggerView @JvmOverloads constructor(
                 return false
             }
             val activePointerId = gestureState.activePointerId
-            resetGestureState()
+            // The finger is still down. Preserve the fact that this physical touch
+            // already crossed the swipe threshold so its eventual UP cannot become a tap.
+            resetGestureState(preserveTapSuppression = true)
             gestureState.apply {
                 startX = currentX
                 startY = currentY
