@@ -52,6 +52,7 @@ import io.github.lumiagg.gestureevo.settings.ui.showEditTextBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.showPieGroupSelectBottomSheet
 import io.github.lumiagg.gestureevo.utils.GestureActionLink
 import io.github.lumiagg.gestureevo.utils.MultiUserAPP
+import io.github.lumiagg.gestureevo.utils.NotificationPermissionUtils
 import io.github.lumiagg.gestureevo.utils.TempDndPermissionRequester
 import io.github.lumiagg.gestureevo.utils.icon.IconFileUtils
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
@@ -533,6 +534,10 @@ class GestureAddActionActivity : AppCompatActivity() {
                 selectTempDndAction(configBinding, actionLink, oldQueryList)
             }
 
+            GestureActionType.PAUSE_GESTURE -> {
+                showPauseGestureSecondsInput(configBinding, actionLink, oldQueryList)
+            }
+
             GestureActionType.OTHER_SHORTCUT -> {
                 selectOtherShortcut(configBinding)
             }
@@ -601,6 +606,42 @@ class GestureAddActionActivity : AppCompatActivity() {
 
         tempDndPermissionRequester.ensurePermissionWithPrompt {
             showMinutesInput()
+        }
+    }
+
+    private fun showPauseGestureSecondsInput(
+        configBinding: ActivityGestureAddActionConfigBinding,
+        actionLink: GestureActionLink,
+        oldQueryList: ArrayList<Pair<String, String>>
+    ) {
+        val showSecondsInput = {
+            showEditTextBottomSheet(
+                activity = this,
+                coroutineScope = lifecycleScope,
+                title = getString(R.string.gesture_add_action_pause_seconds_title),
+                hint = getString(R.string.gesture_add_action_pause_seconds_hint),
+                defaultText = oldQueryList.find { it.first == "seconds" }?.second ?: "3",
+                onConfirm = { inputText ->
+                    val seconds = inputText.trim().toIntOrNull()
+                    if (seconds == null || seconds <= 0) {
+                        Toast.makeText(
+                            this,
+                            getString(R.string.gesture_add_action_pause_seconds_invalid),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        actionLink.addParams("seconds", seconds.toString())
+                        applyLink(configBinding)
+                    }
+                }
+            )
+        }
+        // The countdown notification is the only handle on a paused trigger, so ask for
+        // notification access while the action is being configured.
+        if (NotificationPermissionUtils.canPostNotifications(this)) {
+            showSecondsInput()
+        } else {
+            tempDndPermissionRequester.ensureNotificationPermissionWithPrompt(showSecondsInput)
         }
     }
 

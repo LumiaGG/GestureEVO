@@ -250,6 +250,8 @@ class ActionProxy(private val context: Context, linkString: String) {
                 )
             }
             GestureActionType.CLICK_THROUGH -> {}
+            // Handled by GestureManager, which knows the trigger that fired the action.
+            GestureActionType.PAUSE_GESTURE -> {}
             GestureActionType.NONE -> {}
         }
 

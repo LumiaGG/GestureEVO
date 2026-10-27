@@ -382,6 +382,18 @@ class GestureManager(
                             )
                         }
 
+                        GestureActionType.PAUSE_GESTURE -> {
+                            val seconds = action?.firstStageUri
+                                ?.getQueryParameter("seconds")?.toIntOrNull()
+                                ?.coerceIn(1, MAX_PAUSE_GESTURE_SECONDS)
+                                ?: DEFAULT_PAUSE_GESTURE_SECONDS
+                            freeTriggerFloating.pauseTriggerTemporarily(
+                                triggerConfig.tag,
+                                seconds * 1000L,
+                                triggerConfig.name
+                            )
+                        }
+
                         GestureActionType.CLICK_THROUGH -> {
                             val success =
                                 freeTriggerFloating.setVisibility(triggerConfig.tag, false)
@@ -606,6 +618,8 @@ class GestureManager(
 
     companion object {
         const val TAG = "GestureManager"
+        const val DEFAULT_PAUSE_GESTURE_SECONDS = 3
+        const val MAX_PAUSE_GESTURE_SECONDS = 24 * 60 * 60
     }
 }
 
