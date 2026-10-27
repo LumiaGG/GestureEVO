@@ -897,6 +897,10 @@
     <string name="gesture_action_search">Search</string>
     <string name="gesture_action_pin_pool">Pin pool</string>
     <string name="gesture_action_temp_dnd">Temporary DND</string>
+    <string name="gesture_action_pause_gesture">Pause gestures</string>
+    <string name="gesture_add_action_pause_seconds_title">Pause gestures</string>
+    <string name="gesture_add_action_pause_seconds_hint">Enter duration in seconds</string>
+    <string name="gesture_add_action_pause_seconds_invalid">Enter a number of seconds greater than 0</string>
     <string name="temp_dnd_policy_access_required">Please grant Do Not Disturb access first</string>
     <plurals name="temp_dnd_enabled_minutes">
         <item quantity="one">Do Not Disturb enabled for %1$d minute</item>
@@ -916,6 +920,22 @@
     <string name="temp_dnd_notification_redefine_action">Redefine time</string>
     <string name="temp_dnd_notification_redefine_hint">Enter minutes</string>
     <string name="temp_dnd_notification_stop_action">Turn off now</string>
+    <string name="pause_gesture_notification_channel_name">Paused gesture countdown</string>
+    <string name="pause_gesture_notification_channel_desc">Shows the remaining time a trigger stays paused</string>
+    <string name="pause_gesture_notification_title">Trigger is paused</string>
+    <plurals name="pause_gesture_notification_text_seconds">
+        <item quantity="one">%1$s paused, total duration %2$d second</item>
+        <item quantity="other">%1$s paused, total duration %2$d seconds</item>
+    </plurals>
+    <plurals name="pause_gesture_notification_text_minutes">
+        <item quantity="one">%1$s paused, total duration %2$d minute</item>
+        <item quantity="other">%1$s paused, total duration %2$d minutes</item>
+    </plurals>
+    <string name="pause_gesture_notification_extend_action">Extend pause</string>
+    <string name="pause_gesture_notification_extend_hint">Enter seconds</string>
+    <string name="pause_gesture_notification_restore_action">Resume now</string>
+    <string name="pause_gesture_permission_notice_title">Notification permission required</string>
+    <string name="pause_gesture_permission_notice_message">Pause gestures posts a countdown notification so you can see the remaining time, extend the pause, or resume early. You should grant notification permission now.</string>
     <string name="gesture_type_touch">Touch</string>
     <string name="pin_pool_empty">No saved Pins</string>
     <string name="color_picker_title">Choose Color</string>

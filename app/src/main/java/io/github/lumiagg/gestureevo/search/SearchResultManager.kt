@@ -1190,6 +1190,7 @@ class SearchResultManager(
             GestureActionType.KEYBOARD -> R.drawable.baseline_keyboard_24
             GestureActionType.FREEFORM_FOREGROUND -> R.drawable.ic_little_window
             GestureActionType.TEMP_DND -> R.drawable.do_not_disturb_on_24px
+            GestureActionType.PAUSE_GESTURE -> R.drawable.baseline_gesture_24
             else -> R.drawable.baseline_miscellaneous_services_24
         }
     }

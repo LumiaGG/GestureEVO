@@ -977,6 +977,10 @@
     <string name="gesture_action_search">搜索</string>
     <string name="gesture_action_pin_pool">Pin池</string>
     <string name="gesture_action_temp_dnd">临时免打扰</string>
+    <string name="gesture_action_pause_gesture">临时禁用手势</string>
+    <string name="gesture_add_action_pause_seconds_title">临时禁用手势</string>
+    <string name="gesture_add_action_pause_seconds_hint">请输入禁用秒数</string>
+    <string name="gesture_add_action_pause_seconds_invalid">请输入大于0的秒数</string>
     <string name="temp_dnd_policy_access_required">请先授权“免打扰权限”</string>
     <plurals name="temp_dnd_enabled_minutes">
         <item quantity="one">已开启免打扰 %1$d 分钟</item>
@@ -996,6 +1000,22 @@
     <string name="temp_dnd_notification_redefine_action">重设时间</string>
     <string name="temp_dnd_notification_redefine_hint">输入分钟数</string>
     <string name="temp_dnd_notification_stop_action">立即关闭</string>
+    <string name="pause_gesture_notification_channel_name">临时禁用手势倒计时</string>
+    <string name="pause_gesture_notification_channel_desc">显示触发器临时禁用的剩余时间</string>
+    <string name="pause_gesture_notification_title">触发器已临时禁用</string>
+    <plurals name="pause_gesture_notification_text_seconds">
+        <item quantity="one">%1$s 本次总时长 %2$d 秒</item>
+        <item quantity="other">%1$s 本次总时长 %2$d 秒</item>
+    </plurals>
+    <plurals name="pause_gesture_notification_text_minutes">
+        <item quantity="one">%1$s 本次总时长 %2$d 分钟</item>
+        <item quantity="other">%1$s 本次总时长 %2$d 分钟</item>
+    </plurals>
+    <string name="pause_gesture_notification_extend_action">延长禁用</string>
+    <string name="pause_gesture_notification_extend_hint">输入秒数</string>
+    <string name="pause_gesture_notification_restore_action">立即恢复</string>
+    <string name="pause_gesture_permission_notice_title">需要通知权限</string>
+    <string name="pause_gesture_permission_notice_message">临时禁用手势会发送一条倒计时通知，用于显示剩余时间、延长禁用或提前恢复。建议现在授予通知权限。</string>
     <string name="gesture_type_touch">触摸</string>
     <string name="pin_pool_empty">暂无保存的Pin</string>
     <string name="color_picker_title">选择颜色</string>

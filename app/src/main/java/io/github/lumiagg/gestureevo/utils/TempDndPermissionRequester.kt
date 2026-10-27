@@ -50,6 +50,26 @@ class TempDndPermissionRequester(
             .show()
     }
 
+    /** Notification permission only, for features that just need to post a notification. */
+    fun ensureNotificationPermissionWithPrompt(onContinue: () -> Unit) {
+        if (NotificationPermissionUtils.canPostNotifications(activity)) {
+            onContinue()
+            return
+        }
+        MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.pause_gesture_permission_notice_title)
+            .setMessage(R.string.pause_gesture_permission_notice_message)
+            .setPositiveButton(R.string.temp_dnd_permission_notice_authorize) { _, _ ->
+                requestNotificationPermission()
+                onContinue()
+            }
+            .setNegativeButton(R.string.temp_dnd_permission_notice_later) { _, _ ->
+                onContinue()
+            }
+            .setNeutralButton(R.string.edit_bottomsheet_cancel, null)
+            .show()
+    }
+
     private fun requestPermissions() {
         if (!NotificationPermissionUtils.canPostNotifications(activity)) {
             requestNotificationPermission()

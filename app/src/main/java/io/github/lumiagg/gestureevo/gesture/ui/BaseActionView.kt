@@ -500,6 +500,7 @@ fun gestureActionIcon(context: Context, view: RoundImageTextView, item: GestureA
                 GestureActionType.POINTER -> view.setImageWithBackplate(R.drawable.baseline_control_point_24)
                 GestureActionType.PIN_POOL -> view.setImageWithBackplate(R.drawable.pinboard_24px)
                 GestureActionType.TEMP_DND -> view.setImageWithBackplate(R.drawable.do_not_disturb_on_24px)
+                GestureActionType.PAUSE_GESTURE -> view.setImageWithBackplate(R.drawable.baseline_gesture_24)
                 else -> {}
             }
         }
