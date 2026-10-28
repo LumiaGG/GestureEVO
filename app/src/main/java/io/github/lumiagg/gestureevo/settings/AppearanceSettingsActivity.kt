@@ -54,6 +54,26 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         const val KEY_SCREEN_CONTENT_CARD_BACKGROUND_BLUR = "key_screen_content_card_background_blur"
         const val KEY_DYNAMIC_COLOR_SCHEME = "key_dynamic_color_scheme"
         const val KEY_POINTER_COLOR = "key_pointer_color"
+        const val KEY_POINTER_SHAPE = "key_pointer_shape"
+        const val KEY_POINTER_SIZE = "key_pointer_size"
+        const val KEY_POINTER_CLICK_FEEDBACK = "key_pointer_click_feedback"
+
+        /** Single source of truth for the pointer shape keys and size range. */
+        const val POINTER_SHAPE_DOT = "dot"
+        const val POINTER_SHAPE_SMALL_DOT = "small_dot"
+        const val POINTER_SHAPE_RING = "ring"
+        const val POINTER_SHAPE_CROSS = "cross"
+        const val POINTER_SHAPE_ARROW = "arrow"
+        val POINTER_SHAPE_KEYS = listOf(
+            POINTER_SHAPE_DOT,
+            POINTER_SHAPE_SMALL_DOT,
+            POINTER_SHAPE_RING,
+            POINTER_SHAPE_CROSS,
+            POINTER_SHAPE_ARROW
+        )
+        const val POINTER_SIZE_DEFAULT = 30
+        const val POINTER_SIZE_MIN = 16
+        const val POINTER_SIZE_MAX = 48
         const val KEY_GESTURE_FLUID_COLOR = "key_gesture_fluid_color"
         const val KEY_GESTURE_FLUID_STYLE = "key_gesture_fluid_style"
         const val KEY_GESTURE_FLUID_SIZE = "key_gesture_fluid_size"
@@ -110,7 +130,56 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         setupIconPackDropdown()
         setupLanguageDropdown()
         setupFluidFeedbackViews()
+        setupPointerAppearanceViews()
         refreshColorSwatches()
+    }
+
+    private suspend fun setupPointerAppearanceViews() {
+        val labels = listOf(
+            getString(R.string.appearance_settings_pointer_shape_dot),
+            getString(R.string.appearance_settings_pointer_shape_small_dot),
+            getString(R.string.appearance_settings_pointer_shape_ring),
+            getString(R.string.appearance_settings_pointer_shape_cross),
+            getString(R.string.appearance_settings_pointer_shape_arrow),
+        )
+        val keys = POINTER_SHAPE_KEYS
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, labels)
+        binding.pointerShapeAutoComplete.apply {
+            setAdapter(adapter)
+            val savedKey = settingsStore.readKey(KEY_POINTER_SHAPE, POINTER_SHAPE_DOT)
+            val index = keys.indexOf(savedKey).takeIf { it >= 0 } ?: 0
+            setText(labels[index], false)
+            setOnItemClickListener { _, _, position, _ ->
+                lifecycleScope.launch {
+                    settingsStore.saveKey(KEY_POINTER_SHAPE, keys[position])
+                }
+            }
+        }
+
+        val savedSize = settingsStore.readKey(KEY_POINTER_SIZE, POINTER_SIZE_DEFAULT)
+            .coerceIn(POINTER_SIZE_MIN, POINTER_SIZE_MAX)
+        binding.pointerSizeSlider.value = savedSize.toFloat()
+        binding.pointerSizeValue.text = "${savedSize}dp"
+        binding.pointerSizeSlider.addOnChangeListener { _, value, _ ->
+            binding.pointerSizeValue.text = "${value.toInt()}dp"
+        }
+        binding.pointerSizeSlider.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {}
+
+            override fun onStopTrackingTouch(slider: Slider) {
+                lifecycleScope.launch {
+                    settingsStore.saveKey(KEY_POINTER_SIZE, slider.value.toInt())
+                }
+            }
+        })
+
+        binding.pointerClickFeedbackSwitch.isChecked =
+            settingsStore.readKey(KEY_POINTER_CLICK_FEEDBACK, true)
+        binding.pointerClickFeedbackSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_POINTER_CLICK_FEEDBACK, isChecked)
+            }
+        }
     }
 
     private suspend fun refreshColorSwatches() {

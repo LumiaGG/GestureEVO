@@ -177,6 +177,72 @@
             app:settingsRowTitle="@string/appearance_settings_pointer_color"
             app:settingsRowSummary="@string/appearance_settings_pointer_color_summary"
             app:settingsRowSwatch="true" />
+          <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/pointerShapeDropdown"
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/appearance_settings_pointer_shape">
+            <AutoCompleteTextView
+              android:id="@+id/pointerShapeAutoComplete"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:inputType="none" />
+          </com.google.android.material.textfield.TextInputLayout>
+          <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"
+            android:background="@drawable/bg_settings_tile_quiet"
+            android:paddingHorizontal="14dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="4dp">
+            <LinearLayout
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:gravity="center_vertical"
+              android:orientation="horizontal">
+              <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/appearance_settings_pointer_size"
+                android:textStyle="bold" />
+              <TextView
+                android:id="@+id/pointerSizeValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/colorPrimary" />
+            </LinearLayout>
+            <TextView
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content"
+              android:layout_marginTop="4dp"
+              android:text="@string/appearance_settings_pointer_size_summary"
+              android:textColor="?android:textColorSecondary" />
+            <com.google.android.material.slider.Slider
+              android:id="@+id/pointerSizeSlider"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:stepSize="1"
+              android:valueFrom="16"
+              android:valueTo="48"
+              android:value="30" />
+          </LinearLayout>
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+            android:id="@+id/pointerClickFeedbackRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/appearance_settings_pointer_click_feedback"
+            app:settingsRowSummary="@string/appearance_settings_pointer_click_feedback_summary">
+            <com.google.android.material.materialswitch.MaterialSwitch
+              android:id="@+id/pointerClickFeedbackSwitch"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content" />
+          </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
         </LinearLayout>
       </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
       <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
