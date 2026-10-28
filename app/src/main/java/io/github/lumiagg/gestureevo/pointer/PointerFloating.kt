@@ -12,6 +12,7 @@ import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
+import android.os.SystemClock
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -35,6 +36,17 @@ import io.github.lumiagg.gestureevo.inspire.SmartSegmenter
 import io.github.lumiagg.gestureevo.inspire.getScreenView
 import io.github.lumiagg.gestureevo.pointer.ui.HighlightRectView
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_POINTER_COLOR
+import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_POINTER_CLICK_FEEDBACK
+import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_POINTER_SHAPE
+import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_POINTER_SIZE
+import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SHAPE_ARROW
+import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SHAPE_CROSS
+import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SHAPE_DOT
+import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SHAPE_RING
+import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SHAPE_SMALL_DOT
+import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SIZE_DEFAULT
+import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SIZE_MAX
+import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SIZE_MIN
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_ALWAYS_SHOW_POINTER_TOUCH_AREA
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_ENABLE_POINTER_DRAG_MODE
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_POINTER_TOUCH_AREA_OFFSET_DP
@@ -213,8 +225,34 @@ class PointerFloating(
 
     private companion object {
         const val POINTER_SHOW_ANIMATION_DURATION = 140L
-        const val POINTER_HIDE_ANIMATION_DURATION = 110L
+        const val POINTER_HIDE_ANIMATION_DURATION = 80L
         const val POINTER_ANIMATION_START_SCALE = 0.82f
+
+        private val POINTER_SHAPES = setOf(
+            POINTER_SHAPE_DOT,
+            POINTER_SHAPE_SMALL_DOT,
+            POINTER_SHAPE_RING,
+            POINTER_SHAPE_CROSS,
+            POINTER_SHAPE_ARROW
+        )
+
+        const val POINTER_SIZE_DEFAULT_DP = POINTER_SIZE_DEFAULT
+        const val POINTER_SIZE_MIN_DP = POINTER_SIZE_MIN
+        const val POINTER_SIZE_MAX_DP = POINTER_SIZE_MAX
+
+        /** Pointer feedback: a single shrink-and-return pulse, used for every click. */
+        const val POINTER_CLICK_PRESS_SCALE = 0.85f
+        const val POINTER_CLICK_PULSE_SHRINK_DURATION = 50L
+        const val POINTER_CLICK_PULSE_RETURN_DURATION = 70L
+
+        /** Fraction of the icon box kept as padding around the drawn shape. */
+        const val POINTER_ICON_INSET_RATIO = 0.12f
+
+        /**
+         * Inset for the filled dot. Measured against the stock pointer (dot radius 21px vs
+         * ring 42.5px on a 30dp box), 0.245 reproduces the original dot-to-ring proportion.
+         */
+        const val POINTER_DOT_INSET_RATIO = 0.245f
     }
 
     var enable = false
@@ -232,6 +270,7 @@ class PointerFloating(
         ensureViewsAttached()
         updateTouchAreaConfig()
         pointerManger.updatePointerColorConfig()
+        pointerManger.updatePointerAppearanceConfig()
         highlightRectView.setStrokeColor(pointerManger.getPointerColor())
         pointerFloatingView.visibility = View.VISIBLE
         updateTouchView()
@@ -376,10 +415,19 @@ class PointerFloating(
         private val view = GestureActionPointerViewBinding.inflate(LayoutInflater.from(context)).root
         private val pointerIcon: ImageFilterView = view.findViewById(R.id.pointer)
         private var pointerColor: Int = 0
+        private var pointerShape: String = POINTER_SHAPE_DOT
+        private var pointerSizeDp: Int = POINTER_SIZE_DEFAULT_DP
+        private var pointerClickFeedback: Boolean = true
 
         var touchViewX = 0f
         var touchViewY = 0f
         var isDragMode = false
+        private var clickPulseEndAt = 0L
+        private var hideScheduled = false
+        /** True once the icon's layout or backplate has been changed away from the stock XML. */
+        private var geometryCustomized = false
+        /** Size the stock geometry was last applied at, so size-only changes still re-apply. */
+        private var appliedSizeDp = -1
         private var isHoverLongPressActive = false
         private var hoverLongPressJob: Job? = null
         private var pendingHoverLongPress = false
@@ -415,11 +463,18 @@ class PointerFloating(
             view.alpha = 1f
             view.scaleX = 1f
             view.scaleY = 1f
+            // A pulse interrupted mid-flight would otherwise leave the icon scaled down.
+            pointerIcon.animate().cancel()
+            pointerIcon.scaleX = 1f
+            pointerIcon.scaleY = 1f
             trailView.clearTrail()
         }
 
         fun showPointer() {
             view.animate().cancel()
+            pointerIcon.animate().cancel()
+            pointerIcon.scaleX = 1f
+            pointerIcon.scaleY = 1f
             view.alpha = 0f
             view.scaleX = POINTER_ANIMATION_START_SCALE
             view.scaleY = POINTER_ANIMATION_START_SCALE
@@ -433,6 +488,20 @@ class PointerFloating(
         }
 
         fun hidePointer(onEnd: () -> Unit) {
+            // The tap pulse runs on this view; hiding now would cancel it before it is seen.
+            if (isClickPulseActive()) {
+                if (!hideScheduled) {
+                    hideScheduled = true
+                    val remaining = (clickPulseEndAt - SystemClock.elapsedRealtime())
+                        .coerceAtLeast(0L)
+                    view.postDelayed({
+                        hideScheduled = false
+                        // Skip if the pointer was shown again while the pulse was running.
+                        if (!pointerVisibleRequested) hidePointer(onEnd)
+                    }, remaining)
+                }
+                return
+            }
             view.animate().cancel()
             if (view.visibility != View.VISIBLE) {
                 onEnd()
@@ -486,6 +555,20 @@ class PointerFloating(
             pointerColor = context.settingsStore.readKey(KEY_POINTER_COLOR, 0)
         }
 
+        suspend fun updatePointerAppearanceConfig() = withContext(Dispatchers.IO) {
+            // Fall back to the stock dot if the stored key is unknown or stale; otherwise a
+            // bad value would render the dot artwork without its ring backplate.
+            pointerShape = context.settingsStore.readKey(KEY_POINTER_SHAPE, POINTER_SHAPE_DOT)
+                .takeIf { it in POINTER_SHAPES } ?: POINTER_SHAPE_DOT
+            pointerSizeDp = context.settingsStore
+                .readKey(KEY_POINTER_SIZE, POINTER_SIZE_DEFAULT_DP)
+                .coerceIn(POINTER_SIZE_MIN_DP, POINTER_SIZE_MAX_DP)
+            pointerClickFeedback = context.settingsStore
+                .readKey(KEY_POINTER_CLICK_FEEDBACK, true)
+        }
+
+        fun isClickFeedbackEnabled(): Boolean = pointerClickFeedback
+
         fun getPointerColor(): Int {
             return if (pointerColor == 0) DynamicColorUtils.primaryColor else pointerColor
         }
@@ -496,16 +579,66 @@ class PointerFloating(
             target.backgroundTintList = ColorStateList.valueOf(color)
         }
 
+        private fun pointerShapeRes(): Int = when (pointerShape) {
+            POINTER_SHAPE_SMALL_DOT -> R.drawable.pointer_shape_small_dot
+            POINTER_SHAPE_RING -> R.drawable.pointer_shape_ring
+            POINTER_SHAPE_CROSS -> R.drawable.pointer_shape_cross
+            POINTER_SHAPE_ARROW -> R.drawable.pointer_shape_arrow
+            // The default dot is the original artwork, unchanged.
+            else -> R.drawable.baseline_circle_24
+        }
+
+        /**
+         * Restores the ring backplate geometry. Drag mode and the cut-out shapes mutate the
+         * icon's size, padding and background, so every path back to the dot resets them.
+         * The last applied size is remembered so a pure size change still re-applies while
+         * repeated shows do not re-inflate the background.
+         */
+        private fun restoreStockGeometry() {
+            if (!geometryCustomized && appliedSizeDp == pointerSizeDp) return
+            val sizePx = pointerSizeDp.dp2px.toInt()
+            val insetPx = (sizePx * POINTER_DOT_INSET_RATIO).toInt()
+            pointerIcon.layoutParams = pointerIcon.layoutParams.apply {
+                width = sizePx
+                height = sizePx
+            }
+            pointerIcon.setPadding(insetPx, insetPx, insetPx, insetPx)
+            pointerIcon.setBackgroundResource(R.drawable.pointer)
+            geometryCustomized = false
+            appliedSizeDp = pointerSizeDp
+        }
+
+        private fun applyPointerAppearance() {
+            if (pointerShape == POINTER_SHAPE_DOT) {
+                // Original artwork: ring backplate plus baseline_circle_24, sized by the slider.
+                restoreStockGeometry()
+                pointerIcon.setImageResource(R.drawable.baseline_circle_24)
+                applyPointerTheme(pointerIcon)
+                return
+            }
+            pointerIcon.apply {
+                setImageResource(pointerShapeRes())
+                val sizePx = pointerSizeDp.dp2px.toInt()
+                layoutParams = layoutParams.apply {
+                    width = sizePx
+                    height = sizePx
+                }
+                val inset = (sizePx * POINTER_ICON_INSET_RATIO).toInt()
+                setPadding(inset, inset, inset, inset)
+                background = null
+                geometryCustomized = true
+                applyPointerTheme(this)
+                requestLayout()
+            }
+        }
+
         fun refreshTheme() {
             applyPointerTheme(pointerIcon)
         }
 
         suspend fun showViewCenter(boolean: Boolean) = withContext(Dispatchers.Main) {
             if (boolean) {
-                pointerIcon.apply {
-                    setImageResource(R.drawable.baseline_circle_24)
-                    applyPointerTheme(this)
-                }
+                applyPointerAppearance()
             } else {
                 pointerIcon.setImageDrawable(null)
             }
@@ -533,7 +666,15 @@ class PointerFloating(
                     applyPointerTheme(this)
                     background = null
                     setPadding(0, 0, 0, 0)
+                    // The drag-select crosshair keeps a fixed size regardless of the pointer setting.
+                    val fixed = POINTER_SIZE_DEFAULT_DP.dp2px.toInt()
+                    layoutParams = layoutParams.apply {
+                        width = fixed
+                        height = fixed
+                    }
+                    requestLayout()
                 }
+                geometryCustomized = true
                 val halfPointerWidth = view.width / 2
                 val startPoint = Point(
                     view.x + halfPointerWidth,
@@ -556,12 +697,10 @@ class PointerFloating(
             context.gestureManager?.setInteractionMode(InteractionMode.NORMAL)
             context.postOnMain {
                 pointerIcon.apply {
-                    setImageDrawable(null)
                     setBackgroundResource(R.drawable.pointer)
                     applyPointerTheme(this)
-                    val padding = 10f.dp2px.toInt()
-                    setPadding(padding, padding, padding, padding)
                 }
+                applyPointerAppearance()
                 trailView.updateTrailConfig()
                 highlightRectView.hideRect()
                 highlightRectView.hidePotentialRect()
@@ -659,35 +798,18 @@ class PointerFloating(
             }
         }
 
-        private fun showHoverLongPressHint() {
-            if (isDragMode || isHoverLongPressActive) return
-            isHoverLongPressActive = true
-            pointerIcon.animate().cancel()
-            pointerIcon.scaleX = 1f
-            pointerIcon.scaleY = 1f
-            pointerIcon.animate()
-                .scaleX(0.85f)
-                .scaleY(0.85f)
-                .setDuration(90)
-                .withEndAction {
-                    pointerIcon.animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(110)
-                        .start()
-                }
-                .start()
-        }
+    private fun showHoverLongPressHint() {
+        if (isDragMode || isHoverLongPressActive) return
+        isHoverLongPressActive = true
+        pendingHoverLongPress = true
+    }
 
-        private fun resetHoverLongPressHint() {
-            if (!isHoverLongPressActive) return
-            isHoverLongPressActive = false
-            pointerIcon.animate().cancel()
-            pointerIcon.scaleX = 1f
-            pointerIcon.scaleY = 1f
-            pendingHoverLongPress = false
-            pendingHoverPoint = null
-        }
+    private fun resetHoverLongPressHint() {
+        if (!isHoverLongPressActive) return
+        isHoverLongPressActive = false
+        pendingHoverLongPress = false
+        pendingHoverPoint = null
+    }
 
         private fun prepareHoverLongPress(point: Point) {
             if (isDragMode) return
@@ -695,6 +817,31 @@ class PointerFloating(
             pendingHoverLongPress = true
             pendingHoverPoint = point
         }
+
+        /** Shrink-and-return pulse, the only pointer feedback played on tap. */
+        fun playClickPulse() {
+            if (!isClickFeedbackEnabled()) return
+            clickPulseEndAt = SystemClock.elapsedRealtime() +
+                POINTER_CLICK_PULSE_SHRINK_DURATION + POINTER_CLICK_PULSE_RETURN_DURATION
+            pointerIcon.animate().cancel()
+            pointerIcon.scaleX = 1f
+            pointerIcon.scaleY = 1f
+            pointerIcon.animate()
+                .scaleX(POINTER_CLICK_PRESS_SCALE)
+                .scaleY(POINTER_CLICK_PRESS_SCALE)
+                .setDuration(POINTER_CLICK_PULSE_SHRINK_DURATION)
+                .withEndAction {
+                    pointerIcon.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(POINTER_CLICK_PULSE_RETURN_DURATION)
+                        .start()
+                }
+                .start()
+        }
+
+        /** True while the tap pulse still has to finish, so the pointer is not hidden mid-animation. */
+        fun isClickPulseActive(): Boolean = SystemClock.elapsedRealtime() < clickPulseEndAt
 
         private inner class MoveTouchHandler() {
 
@@ -815,6 +962,7 @@ class PointerFloating(
                     hoverLongPressJob = context.launch {
                         isLongPressRunning = true
                         try {
+                            // Long press deliberately plays no feedback at all.
                             performPointerClick(targetPoint.x, targetPoint.y, 600L)
                         } finally {
                             isLongPressRunning = false
@@ -832,6 +980,9 @@ class PointerFloating(
                         "PointerFloating",
                         "handleActionUp: ${targetPoint.x}, ${targetPoint.y}"
                     )
+                    // Play the feedback on lift: it must start before hide() runs, otherwise
+                    // the fade-out cancels the pulse and nothing is visible.
+                    pointerManger.playClickPulse()
                     context.launch {
                         delay(20)
                         performPointerClick(targetPoint.x, targetPoint.y)

@@ -130,6 +130,16 @@
     <string name="appearance_settings_pointer_title">Pointer Settings</string>
     <string name="appearance_settings_pointer_color">Pointer color</string>
     <string name="appearance_settings_pointer_color_summary">Tap to choose the pointer color, long press to reset it</string>
+    <string name="appearance_settings_pointer_shape">Pointer shape</string>
+    <string name="appearance_settings_pointer_shape_dot">Dot</string>
+    <string name="appearance_settings_pointer_shape_small_dot">Small dot</string>
+    <string name="appearance_settings_pointer_shape_ring">Ring</string>
+    <string name="appearance_settings_pointer_shape_cross">Crosshair</string>
+    <string name="appearance_settings_pointer_shape_arrow">Arrow</string>
+    <string name="appearance_settings_pointer_size">Pointer size</string>
+    <string name="appearance_settings_pointer_size_summary">Adjust the display size of the pointer icon</string>
+    <string name="appearance_settings_pointer_click_feedback">Click feedback</string>
+    <string name="appearance_settings_pointer_click_feedback_summary">Scale the pointer briefly on tap</string>
     <string name="appearance_settings_background_blur_summary">Enable background blur when supported by the system</string>
     <string name="appearance_settings_card_background_blur_summary">Enable separate blur for card areas</string>
     <string name="appearance_settings_fluid_title">Gesture fluid feedback</string>

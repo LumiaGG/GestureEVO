@@ -134,6 +134,16 @@
     <string name="appearance_settings_pointer_description">调整指针颜色与显示风格</string>
     <string name="appearance_settings_pointer_color">指针颜色</string>
     <string name="appearance_settings_pointer_color_summary">点击选择指针颜色，长按恢复默认颜色</string>
+    <string name="appearance_settings_pointer_shape">指针形状</string>
+    <string name="appearance_settings_pointer_shape_dot">圆点</string>
+    <string name="appearance_settings_pointer_shape_small_dot">小圆点</string>
+    <string name="appearance_settings_pointer_shape_ring">圆环</string>
+    <string name="appearance_settings_pointer_shape_cross">十字准星</string>
+    <string name="appearance_settings_pointer_shape_arrow">箭头</string>
+    <string name="appearance_settings_pointer_size">指针大小</string>
+    <string name="appearance_settings_pointer_size_summary">调整指针图标的显示尺寸</string>
+    <string name="appearance_settings_pointer_click_feedback">点击反馈</string>
+    <string name="appearance_settings_pointer_click_feedback_summary">指针点击时缩放一下作为反馈</string>
     <string name="appearance_settings_background_blur_summary">启用系统支持的背景模糊效果</string>
     <string name="appearance_settings_card_background_blur_summary">对卡片区域启用独立背景模糊效果</string>
     <string name="appearance_settings_search_title">搜索设置</string>
