@@ -2,7 +2,7 @@ name: Repository checks
 on:
   push:
     branches: [main]
-  pull_request:
+  # PRs run no automatic checks; use workflow_dispatch on the PR branch when needed.
   workflow_dispatch:
 permissions:
   contents: read
