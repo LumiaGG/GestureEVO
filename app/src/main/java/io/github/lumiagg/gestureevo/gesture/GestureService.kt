@@ -16,16 +16,23 @@ import android.os.Build
 import android.os.PowerManager
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import io.github.lumiagg.gestureevo.drop.ExternalDropFloating
 import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
+import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_ENABLED
+import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SHOW_ENGINES
 import io.github.lumiagg.gestureevo.utils.CurrentPackageProvider
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.RecentAppsRecorder
+import io.github.lumiagg.gestureevo.utils.readKey
+import io.github.lumiagg.gestureevo.utils.settingsStore
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
 import io.github.lumiagg.gestureevo.utils.shizuku.initShizukuService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -50,6 +57,8 @@ class GestureService : AccessibilityService(), CoroutineScope {
     var gestureManager: GestureManager? = null
         private set
     private var lastNightMode = Configuration.UI_MODE_NIGHT_UNDEFINED
+    private var externalDropFloating: ExternalDropFloating? = null
+    private var externalDropSettingsJob: Job? = null
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         CurrentPackageProvider.onAccessibilityEvent(event)
@@ -71,6 +80,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
         launch(Dispatchers.Main) {
             delay(1000)
             gestureManager = GestureManager(this@GestureService, this)
+            observeExternalDropSettings()
         }
         launch(Dispatchers.IO) {
             DynamicColorUtils.captureColor(
@@ -79,6 +89,21 @@ class GestureService : AccessibilityService(), CoroutineScope {
             )
             RecentAppsRecorder.initLauncherPackagesInDB(applicationContext)
             initShizukuService(applicationContext)
+        }
+    }
+
+    private fun observeExternalDropSettings() {
+        externalDropSettingsJob?.cancel()
+        externalDropSettingsJob = launch(Dispatchers.Main) {
+            settingsStore.data.map { preferences ->
+                preferences.readKey(KEY_EXTERNAL_DROP_ENABLED, true) to
+                    preferences.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true)
+            }.distinctUntilChanged().collect { (enabled, _) ->
+                externalDropFloating?.destroy()
+                externalDropFloating = if (enabled) {
+                    ExternalDropFloating(this@GestureService).also { it.start() }
+                } else null
+            }
         }
     }
 
@@ -111,6 +136,10 @@ class GestureService : AccessibilityService(), CoroutineScope {
         AppLogger.event(
             LogModule.SERVICE, "accessibility_destroyed",
             LogLevel.WARN)
+        externalDropSettingsJob?.cancel()
+        externalDropSettingsJob = null
+        externalDropFloating?.destroy()
+        externalDropFloating = null
         super.onDestroy()
         gestureManager?.destroy()
         gestureManager = null

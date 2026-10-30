@@ -638,6 +638,14 @@ object SettingsSearchRegistry {
             keywords = listOf("震动", "振动", "框选", "进入框选", "vibrate")
         ),
         entry(
+            id = "inspire_edge_back",
+            titleResId = R.string.inspire_settings_edge_back,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.screenContentSwitchCard,
+            keywords = listOf("返回", "边缘", "滑动", "悬浮窗", "back", "edge", "swipe")
+        ),
+        entry(
             id = "inspire_delay_remove",
             titleResId = R.string.inspire_settings_delay_remove_image,
             pageTitleResId = R.string.inspire_settings_title,
@@ -668,6 +676,22 @@ object SettingsSearchRegistry {
             targetActivity = InspireSettingsActivity::class.java,
             targetViewId = R.id.defaultShareBehaviorCard,
             keywords = listOf("默认分享行为", "share behavior")
+        ),
+        entry(
+            id = "inspire_external_drop",
+            titleResId = R.string.inspire_settings_external_drop,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.defaultShareBehaviorCard,
+            keywords = listOf("外部拖放", "拖拽", "接收", "悬浮窗", "drop", "drag")
+        ),
+        entry(
+            id = "inspire_external_drop_engines",
+            titleResId = R.string.inspire_settings_external_drop_engines,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.defaultShareBehaviorCard,
+            keywords = listOf("外部拖放", "搜索引擎", "图片搜索", "drop", "search engine")
         ),
         entry(
             id = "inspire_translation_app",
