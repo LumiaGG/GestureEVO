@@ -638,6 +638,14 @@ object SettingsSearchRegistry {
             keywords = listOf("震动", "振动", "框选", "进入框选", "vibrate")
         ),
         entry(
+            id = "inspire_edge_back",
+            titleResId = R.string.inspire_settings_edge_back,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.screenContentSwitchCard,
+            keywords = listOf("返回", "边缘", "滑动", "悬浮窗", "back", "edge", "swipe")
+        ),
+        entry(
             id = "inspire_delay_remove",
             titleResId = R.string.inspire_settings_delay_remove_image,
             pageTitleResId = R.string.inspire_settings_title,

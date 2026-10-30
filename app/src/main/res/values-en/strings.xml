@@ -427,6 +427,8 @@
     <string name="inspire_settings_ocr_priority_desc">Choose the preferred text acquisition method, Accessibility or OCR</string>
     <string name="inspire_settings_double_check">Double Confirmation After Frame Selection</string>
     <string name="inspire_settings_double_check_desc">Preview the selected area first, then enter tokenization after confirmation</string>
+    <string name="inspire_settings_edge_back">Overlay Edge Swipe Back</string>
+    <string name="inspire_settings_edge_back_desc">Swipe inward from either edge to close the screen content overlay. Turn off to select areas starting from the edges</string>
     <string name="inspire_settings_selection_vibrate">Vibrate when Entering Selection</string>
     <string name="inspire_settings_selection_vibrate_desc">Trigger vibration feedback when opening screen content and entering selection</string>
     <string name="inspire_settings_delay_remove_image">Delay 5 minutes before deleting image</string>

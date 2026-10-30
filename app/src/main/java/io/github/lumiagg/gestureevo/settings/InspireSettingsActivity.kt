@@ -46,6 +46,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val KEY_OCR_PRIORITY = "inspire_ocr_priority"
         const val KEY_INSPIRE_DOUBLE_CHECK = "key_inspire_double_check"
         const val KEY_INSPIRE_SELECTION_VIBRATE = "key_inspire_selection_vibrate"
+        const val KEY_INSPIRE_EDGE_BACK = "key_inspire_edge_back"
         const val KEY_INSPIRE_DELAY_REMOVE_IMAGE = "key_inspire_delay_remove_image"
         const val KEY_INSPIRE_SHOW_ENGINE = "key_inspire_show_engine"
         const val KEY_DEFAULT_IMAGE_TEXT_OVERLAY = "key_default_image_text_overlay"
@@ -118,6 +119,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         // Vibrate on selection enter
         binding.selectionVibrateSwitch.isChecked =
             settingsStore.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true)
+        binding.edgeBackSwitch.isChecked = settingsStore.readKey(KEY_INSPIRE_EDGE_BACK, true)
 
         // Delayed deletion
         binding.delayRemoveImageSwitch.isChecked =
@@ -245,6 +247,12 @@ class InspireSettingsActivity : AppCompatActivity() {
         binding.selectionVibrateSwitch.setOnCheckedChangeListener { _, isChecked ->
             lifecycleScope.launch {
                 settingsStore.saveKey(KEY_INSPIRE_SELECTION_VIBRATE, isChecked)
+            }
+        }
+
+        binding.edgeBackSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_INSPIRE_EDGE_BACK, isChecked)
             }
         }
 

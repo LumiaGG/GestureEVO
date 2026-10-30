@@ -458,6 +458,8 @@
     <string name="inspire_settings_ocr_priority_desc">选择优先使用的文本获取方式，无障碍还是OCR</string>
     <string name="inspire_settings_double_check">框选后二次确认</string>
     <string name="inspire_settings_double_check_desc">开启后先预览框选区域，确认后再进入分词页面</string>
+    <string name="inspire_settings_edge_back">悬浮窗边缘滑动返回</string>
+    <string name="inspire_settings_edge_back_desc">从左右边缘向内滑动关闭屏幕内容悬浮窗，关闭后可从边缘正常框选</string>
     <string name="inspire_settings_selection_vibrate">进入框选时震动</string>
     <string name="inspire_settings_selection_vibrate_desc">启动屏幕内容进入框选时触发震动反馈</string>
     <string name="inspire_settings_delay_remove_image">延迟5分钟后删除图片</string>
