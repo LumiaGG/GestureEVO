@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="external_drop_pool">Add to Pin Pool</string>
+    <string name="external_drop_pin">Pin</string>
+    <string name="external_drop_tokenize">Tokenize</string>
+    <string name="external_drop_added">Added to Pin Pool</string>
+    <string name="external_drop_empty">No text or images to receive</string>
+    <string name="external_drop_failed">Unable to read the dropped content</string>
     <string name="app_name">GestureEVO</string>
     <string name="action_icon_placeholder">GE</string>
     <string name="action_icon_invisible">Transparent</string>
@@ -1058,7 +1064,11 @@
     <string name="gesture_type_batch_apply">Apply to selection</string>
     <string name="gesture_type_batch_selected_count">Selected gestures: %1$d; stages: %2$d</string>
     <string name="inspire_settings_screen_content_description">Manage screen text recognition, copying and screenshots</string>
-    <string name="inspire_settings_share_settings_description">Choose the default action for text segmentation and pin pool shares</string>
+    <string name="inspire_settings_share_settings_description">Configure default sharing and external drag and drop</string>
+    <string name="inspire_settings_external_drop">External Drag and Drop Overlay</string>
+    <string name="inspire_settings_external_drop_desc">Show Pin Pool, Pin, and Tokenize targets when dragging text or images from other apps</string>
+    <string name="inspire_settings_external_drop_engines">Show Search Engines when Dragging</string>
+    <string name="inspire_settings_external_drop_engines_desc">Show configured search engines matching the content type in the external drop overlay</string>
     <string name="inspire_settings_app_selection_description">Choose default apps for translation, search and opening images</string>
     <string name="inspire_settings_default_share_image_app_title">Default image sharing app</string>
     <string name="inspire_settings_pointer_settings_description">Adjust pointer trails, touch areas and dragging</string>

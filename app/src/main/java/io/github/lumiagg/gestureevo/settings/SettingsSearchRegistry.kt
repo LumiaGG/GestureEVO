@@ -678,6 +678,22 @@ object SettingsSearchRegistry {
             keywords = listOf("默认分享行为", "share behavior")
         ),
         entry(
+            id = "inspire_external_drop",
+            titleResId = R.string.inspire_settings_external_drop,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.defaultShareBehaviorCard,
+            keywords = listOf("外部拖放", "拖拽", "接收", "悬浮窗", "drop", "drag")
+        ),
+        entry(
+            id = "inspire_external_drop_engines",
+            titleResId = R.string.inspire_settings_external_drop_engines,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.defaultShareBehaviorCard,
+            keywords = listOf("外部拖放", "搜索引擎", "图片搜索", "drop", "search engine")
+        ),
+        entry(
             id = "inspire_translation_app",
             titleResId = R.string.inspire_settings_translation_app_title,
             pageTitleResId = R.string.inspire_settings_title,

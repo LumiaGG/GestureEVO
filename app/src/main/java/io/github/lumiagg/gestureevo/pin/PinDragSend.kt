@@ -15,6 +15,7 @@ import android.graphics.Point
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.PersistableBundle
 import android.provider.MediaStore
 import android.view.DragEvent
 import android.view.MotionEvent
@@ -27,6 +28,7 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.drop.ExternalDropPolicy
 import io.github.lumiagg.gestureevo.utils.DeleteImageWorker
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
@@ -49,6 +51,9 @@ object PinDragSend {
 
     fun start(view: View, clip: ClipData, shadowView: View = view): Boolean {
         if (!view.isAttachedToWindow) return false
+        clip.description.extras = PersistableBundle(clip.description.extras ?: PersistableBundle()).apply {
+            putBoolean(ExternalDropPolicy.EVO_SOURCE_EXTRA, true)
+        }
         val flags = View.DRAG_FLAG_GLOBAL or View.DRAG_FLAG_GLOBAL_URI_READ
         return view.startDragAndDrop(clip, snapshotShadow(shadowView), clip, flags)
     }

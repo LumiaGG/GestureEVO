@@ -81,6 +81,8 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val PIN_POOL_DISPLAY_MODE_FOLLOW_TRIGGER = "follow_trigger"
         const val PIN_POOL_DISPLAY_MODE_LEGACY_SIDEBAR = "sidebar"
         const val KEY_DEFAULT_SHARE_BEHAVIOR = "key_default_share_behavior"
+        const val KEY_EXTERNAL_DROP_ENABLED = "key_external_drop_enabled"
+        const val KEY_EXTERNAL_DROP_SHOW_ENGINES = "key_external_drop_show_engines"
         const val DEFAULT_NOTIFICATION_IMAGE_DISPLAY_SECONDS = 6
 //        const val KEY_POINTER_ICON_PATH = "key_pointer_icon_PATH"
     }
@@ -133,6 +135,8 @@ class InspireSettingsActivity : AppCompatActivity() {
         // Default share behavior
         val defaultShareBehavior = settingsStore.readKey(KEY_DEFAULT_SHARE_BEHAVIOR, "tokenization")
         updateDefaultShareBehaviorText(defaultShareBehavior)
+        binding.externalDropSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_ENABLED, true)
+        binding.externalDropEnginesSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true)
 
         // Notification icon
         binding.notificationIconSwitch.isChecked =
@@ -284,6 +288,13 @@ class InspireSettingsActivity : AppCompatActivity() {
 
         binding.defaultShareBehaviorRow.setOnClickListener {
             showDefaultShareBehaviorDialog()
+        }
+
+        binding.externalDropSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch { settingsStore.saveKey(KEY_EXTERNAL_DROP_ENABLED, isChecked) }
+        }
+        binding.externalDropEnginesSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch { settingsStore.saveKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, isChecked) }
         }
 
         binding.keyboardTypeRow.setOnClickListener {
