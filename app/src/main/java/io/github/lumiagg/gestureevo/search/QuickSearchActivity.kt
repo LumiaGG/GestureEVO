@@ -56,7 +56,6 @@ import io.github.lumiagg.gestureevo.utils.TransparentActivityLauncher
 import io.github.lumiagg.gestureevo.utils.PhoneDetector
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.UrlDetector
-import io.github.lumiagg.gestureevo.utils.app.syncAppCatalogIfNeeded
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import io.github.lumiagg.gestureevo.utils.SettingsSnapshotCache
@@ -64,7 +63,6 @@ import io.github.lumiagg.gestureevo.utils.uriBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -330,17 +328,6 @@ class QuickSearchActivity : AppCompatActivity() {
                         updateLandscapeEnginesVisibility(binding.searchInput.text?.toString().orEmpty())
                     }
                 }
-            }
-        }
-        lifecycleScope.launch(uiDispatcher) {
-            // Wait for a quiet input interval rather than compete with the IME and first query.
-            while (true) {
-                val revision = inputRevision
-                delay(2000)
-                if (!canExecuteSearch) return@launch
-                if (revision != inputRevision) continue
-                requestAppDbSync()
-                break
             }
         }
     }
@@ -703,16 +690,6 @@ class QuickSearchActivity : AppCompatActivity() {
         resultManager.updateSearchResults(text)
         updateInputLines(text)
         updateInputActionVisibility(text)
-    }
-
-    private suspend fun requestAppDbSync() {
-        withContext(ioDispatcher) {
-            syncAppCatalogIfNeeded(applicationContext)
-        }
-        val currentText = binding.searchInput.text?.toString() ?: ""
-        if (currentText.isNotEmpty()) {
-            refreshSearchResultsFromInput(currentText)
-        }
     }
 
     fun openLink(link: String, freeform: Boolean) {

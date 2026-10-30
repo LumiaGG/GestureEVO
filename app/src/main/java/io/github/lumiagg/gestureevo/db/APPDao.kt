@@ -30,7 +30,7 @@ interface APPDao {
     @Query("SELECT * FROM APPModel WHERE name LIKE '%' || :name || '%'")
     suspend fun findByName(name: String): List<APPModel>
 
-    @Query("SELECT * FROM APPModel WHERE name LIKE '%' || :name || '%' AND state & :state = :state and (state & :excludeState) = 0")
+    @Query("SELECT * FROM APPModel WHERE isRemove = 0 AND name LIKE '%' || :name || '%' AND state & :state = :state and (state & :excludeState) = 0")
     suspend fun findByName(name: String, state: Int, excludeState: Int = 0): List<APPModel>
 
     @Query("SELECT * FROM APPModel WHERE pkgName = :pkg LIMIT 1")
@@ -39,7 +39,7 @@ interface APPDao {
     @Query("SELECT * FROM APPModel WHERE pinyinFK LIKE '%' || :pinyin || '%'")
     suspend fun findByPinYinFK(pinyin: String): List<APPModel>
 
-    @Query("SELECT * FROM APPModel WHERE pinyinFK LIKE '%' || :pinyin || '%' AND state & :state = :state and (state & :excludeState) = 0")
+    @Query("SELECT * FROM APPModel WHERE isRemove = 0 AND pinyinFK LIKE '%' || :pinyin || '%' AND state & :state = :state and (state & :excludeState) = 0")
     suspend fun findByPinYinFK(pinyin: String, state: Int, excludeState: Int = 0): List<APPModel>
 
     @Query("SELECT * FROM APPModel WHERE pinyinDK LIKE '%' || :pinyin || '%'")
@@ -57,7 +57,7 @@ interface APPDao {
     @Query("SELECT * FROM APPModel WHERE initialsFK LIKE '%' || :initials || '%'")
     suspend fun findByInitialsFK(initials: String): List<APPModel>
 
-    @Query("SELECT * FROM APPModel WHERE initialsFK LIKE '%' || :initials || '%' AND state & :state = :state and (state & :excludeState) = 0")
+    @Query("SELECT * FROM APPModel WHERE isRemove = 0 AND initialsFK LIKE '%' || :initials || '%' AND state & :state = :state and (state & :excludeState) = 0")
     suspend fun findByInitialsFK(
         initials: String,
         state: Int,
