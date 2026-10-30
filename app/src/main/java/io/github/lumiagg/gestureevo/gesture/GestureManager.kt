@@ -540,7 +540,7 @@ class GestureManager(
         }
     }
 
-    private fun refreshOverlayThemes() {
+    fun refreshOverlayThemes() {
         if (guidePreviewFloatingLazy.isInitialized()) guidePreviewFloating.refresh()
         if (actionViewFloatingLazy.isInitialized()) actionViewFloating.refreshTheme()
         if (notificationFloatingLazy.isInitialized()) notificationFloating.refreshTheme()

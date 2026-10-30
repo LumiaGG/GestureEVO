@@ -124,7 +124,6 @@
     <string name="appearance_settings_color_scheme_sunset">暮光橘金</string>
     <string name="appearance_settings_color_scheme_midnight">星夜紫罗</string>
     <string name="appearance_settings_color_scheme_pink">蔷薇柔粉</string>
-    <string name="appearance_settings_color_scheme_restart_hint">切换色彩方案后建议完全重启应用以确保全局生效</string>
     <string name="appearance_settings_language_title">语言</string>
     <string name="appearance_settings_language_description">选择应用界面显示语言</string>
     <string name="appearance_settings_language_hint">选择语言</string>

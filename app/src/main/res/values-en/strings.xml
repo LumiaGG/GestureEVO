@@ -123,7 +123,6 @@
     <string name="appearance_settings_color_scheme_sunset">Twilight Amber</string>
     <string name="appearance_settings_color_scheme_midnight">Midnight Violet</string>
     <string name="appearance_settings_color_scheme_pink">Blush Rose</string>
-    <string name="appearance_settings_color_scheme_restart_hint">After switching schemes, fully restart the app to ensure it applies everywhere</string>
     <string name="appearance_settings_language_title">Language</string>
     <string name="appearance_settings_language_hint">Select Language</string>
     <string name="appearance_settings_language_follow_system">Follow System</string>
