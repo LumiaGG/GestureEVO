@@ -25,10 +25,18 @@ internal fun GestureActionItem.label(context: Context): String {
             3 -> R.string.acc_action_select_recents
             4 -> R.string.acc_action_select_notifications
             5 -> R.string.acc_action_select_quick_settings
+            6 -> R.string.acc_action_select_power_dialog
+            8 -> R.string.acc_action_select_lock_screen
             9 -> R.string.acc_action_select_screenshot
             else -> null
         }
         resource?.let { return context.getString(it) }
+    }
+    if (guideActionType == GestureActionType.OPEN_APP) {
+        firstStagePkg?.let { pkg ->
+            return runCatching { context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg, 0)).toString() }
+                .getOrDefault(pkg)
+        }
     }
     if (guideActionType == GestureActionType.NONE && !subActionListTag.isNullOrBlank()) {
         return context.getString(R.string.gesture_action_show_action_view)
