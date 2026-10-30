@@ -1,9 +1,14 @@
 name: Repository checks
 on:
   push:
-    branches: [main]
-  pull_request:
+    branches: [main, 'checks/**']
+  # PRs run no automatic checks; use workflow_dispatch on the PR branch when needed.
   workflow_dispatch:
+    inputs:
+      build_android:
+        description: 'Run Android lint, unit tests and Debug packaging'
+        type: boolean
+        default: true
 permissions:
   contents: read
 concurrency:
@@ -43,7 +48,7 @@ jobs:
   android:
     name: Android Debug and tests
     needs: repository
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.build_android
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:

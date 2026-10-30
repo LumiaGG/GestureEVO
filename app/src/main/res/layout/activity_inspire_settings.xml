@@ -21,6 +21,9 @@
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_selection_vibrate" app:settingsRowSummary="@string/inspire_settings_selection_vibrate_desc">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/selectionVibrateSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_edge_back" app:settingsRowSummary="@string/inspire_settings_edge_back_desc">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/edgeBackSwitch" android:checked="true" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_delay_remove_image" app:settingsRowSummary="@string/inspire_settings_delay_remove_image_desc">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/delayRemoveImageSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
@@ -37,6 +40,12 @@
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/default_share_behavior_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_default_share_behavior_title" app:settingsRowSummary="@string/inspire_settings_default_share_behavior_desc">
                         <TextView android:id="@+id/selected_default_share_behavior_text" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_external_drop" app:settingsRowSummary="@string/inspire_settings_external_drop_desc">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/externalDropSwitch" android:checked="true" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_external_drop_engines" app:settingsRowSummary="@string/inspire_settings_external_drop_engines_desc">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/externalDropEnginesSwitch" android:checked="true" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                 </LinearLayout>
             </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
             <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/appSelectionCard" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsCardTitle="@string/inspire_settings_app_selection_title" app:settingsCardSummary="@string/inspire_settings_app_selection_description" app:settingsCardExpanded="false" android:layout_marginTop="@dimen/settings_card_spacing">

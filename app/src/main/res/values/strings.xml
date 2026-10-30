@@ -1,4 +1,10 @@
 <resources>
+    <string name="external_drop_pool">加入 Pin 池</string>
+    <string name="external_drop_pin">Pin 图</string>
+    <string name="external_drop_tokenize">分词</string>
+    <string name="external_drop_added">已加入 Pin 池</string>
+    <string name="external_drop_empty">没有可接收的文字或图片</string>
+    <string name="external_drop_failed">接收失败，无法读取拖放内容</string>
     <string name="app_name">GestureEVO</string>
     <string name="action_icon_placeholder">GE</string>
     <string name="action_icon_invisible">透明</string>
@@ -458,13 +464,19 @@
     <string name="inspire_settings_ocr_priority_desc">选择优先使用的文本获取方式，无障碍还是OCR</string>
     <string name="inspire_settings_double_check">框选后二次确认</string>
     <string name="inspire_settings_double_check_desc">开启后先预览框选区域，确认后再进入分词页面</string>
+    <string name="inspire_settings_edge_back">悬浮窗边缘滑动返回</string>
+    <string name="inspire_settings_edge_back_desc">从左右边缘向内滑动关闭屏幕内容悬浮窗，关闭后可从边缘正常框选</string>
     <string name="inspire_settings_selection_vibrate">进入框选时震动</string>
     <string name="inspire_settings_selection_vibrate_desc">启动屏幕内容进入框选时触发震动反馈</string>
     <string name="inspire_settings_delay_remove_image">延迟5分钟后删除图片</string>
     <string name="inspire_settings_delay_remove_image_desc">开启后，短按保存按钮延迟删除，长按永久保存</string>
     <string name="inspire_settings_default_share_behavior_title">默认分享行为</string>
     <string name="inspire_settings_share_settings_title">分享设置</string>
-    <string name="inspire_settings_share_settings_description">选择分享进入分词或 Pin 池的默认行为</string>
+    <string name="inspire_settings_share_settings_description">设置默认分享行为与外部拖放接收</string>
+    <string name="inspire_settings_external_drop">外部拖放悬浮窗</string>
+    <string name="inspire_settings_external_drop_desc">其他应用拖动文字或图片时，显示加入 Pin 池、Pin 图和分词等接收选项</string>
+    <string name="inspire_settings_external_drop_engines">拖放时显示搜索引擎</string>
+    <string name="inspire_settings_external_drop_engines_desc">在外部拖放悬浮窗中，根据内容类型显示已配置的搜索引擎</string>
     <string name="inspire_settings_default_share_behavior_desc">选择分享到分词或Pin池的默认行为</string>
     <string name="inspire_settings_share_to_tokenization">分享到分词</string>
     <string name="inspire_settings_share_to_pinpool">分享到Pin池</string>

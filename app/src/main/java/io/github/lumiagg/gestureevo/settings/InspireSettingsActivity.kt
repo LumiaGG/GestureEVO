@@ -46,6 +46,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val KEY_OCR_PRIORITY = "inspire_ocr_priority"
         const val KEY_INSPIRE_DOUBLE_CHECK = "key_inspire_double_check"
         const val KEY_INSPIRE_SELECTION_VIBRATE = "key_inspire_selection_vibrate"
+        const val KEY_INSPIRE_EDGE_BACK = "key_inspire_edge_back"
         const val KEY_INSPIRE_DELAY_REMOVE_IMAGE = "key_inspire_delay_remove_image"
         const val KEY_INSPIRE_SHOW_ENGINE = "key_inspire_show_engine"
         const val KEY_DEFAULT_IMAGE_TEXT_OVERLAY = "key_default_image_text_overlay"
@@ -80,6 +81,8 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val PIN_POOL_DISPLAY_MODE_FOLLOW_TRIGGER = "follow_trigger"
         const val PIN_POOL_DISPLAY_MODE_LEGACY_SIDEBAR = "sidebar"
         const val KEY_DEFAULT_SHARE_BEHAVIOR = "key_default_share_behavior"
+        const val KEY_EXTERNAL_DROP_ENABLED = "key_external_drop_enabled"
+        const val KEY_EXTERNAL_DROP_SHOW_ENGINES = "key_external_drop_show_engines"
         const val DEFAULT_NOTIFICATION_IMAGE_DISPLAY_SECONDS = 6
 //        const val KEY_POINTER_ICON_PATH = "key_pointer_icon_PATH"
     }
@@ -118,6 +121,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         // Vibrate on selection enter
         binding.selectionVibrateSwitch.isChecked =
             settingsStore.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true)
+        binding.edgeBackSwitch.isChecked = settingsStore.readKey(KEY_INSPIRE_EDGE_BACK, true)
 
         // Delayed deletion
         binding.delayRemoveImageSwitch.isChecked =
@@ -131,6 +135,8 @@ class InspireSettingsActivity : AppCompatActivity() {
         // Default share behavior
         val defaultShareBehavior = settingsStore.readKey(KEY_DEFAULT_SHARE_BEHAVIOR, "tokenization")
         updateDefaultShareBehaviorText(defaultShareBehavior)
+        binding.externalDropSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_ENABLED, true)
+        binding.externalDropEnginesSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true)
 
         // Notification icon
         binding.notificationIconSwitch.isChecked =
@@ -248,6 +254,12 @@ class InspireSettingsActivity : AppCompatActivity() {
             }
         }
 
+        binding.edgeBackSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_INSPIRE_EDGE_BACK, isChecked)
+            }
+        }
+
         // Delayed deletion
         binding.delayRemoveImageSwitch.setOnCheckedChangeListener { _, isChecked ->
             lifecycleScope.launch {
@@ -276,6 +288,13 @@ class InspireSettingsActivity : AppCompatActivity() {
 
         binding.defaultShareBehaviorRow.setOnClickListener {
             showDefaultShareBehaviorDialog()
+        }
+
+        binding.externalDropSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch { settingsStore.saveKey(KEY_EXTERNAL_DROP_ENABLED, isChecked) }
+        }
+        binding.externalDropEnginesSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch { settingsStore.saveKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, isChecked) }
         }
 
         binding.keyboardTypeRow.setOnClickListener {

@@ -12,7 +12,9 @@
 
 ## 验证与提交
 
-PR 和普通主分支推送自动运行轻量仓库检查，包括仓库规范、Python 工具及工作流校验，不触发 Android 编译。完整 Android lint、单元测试和 Debug 打包仅在 GitHub Actions 中手动运行 `Repository checks` 时执行；在主分支上手动运行时也会提交依赖图。正式发布通过独立的 `Signed release` 流程执行单元测试、签名构建和签名验证。
+创建或更新 PR 时不自动运行检查或 Android 编译。主分支和显式使用 `checks/` 前缀的分支推送时，自动运行轻量仓库检查，包括仓库规范、Python 工具及工作流校验。合并前如需满足主分支的必需检查，将 PR 最新提交推送到一个专用检查分支，例如 `git push origin HEAD:refs/heads/checks/my-change`；检查对应同一提交，且不触发 Android 编译。PR 更新后，需再次推送最新提交到检查分支。
+
+需要完整验证时，在 GitHub Actions 中选择 `Repository checks`，通过 `Run workflow` 选择对应 PR 的源分支手动执行；默认运行仓库检查、完整 Android lint、单元测试和 Debug 打包。取消勾选 `Run Android lint, unit tests and Debug packaging` 可只运行轻量仓库检查，但 GitHub 不会将 `workflow_dispatch` 结果计入 PR 的必需检查。在主分支上手动运行且启用 Android 构建时也会提交依赖图。正式发布通过独立的 `Signed release` 流程执行单元测试、签名构建和签名验证。
 
 本地验证按修改范围和维护者要求执行，不要求每次修改都编译。需要完整验证时，可运行 `python tools/check_repository.py`、`python -m unittest discover -s tools/tests` 和 `gradlew.bat :app:compileDebugKotlin :app:compileDebugJavaWithJavac :app:testDebugUnitTest`（Unix 使用 `./gradlew`）；需要检查原生代码或最终 APK 时再运行 `:app:assembleDebug`。纯文档修改检查链接和格式即可。在提交说明中如实记录未执行的检查。
 
