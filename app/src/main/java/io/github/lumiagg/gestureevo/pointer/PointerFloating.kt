@@ -12,7 +12,6 @@ import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
-import android.os.SystemClock
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -240,10 +239,16 @@ class PointerFloating(
         const val POINTER_SIZE_MIN_DP = POINTER_SIZE_MIN
         const val POINTER_SIZE_MAX_DP = POINTER_SIZE_MAX
 
-        /** Pointer feedback: a single shrink-and-return pulse, used for every click. */
+        /**
+         * Tap exit: press in, spring back past 1.0, then shrink and fade out. All three
+         * segments drive the wrapper view, so the dot and its ring stay in lockstep.
+         */
         const val POINTER_CLICK_PRESS_SCALE = 0.85f
+        const val POINTER_CLICK_OVERSHOOT_SCALE = 1.06f
         const val POINTER_CLICK_PULSE_SHRINK_DURATION = 50L
         const val POINTER_CLICK_PULSE_RETURN_DURATION = 70L
+        const val POINTER_EXIT_DURATION = 80L
+        const val POINTER_EXIT_END_SCALE = 0.7f
 
         /** Fraction of the icon box kept as padding around the drawn shape. */
         const val POINTER_ICON_INSET_RATIO = 0.12f
@@ -422,8 +427,8 @@ class PointerFloating(
         var touchViewX = 0f
         var touchViewY = 0f
         var isDragMode = false
-        private var clickPulseEndAt = 0L
-        private var hideScheduled = false
+        /** Set when the pointer is leaving because of a tap, so hide plays the tap exit. */
+        var tapExitPending = false
         /** True once the icon's layout or backplate has been changed away from the stock XML. */
         private var geometryCustomized = false
         /** Size the stock geometry was last applied at, so size-only changes still re-apply. */
@@ -467,6 +472,7 @@ class PointerFloating(
             pointerIcon.animate().cancel()
             pointerIcon.scaleX = 1f
             pointerIcon.scaleY = 1f
+            tapExitPending = false
             trailView.clearTrail()
         }
 
@@ -488,23 +494,45 @@ class PointerFloating(
         }
 
         fun hidePointer(onEnd: () -> Unit) {
-            // The tap pulse runs on this view; hiding now would cancel it before it is seen.
-            if (isClickPulseActive()) {
-                if (!hideScheduled) {
-                    hideScheduled = true
-                    val remaining = (clickPulseEndAt - SystemClock.elapsedRealtime())
-                        .coerceAtLeast(0L)
-                    view.postDelayed({
-                        hideScheduled = false
-                        // Skip if the pointer was shown again while the pulse was running.
-                        if (!pointerVisibleRequested) hidePointer(onEnd)
-                    }, remaining)
-                }
-                return
-            }
             view.animate().cancel()
+            pointerIcon.animate().cancel()
+            val tapExit = tapExitPending
+            tapExitPending = false
             if (view.visibility != View.VISIBLE) {
                 onEnd()
+                return
+            }
+            if (tapExit && isClickFeedbackEnabled()) {
+                // One animator chain on the wrapper: press in, spring back, then shrink and
+                // fade away. The dot and its ring share this view, so a single chain keeps
+                // them locked together for the whole exit.
+                view.animate()
+                    .scaleX(POINTER_CLICK_PRESS_SCALE)
+                    .scaleY(POINTER_CLICK_PRESS_SCALE)
+                    .setDuration(POINTER_CLICK_PULSE_SHRINK_DURATION)
+                    .withEndAction {
+                        view.animate()
+                            .scaleX(POINTER_CLICK_OVERSHOOT_SCALE)
+                            .scaleY(POINTER_CLICK_OVERSHOOT_SCALE)
+                            .setDuration(POINTER_CLICK_PULSE_RETURN_DURATION)
+                            .withEndAction {
+                                view.animate()
+                                    .alpha(0f)
+                                    .scaleX(POINTER_EXIT_END_SCALE)
+                                    .scaleY(POINTER_EXIT_END_SCALE)
+                                    .setDuration(POINTER_EXIT_DURATION)
+                                    .withEndAction {
+                                        view.visibility = View.INVISIBLE
+                                        view.alpha = 1f
+                                        view.scaleX = 1f
+                                        view.scaleY = 1f
+                                        onEnd()
+                                    }
+                                    .start()
+                            }
+                            .start()
+                    }
+                    .start()
                 return
             }
             view.animate()
@@ -818,31 +846,6 @@ class PointerFloating(
             pendingHoverPoint = point
         }
 
-        /** Shrink-and-return pulse, the only pointer feedback played on tap. */
-        fun playClickPulse() {
-            if (!isClickFeedbackEnabled()) return
-            clickPulseEndAt = SystemClock.elapsedRealtime() +
-                POINTER_CLICK_PULSE_SHRINK_DURATION + POINTER_CLICK_PULSE_RETURN_DURATION
-            pointerIcon.animate().cancel()
-            pointerIcon.scaleX = 1f
-            pointerIcon.scaleY = 1f
-            pointerIcon.animate()
-                .scaleX(POINTER_CLICK_PRESS_SCALE)
-                .scaleY(POINTER_CLICK_PRESS_SCALE)
-                .setDuration(POINTER_CLICK_PULSE_SHRINK_DURATION)
-                .withEndAction {
-                    pointerIcon.animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(POINTER_CLICK_PULSE_RETURN_DURATION)
-                        .start()
-                }
-                .start()
-        }
-
-        /** True while the tap pulse still has to finish, so the pointer is not hidden mid-animation. */
-        fun isClickPulseActive(): Boolean = SystemClock.elapsedRealtime() < clickPulseEndAt
-
         private inner class MoveTouchHandler() {
 
             fun computePosition(): Point {
@@ -980,9 +983,9 @@ class PointerFloating(
                         "PointerFloating",
                         "handleActionUp: ${targetPoint.x}, ${targetPoint.y}"
                     )
-                    // Play the feedback on lift: it must start before hide() runs, otherwise
-                    // the fade-out cancels the pulse and nothing is visible.
-                    pointerManger.playClickPulse()
+                    // The exit animation is driven by hidePointer on the wrapper view, so the
+                    // icon and its ring can never drift apart. This only flags the tap.
+                    tapExitPending = true
                     context.launch {
                         delay(20)
                         performPointerClick(targetPoint.x, targetPoint.y)
