@@ -329,9 +329,7 @@ internal class QuickSetupController(
                 R.drawable.baseline_edit_24,
                 activity.getString(R.string.quick_setup_choose_for, gesture.label(activity))
             ) {
-                chooseAction(wheel = false, currentAction = action, gesture = gesture) { selected ->
-                    update(config.withGesture(gesture, selected))
-                }
+                chooseAction(wheel = false, currentAction = action, gesture = gesture)
             })
 
             // Practice / Test button
@@ -352,29 +350,19 @@ internal class QuickSetupController(
             config = config,
             onEditItem = { index ->
                 if (index in config.wheelItems.indices) {
-                    chooseWheelAction(currentAction = config.wheelItems[index]) { action ->
-                        val newItems = config.wheelItems.toMutableList()
-                        newItems[index] = action.copy(tag = newItems[index].tag)
-                        update(config.copy(wheelItems = newItems))
-                    }
+                    chooseAction(wheel = true, currentAction = config.wheelItems[index])
                 }
             },
             onRemoveItem = { index ->
                 removeWheelItem(index)
             },
             onAddItem = {
-                chooseWheelAction { selected ->
-                    update(config.copy(wheelItems = config.wheelItems + selected))
-                }
+                chooseAction(wheel = true)
             },
             onReorderItems = { newItems ->
                 update(config.copy(wheelItems = newItems))
             }
         )
-    }
-
-    private fun chooseWheelAction(currentAction: GestureActionItem? = null, selected: (GestureActionItem) -> Unit) {
-        chooseAction(wheel = true, currentAction = currentAction, selected = selected)
     }
 
     private fun removeWheelItem(index: Int) {
@@ -394,32 +382,23 @@ internal class QuickSetupController(
     private fun chooseAction(
         wheel: Boolean,
         currentAction: GestureActionItem? = null,
-        gesture: QuickGesture? = null,
-        selected: (GestureActionItem) -> Unit
+        gesture: QuickGesture? = null
     ) {
         if (loading || saving) return
-        showGuideActionSelectBottomSheet(
-            activity = activity,
-            allowWheel = !wheel,
-            allowNone = !wheel,
-            currentAction = currentAction,
-            onActionSelected = { chosen ->
-                selected(currentAction?.let { replaceGuideAction(it, chosen) } ?: chosen)
-            },
-            onMoreSettings = {
-                editorPending = true
-                editorGesture = gesture?.name
-                editorWheelTag = currentAction?.tag
-                editorResult = null
-                actionEditor.launch(Intent(activity, GestureAddActionActivity::class.java).apply {
-                    putExtra(GestureAddActionActivity.EXTRA_RETURN_ACTION_ITEM, true)
-                    putExtra("editMode", true)
-                    putExtra("triggerActionMode", gesture != null)
-                    if (wheel) putExtra(GestureAddActionActivity.EXTRA_ICON_WHEEL_STYLE, baseActionConfig.toJson(false))
-                    putExtra(GestureAddActionActivity.EXTRA_ACTION_ITEM, (currentAction ?: GestureActionItem()).toJson(false))
-                })
-            }
-        )
+        editorPending = true
+        editorGesture = gesture?.name
+        editorWheelTag = currentAction?.tag
+        editorResult = null
+        actionEditor.launch(Intent(activity, GestureAddActionActivity::class.java).apply {
+            putExtra(GestureAddActionActivity.EXTRA_RETURN_ACTION_ITEM, true)
+            putExtra("editMode", currentAction != null)
+            putExtra("triggerActionMode", gesture != null)
+            putExtra(GestureAddActionActivity.EXTRA_ALLOW_WHEEL, !wheel)
+            putExtra(GestureAddActionActivity.EXTRA_ALLOW_NONE, !wheel)
+            if (!wheel) putExtra(GestureAddActionActivity.EXTRA_DEFAULT_WHEEL_TAG, QuickSetupRepository.WHEEL_TAG)
+            if (wheel) putExtra(GestureAddActionActivity.EXTRA_ICON_WHEEL_STYLE, baseActionConfig.toJson(false))
+            if (currentAction != null) putExtra(GestureAddActionActivity.EXTRA_ACTION_ITEM, currentAction.toJson(false))
+        })
     }
 
     private fun applyEditorResult() {

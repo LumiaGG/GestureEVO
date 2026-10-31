@@ -589,8 +589,7 @@ class InspireFloating(private val context: GestureService) :
                 scheduleTransition(startUptimeMs)
 
                 val accessibilityJob = async {
-                    InspireDataHolder.accessibilityContent =
-                        getScreenContentText(context, dragSelectRect)
+                    getScreenContentText(context, dragSelectRect)
                 }
 
                 val takeScreenshotJob = async {
@@ -608,7 +607,7 @@ class InspireFloating(private val context: GestureService) :
                     }
                 }
 
-                accessibilityJob.await()
+                InspireDataHolder.accessibilityContent = accessibilityJob.await()
                 takeScreenshotJob.await()
                 InspireDataHolder.replaceOcrAllowedTextBoxes(null)
 

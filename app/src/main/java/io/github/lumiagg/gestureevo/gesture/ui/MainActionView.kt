@@ -447,6 +447,8 @@ class MainActionView : ActionView {
             cancelPositionAnimation()
             itemMenuOverlay.hide()
             subActionView.hideItemMenu()
+            // A preloaded wheel may have been hidden when the palette changed.
+            refreshTheme()
             latestShowAnimEnabled = showAnim
             alpha = 0F
             visibility = VISIBLE

@@ -584,10 +584,6 @@ class AppearanceSettingsActivity : AppCompatActivity() {
                     val key = keys.getOrElse(position) { keys.first() }
                     settingsStore.saveKey(KEY_DYNAMIC_COLOR_SCHEME, key)
                     DynamicColorUtils.updateDynamicColorScheme(applicationContext, key)
-                    ToastHelper.showInUIThread(
-                        applicationContext,
-                        R.string.appearance_settings_color_scheme_restart_hint
-                    )
                 }
             }
         }

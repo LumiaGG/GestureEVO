@@ -7,7 +7,6 @@ import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
 import android.util.Log
-import android.view.ContextThemeWrapper
 import android.view.DragEvent
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -47,7 +46,7 @@ class ExternalDropFloating(private val service: GestureService) :
     BaseFloatingWindow(service, service, "ExternalDrop") {
     private enum class Action { POOL, PIN, TOKENIZE, SEARCH }
 
-    private val themeContext = ContextThemeWrapper(service, R.style.Theme_GestureEVO)
+    private val themeContext = DynamicColorUtils.dynamicThemedContext(service)
     private val observer = View(service)
     private val targets = LayoutInflater.from(themeContext)
         .inflate(R.layout.external_drop_floating, null)

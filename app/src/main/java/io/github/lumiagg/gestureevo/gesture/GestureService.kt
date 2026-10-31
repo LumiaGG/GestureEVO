@@ -32,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -81,6 +82,9 @@ class GestureService : AccessibilityService(), CoroutineScope {
             delay(1000)
             gestureManager = GestureManager(this@GestureService, this)
             observeExternalDropSettings()
+            DynamicColorUtils.themeRevision.collect {
+                gestureManager?.refreshOverlayThemes()
+            }
         }
         launch(Dispatchers.IO) {
             DynamicColorUtils.captureColor(
@@ -98,7 +102,9 @@ class GestureService : AccessibilityService(), CoroutineScope {
             settingsStore.data.map { preferences ->
                 preferences.readKey(KEY_EXTERNAL_DROP_ENABLED, true) to
                     preferences.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true)
-            }.distinctUntilChanged().collect { (enabled, _) ->
+            }.distinctUntilChanged().combine(DynamicColorUtils.themeRevision) { settings, _ ->
+                settings
+            }.collect { (enabled, _) ->
                 externalDropFloating?.destroy()
                 externalDropFloating = if (enabled) {
                     ExternalDropFloating(this@GestureService).also { it.start() }

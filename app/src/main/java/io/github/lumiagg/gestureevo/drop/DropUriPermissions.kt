@@ -9,7 +9,9 @@ import org.lsposed.hiddenapibypass.HiddenApiBypass
 
 /** Service overlays have no Activity token, so URI grants must be taken transiently. */
 internal object DropUriPermissions {
-    @SuppressLint("BlockedPrivateApi", "DiscouragedPrivateApi")
+    // Deliberate service-overlay access: the Activity API requires an Activity token.
+    // Android 9+ exemptions are applied below, and acquisition failures return null.
+    @SuppressLint("BlockedPrivateApi", "SoonBlockedPrivateApi", "DiscouragedPrivateApi")
     fun take(event: DragEvent): DragAndDropPermissions? = try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             HiddenApiBypass.addHiddenApiExemptions("Landroid/view/DragAndDropPermissions;")

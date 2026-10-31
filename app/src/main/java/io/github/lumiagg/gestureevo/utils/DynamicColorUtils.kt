@@ -7,6 +7,8 @@ import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.FrameLayout
 import androidx.annotation.ColorInt
@@ -23,6 +25,9 @@ import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companio
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.util.WeakHashMap
 import com.google.android.material.R as MaterialR
 
 object DynamicColorUtils {
@@ -80,6 +85,12 @@ object DynamicColorUtils {
     @Volatile
     private var selectedScheme: Scheme = Scheme.SYSTEM
     private var overlayInstalled = false
+    private val revision = MutableStateFlow(0L)
+    val themeRevision = revision.asStateFlow()
+    private val activityRevisions = WeakHashMap<Activity, Long>()
+    private val resumedActivities = WeakHashMap<Activity, Boolean>()
+    private val pendingRecreations = WeakHashMap<Activity, Boolean>()
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     @Volatile
     private var published = PublishedColors()
@@ -104,8 +115,43 @@ object DynamicColorUtils {
     }
 
     fun updateDynamicColorScheme(context: Context, key: String) {
-        selectedScheme = Scheme.fromKey(key)
-        // value persisted by caller
+        check(Looper.myLooper() == Looper.getMainLooper())
+        val scheme = Scheme.fromKey(key)
+        if (selectedScheme == scheme) return
+        selectedScheme = scheme
+        // Publish the palette before notifying any views or services.
+        refreshSurfaceColors(context.applicationContext)
+        revision.value += 1
+        resumedActivities.keys.toList().forEach(::recreateIfThemeChanged)
+    }
+
+    private fun recreateIfThemeChanged(activity: Activity) {
+        if (activityRevisions[activity] == revision.value ||
+            activity.isFinishing || activity.isDestroyed || pendingRecreations[activity] == true
+        ) return
+        pendingRecreations[activity] = true
+        mainHandler.post {
+            if (resumedActivities.containsKey(activity) && !activity.isFinishing && !activity.isDestroyed) {
+                activity.recreate()
+            } else {
+                pendingRecreations.remove(activity)
+            }
+        }
+    }
+
+    private fun applyActivityColors(activity: Activity) {
+        val scheme = resolvedScheme()
+        // Keep the manifest theme (including transparent/floating window attributes).
+        // Every new Activity starts with a fresh theme; only its color overlay changes.
+        if (scheme == Scheme.SYSTEM) {
+            DynamicColors.applyToActivityIfAvailable(
+                activity, DynamicColorsOptions.Builder().setThemeOverlay(scheme.overlay).build()
+            )
+        } else {
+            activity.theme.applyStyle(scheme.overlay, true)
+        }
+        ensureTransparentActivitiesStayClear(activity)
+        activityRevisions[activity] = revision.value
     }
 
     private fun resolvedScheme(): Scheme =
@@ -113,32 +159,33 @@ object DynamicColorUtils {
         else selectedScheme
 
     fun applyAppWideColors(application: Application) {
-        val scheme = resolvedScheme()
-        if (scheme == Scheme.SYSTEM && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val options = DynamicColorsOptions.Builder()
-                .setThemeOverlay(scheme.overlay)
-                .build()
-            DynamicColors.applyToActivitiesIfAvailable(application, options)
-            return
-        }
-        // Static palette or pre-S fallback
         if (!overlayInstalled) {
             overlayInstalled = true
             application.registerActivityLifecycleCallbacks(object :
                 Application.ActivityLifecycleCallbacks {
                 override fun onActivityPreCreated(activity: Activity, savedInstanceState: Bundle?) {
-                    activity.setTheme(R.style.Theme_GestureEVO)
-                    activity.theme.applyStyle(scheme.overlay, true)
-                    ensureTransparentActivitiesStayClear(activity)
+                    applyActivityColors(activity)
                 }
 
-                override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+                override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                    // Before Android 10, this runs inside super.onCreate, before view inflation.
+                    if (!activityRevisions.containsKey(activity)) applyActivityColors(activity)
+                }
                 override fun onActivityStarted(activity: Activity) {}
-                override fun onActivityResumed(activity: Activity) {}
-                override fun onActivityPaused(activity: Activity) {}
+                override fun onActivityResumed(activity: Activity) {
+                    resumedActivities[activity] = true
+                    recreateIfThemeChanged(activity)
+                }
+                override fun onActivityPaused(activity: Activity) {
+                    resumedActivities.remove(activity)
+                }
                 override fun onActivityStopped(activity: Activity) {}
                 override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
-                override fun onActivityDestroyed(activity: Activity) {}
+                override fun onActivityDestroyed(activity: Activity) {
+                    activityRevisions.remove(activity)
+                    resumedActivities.remove(activity)
+                    pendingRecreations.remove(activity)
+                }
             })
         }
     }

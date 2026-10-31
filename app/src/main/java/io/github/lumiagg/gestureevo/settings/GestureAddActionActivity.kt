@@ -1,37 +1,37 @@
 package io.github.lumiagg.gestureevo.settings
 
-import io.github.lumiagg.gestureevo.databinding.BottomSheetShortcutSourceSelectBinding
-
-import io.github.lumiagg.gestureevo.databinding.BottomSheetIconSelectBinding
-
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.ListPopupWindow
 import androidx.core.graphics.createBitmap
+import androidx.core.view.isVisible
+import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.ActivityGestureAddActionBinding
 import io.github.lumiagg.gestureevo.databinding.ActivityGestureAddActionConfigBinding
 import io.github.lumiagg.gestureevo.databinding.BottomSheetAccActionSelectBinding
 import io.github.lumiagg.gestureevo.databinding.BottomSheetClipboardActionSelectBinding
+import io.github.lumiagg.gestureevo.databinding.BottomSheetIconSelectBinding
+import io.github.lumiagg.gestureevo.databinding.BottomSheetShortcutSourceSelectBinding
 import io.github.lumiagg.gestureevo.db.APPModel
 import io.github.lumiagg.gestureevo.gesture.ActionViewEvent
 import io.github.lumiagg.gestureevo.gesture.EventBusManager
-import io.github.lumiagg.gestureevo.gesture.config.GestureActionDataManager
 import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
+import io.github.lumiagg.gestureevo.gesture.config.GestureActionDataManager
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionDataManager.buildTag
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionItem
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionType
@@ -48,17 +48,19 @@ import io.github.lumiagg.gestureevo.settings.ui.SelectActivityCallBack
 import io.github.lumiagg.gestureevo.settings.ui.SelectShortcutCallback
 import io.github.lumiagg.gestureevo.settings.ui.ShortcutModel
 import io.github.lumiagg.gestureevo.settings.ui.ShortcutSelectAPPBottomSheet
+import io.github.lumiagg.gestureevo.settings.ui.showActionSelectBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.showEditTextBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.showPieGroupSelectBottomSheet
 import io.github.lumiagg.gestureevo.utils.GestureActionLink
 import io.github.lumiagg.gestureevo.utils.MultiUserAPP
 import io.github.lumiagg.gestureevo.utils.NotificationPermissionUtils
 import io.github.lumiagg.gestureevo.utils.TempDndPermissionRequester
+import io.github.lumiagg.gestureevo.utils.app.syncAppCatalog
 import io.github.lumiagg.gestureevo.utils.icon.IconFileUtils
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
 import io.github.lumiagg.gestureevo.utils.icon.IconImageIO
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -77,6 +79,7 @@ class GestureAddActionActivity : AppCompatActivity() {
     private val firstButtonsState = ConfigButtonsState()
     private val secondButtonsState = ConfigButtonsState()
     private val iconFileUtils = IconFileUtils(this)
+    private var pendingShortcutLink: GestureActionLink? = null
     private var lastSelectedConfigBinding: ActivityGestureAddActionConfigBinding? = null
     private var selectTriggerActionMode = false
     private var expectItemTag: String? = null
@@ -89,6 +92,10 @@ class GestureAddActionActivity : AppCompatActivity() {
         tempDndPermissionRequester = TempDndPermissionRequester(this)
         initView()
         initData(savedInstanceState)
+        savedInstanceState?.getString(STATE_SHORTCUT_LINK)?.let {
+            pendingShortcutLink = parseValidLink(it)
+            lastSelectedConfigBinding = if (savedInstanceState.getBoolean(STATE_SHORTCUT_LONG)) binding.longAction else binding.shortAction
+        }
         firstButtonsState.enable = true
         secondButtonsState.enable = true
         if (!externalActionMode) gestureActionIcon(this, binding.actionIcon, actionItem)
@@ -108,24 +115,33 @@ class GestureAddActionActivity : AppCompatActivity() {
                 }.show()
         }
         renderSubWheelButton()
+        binding.toolbar.setTitle(if (editMode) R.string.action_editor_edit else R.string.action_editor_title)
+        if (!externalActionMode && !selectTriggerActionMode) {
+            binding.toolbar.menu.add(when {
+                editMode -> R.string.action_placeholder_save
+                returnActionItemMode -> R.string.action_placeholder_single
+                else -> R.string.action_placeholder_add
+            })
+                .setOnMenuItemClickListener {
+                    if (editMode || returnActionItemMode) saveAction(true) else batchSavePlaceHolder(5)
+                    true
+                }
+        }
         if (selectTriggerActionMode) {
             initSelectTriggerActionView()
         } else if (externalActionMode) {
             initExternalActionView()
         }
+        renderConfig(binding.shortAction)
+        renderConfig(binding.longAction)
     }
 
     private fun initView() {
         binding.longAction.actionTitle.text = getString(R.string.gesture_add_action_long_press)
         binding.shortAction.actionTimeout.text = getString(R.string.gesture_add_action_touch_execute)
         binding.fab.setOnClickListener { saveAction(false) }
-        binding.fabPlaceholder.setOnClickListener {
-            if (editMode) {
-                saveAction(true)
-            } else {
-                batchSavePlaceHolder(5)
-            }
-        }
+        binding.toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        binding.changeIcon.setOnClickListener { selectImage(binding.actionIcon) }
         binding.actionIcon.setOnClickListener {
             selectImage(it as RoundImageTextView)
         }
@@ -141,10 +157,10 @@ class GestureAddActionActivity : AppCompatActivity() {
     }
 
     private fun initSelectTriggerActionView() {
-        binding.longAction.root.visibility = View.INVISIBLE
+        binding.longAction.root.visibility = View.GONE
         binding.shortAction.actionTitle.visibility = View.GONE
-        binding.syncButtonsLayout.visibility = View.INVISIBLE
-        binding.fabPlaceholder.visibility = View.INVISIBLE
+        binding.syncButtonsLayout.visibility = View.GONE
+        binding.iconSettings.visibility = View.GONE
         // Must add timeout parameter when fixed gesture selection is used
         binding.shortAction.actionTimeout.isChecked = true
         binding.shortAction.actionTimeout.isEnabled = false
@@ -156,10 +172,9 @@ class GestureAddActionActivity : AppCompatActivity() {
     }
 
     private fun initExternalActionView() {
-        binding.actionIcon.visibility = View.GONE
+        binding.iconSettings.visibility = View.GONE
         binding.longAction.root.visibility = View.GONE
         binding.syncButtonsLayout.visibility = View.GONE
-        binding.fabPlaceholder.visibility = View.GONE
         binding.shortAction.actionTitle.text = getString(R.string.external_action_config_title)
         binding.fab.text = getString(R.string.external_action_save_button)
         binding.fab.setOnClickListener {
@@ -169,12 +184,43 @@ class GestureAddActionActivity : AppCompatActivity() {
 
     private fun setConfigButtons(configBinding: ActivityGestureAddActionConfigBinding) {
         configBinding.actionSelect.setOnClickListener {
-            initActionPopupMenu(configBinding).show()
+            showActionPicker(configBinding)
         }
 
+        configBinding.executionToggle.setOnClickListener {
+            configBinding.actionExternButtons.isVisible = !configBinding.actionExternButtons.isVisible
+        }
+        configBinding.advancedToggle.setOnClickListener {
+            configBinding.actionLinkLayout.isVisible = !configBinding.actionLinkLayout.isVisible
+        }
+        configBinding.configureAction.setOnClickListener {
+            val link = parseValidLink(configBinding.actionLink.text.toString()) ?: return@setOnClickListener
+            selectAction(configBinding, link.actionType)
+        }
+        configBinding.actionLinkLayout.setEndIconOnClickListener {
+            (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(
+                ClipData.newPlainText(getString(R.string.action_raw_link), configBinding.actionLink.text.toString()))
+            Snackbar.make(binding.root, R.string.action_link_copied, Snackbar.LENGTH_SHORT).show()
+        }
+        configBinding.actionLink.doAfterTextChanged {
+            if (configBinding.actionLink.hasFocus()) {
+                parseValidLink(it.toString())?.let { link ->
+                    configBinding.getButtonsState().enable = false
+                    configBinding.getActionLink().parseLink(link.buildLink())
+                    configBinding.actionFreeform.isChecked = link.isFreeform
+                    configBinding.actionNewWindow.isChecked = link.isNewWindow
+                    configBinding.actionDualOpen.isChecked = link.isDualOpen
+                    configBinding.actionTimeout.isChecked = link.isTimeout
+                    configBinding.getButtonsState().enable = true
+                }
+            }
+            renderConfig(configBinding)
+        }
         configBinding.actionExternButtons.setOnCheckedStateChangeListener { group, checkedIds ->
             if (!configBinding.getButtonsState().enable) return@setOnCheckedStateChangeListener
             val actionLink = configBinding.getActionLink()
+            if (!configBinding.actionLink.text.isNullOrBlank() && parseValidLink(configBinding.actionLink.text.toString()) == null) return@setOnCheckedStateChangeListener
+            parseValidLink(configBinding.actionLink.text.toString())?.let { actionLink.parseLink(it.buildLink()) }
             actionLink.isFreeform = configBinding.actionFreeform.isChecked
             actionLink.isNewWindow = configBinding.actionNewWindow.isChecked
             actionLink.isTimeout = configBinding.actionTimeout.isChecked
@@ -184,7 +230,7 @@ class GestureAddActionActivity : AppCompatActivity() {
             } else {
                 actionLink.userId = 0
             }
-            applyLink(configBinding, needSyncToLongAction = false)
+            applyLink(configBinding)
         }
     }
 
@@ -229,6 +275,8 @@ class GestureAddActionActivity : AppCompatActivity() {
             secondStageLink = binding.longAction.actionLink.text.toString()
         }
         outState.putString(EXTRA_ACTION_ITEM, draft.toJson(false))
+        outState.putString(STATE_SHORTCUT_LINK, pendingShortcutLink?.buildLink())
+        outState.putBoolean(STATE_SHORTCUT_LONG, lastSelectedConfigBinding == binding.longAction)
         super.onSaveInstanceState(outState)
     }
 
@@ -240,56 +288,106 @@ class GestureAddActionActivity : AppCompatActivity() {
     private fun fillActionConfig(
         configBinding: ActivityGestureAddActionConfigBinding, link: String
     ) {
+        configBinding.getButtonsState().enable = false
         val actionLink = configBinding.getActionLink()
         actionLink.parseLink(link)
+        if (configBinding == binding.shortAction) actionItem.firstStageLink = link
+        else actionItem.secondStageLink = link
         configBinding.actionSelect.text = actionLink.actionType.showName(this)
         configBinding.actionFreeform.isChecked = actionLink.isFreeform
         configBinding.actionNewWindow.isChecked = actionLink.isNewWindow
         configBinding.actionDualOpen.isChecked = actionLink.isDualOpen
         configBinding.actionTimeout.isChecked = actionLink.isTimeout
         configBinding.getButtonsState().enable = true
-        if (configBinding == binding.shortAction) {
+        if (configBinding == binding.shortAction && actionItem.iconType == IconType.OTHER) {
+            binding.actionIcon.setImage(R.drawable.baseline_gesture_24)
             gestureActionIcon(this, binding.actionIcon, actionItem)
         }
-        applyLink(configBinding, needSyncToLongAction = false)
+        applyLink(configBinding)
     }
 
-    private fun initActionPopupMenu(configBinding: ActivityGestureAddActionConfigBinding): ListPopupWindow {
-        val listPopupWindow = ListPopupWindow(
-            this, null, android.R.attr.listPopupWindowStyle
-        )
-        val adapter: ArrayAdapter<CharSequence?> = ArrayAdapter(
-            this,
-            R.layout.tirgger_config_relate_content_popup_item,
-        )
-
-        val typeList = ArrayList<GestureActionType>().apply {
-            GestureActionType.entries.forEach { type ->
-                if (
-                    externalActionMode &&
-                    (type == GestureActionType.NONE ||
-                        type == GestureActionType.CLICK_THROUGH ||
-                        type == GestureActionType.SHOW_ACTION_VIEW)
-                ) {
-                    return@forEach
+    private fun showActionPicker(configBinding: ActivityGestureAddActionConfigBinding) {
+        showActionSelectBottomSheet(
+            activity = this,
+            current = parseValidLink(configBinding.actionLink.text.toString()) ?: GestureActionLink(),
+            allowWheel = !externalActionMode && intent.getBooleanExtra(EXTRA_ALLOW_WHEEL, true),
+            allowNone = !externalActionMode && intent.getBooleanExtra(EXTRA_ALLOW_NONE, true),
+            allowClickThrough = !externalActionMode
+        ) { choice ->
+            if (choice.parameters != null) {
+                val link = GestureActionLink().apply {
+                    actionType = choice.type
+                    choice.parameters.forEach { (key, value) -> addParams(key, value) }
+                    isTimeout = selectTriggerActionMode || parseValidLink(configBinding.actionLink.text.toString())?.isTimeout == true
                 }
-                add(type)
+                commitAction(configBinding, link)
+            } else {
+                selectAction(configBinding, choice.type)
             }
         }
+    }
 
-        typeList.forEach {
-            adapter.add(it.showName(this))
-        }
-        listPopupWindow.setAdapter(adapter)
-        listPopupWindow.anchorView = configBinding.actionSelect
-        listPopupWindow.setOnItemClickListener { _: AdapterView<*>?, _: View?, position: Int, _: Long ->
-            listPopupWindow.dismiss()
-            val type = typeList[position]
-            configBinding.actionSelect.text = type.showName(this)
-            selectAction(configBinding, type)
-        }
+    private fun parseValidLink(text: String): GestureActionLink? = runCatching {
+        val uri = Uri.parse(text)
+        require(uri.scheme == "gesture-evo" && uri.authority == "action")
+        require(GestureActionType.entries.any { it.name == uri.lastPathSegment })
+        GestureActionLink().parseLink(text)
+    }.getOrNull()
 
-        return listPopupWindow
+    private fun renderConfig(configBinding: ActivityGestureAddActionConfigBinding) {
+        val raw = configBinding.actionLink.text.toString()
+        val link = parseValidLink(raw)
+        configBinding.actionLinkLayout.error = if (raw.isNotBlank() && link == null) getString(R.string.action_link_invalid) else null
+        configBinding.actionSelect.text = link?.actionType?.showName(this) ?: getString(R.string.gesture_add_action_config_select_event)
+        val params = link?.queryList?.toMap().orEmpty()
+        val detail = when (link?.actionType) {
+            GestureActionType.OPEN_APP, GestureActionType.FREEZE_APP -> params["pkg"]?.let { pkg ->
+                runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
+            }
+            GestureActionType.ACC_ACTION -> mapOf(
+                "1" to R.string.acc_action_select_back, "2" to R.string.acc_action_select_home,
+                "3" to R.string.acc_action_select_recents, "4" to R.string.acc_action_select_notifications,
+                "5" to R.string.acc_action_select_quick_settings, "6" to R.string.acc_action_select_power_dialog,
+                "8" to R.string.acc_action_select_lock_screen, "9" to R.string.acc_action_select_screenshot
+            )[params["accAction"]]?.let(::getString)
+            GestureActionType.TEMP_DND -> params["minutes"]?.let { getString(R.string.action_minutes_summary, it) }
+            GestureActionType.PAUSE_GESTURE -> params["seconds"]?.let { getString(R.string.action_seconds_summary, it) }
+            GestureActionType.SHOW_ACTION_VIEW -> getString(R.string.quick_setup_action_wheel_desc)
+            GestureActionType.OPEN_ACTIVITY -> params["activityName"]
+            GestureActionType.OTHER_LINK, GestureActionType.OTHER_SHORTCUT -> params["uri"]
+            GestureActionType.CLIPBOARD_ACTION -> mapOf(
+                "pin" to R.string.clipboard_action_select_pin, "search" to R.string.clipboard_action_select_search,
+                "translate" to R.string.clipboard_action_select_translate,
+                "inspire" to R.string.clipboard_action_select_share_inspire, "saveImage" to R.string.clipboard_action_select_save_image
+            )[params["clipAction"]]?.let(::getString)
+            GestureActionType.OPEN_SHELL -> params["shell"]
+            else -> null
+        }
+        val options = listOfNotNull(
+            getString(R.string.gesture_add_action_config_freeform).takeIf { link?.isFreeform == true },
+            getString(R.string.gesture_add_action_config_new_window).takeIf { link?.isNewWindow == true },
+            getString(R.string.gesture_add_action_config_dual_open).takeIf { link?.isDualOpen == true },
+            getString(if (configBinding == binding.shortAction) R.string.gesture_add_action_touch_execute else R.string.gesture_add_action_config_timeout_execute)
+                .takeIf { link?.isTimeout == true }
+        )
+        configBinding.actionSummary.text = (listOfNotNull(detail) + options).joinToString(" · ")
+            .ifBlank { link?.actionType?.showName(this) ?: getString(R.string.action_not_selected) }
+        val appOptions = link?.actionType in setOf(GestureActionType.OPEN_APP, GestureActionType.OPEN_ACTIVITY, GestureActionType.OTHER_SHORTCUT)
+        configBinding.actionFreeform.isVisible = appOptions || link?.isFreeform == true
+        configBinding.actionNewWindow.isVisible = appOptions || link?.isNewWindow == true
+        configBinding.actionDualOpen.isVisible = (appOptions && params["pkg"] != null) || link?.isDualOpen == true
+        configBinding.configureAction.isVisible = link?.actionType in CONFIGURABLE_ACTIONS
+        configBinding.executionToggle.isVisible = link != null
+        if (link == null) configBinding.actionExternButtons.isVisible = false
+    }
+
+    private fun commitAction(configBinding: ActivityGestureAddActionConfigBinding, link: GestureActionLink) {
+        if (configBinding == binding.shortAction && actionItem.iconType == IconType.OTHER) actionItem.name = null
+        fillActionConfig(configBinding, link.buildLink())
+        if (configBinding == binding.shortAction && !selectTriggerActionMode && !externalActionMode &&
+            binding.longAction.actionLink.text.isNullOrEmpty()) {
+            fillActionConfig(binding.longAction, link.buildLink())
+        }
     }
 
     private val selectImageLauncher = registerForActivityResult(IconEditorContract()) { path ->
@@ -401,10 +499,10 @@ class GestureAddActionActivity : AppCompatActivity() {
 
                 lastSelectedConfigBinding?.let { configBinding ->
                     shortcutUri?.let { uri ->
-                        val actionLink = configBinding.getActionLink()
+                        val actionLink = pendingShortcutLink ?: return@registerForActivityResult
                         actionLink.addParams("uri", uri)
-                        applyLink(configBinding)
-                        shortcutIcon?.let { icon ->
+                        commitAction(configBinding, actionLink)
+                        shortcutIcon?.takeIf { configBinding == binding.shortAction }?.let { icon ->
                             actionItem.iconType = IconType.URI
                             iconFileUtils.setImgBitmap(icon)
                             binding.actionIcon.setImage(icon)
@@ -455,7 +553,8 @@ class GestureAddActionActivity : AppCompatActivity() {
         configBinding: ActivityGestureAddActionConfigBinding, type: GestureActionType
     ) {
         lastSelectedConfigBinding = configBinding
-        val actionLink = configBinding.getActionLink()
+        val actionLink = parseValidLink(configBinding.actionLink.text.toString()) ?: GestureActionLink()
+        if (selectTriggerActionMode) actionLink.isTimeout = true
         actionLink.actionType = type
         val oldQueryList: ArrayList<Pair<String, String>> = ArrayList()
         oldQueryList.addAll(actionLink.queryList)
@@ -463,18 +562,26 @@ class GestureAddActionActivity : AppCompatActivity() {
 
         when (type) {
             GestureActionType.OPEN_APP, GestureActionType.FREEZE_APP -> {
-                DefaultSelectAPPBottomSheet(this, lifecycleScope, object : SelectAPPCallBack {
-                    override fun selectCompleted(model: APPModel) {
-                        actionLink.addParams("pkg", model.pkgName)
-                        applyLink(configBinding)
-                        if (configBinding == binding.shortAction && actionItem.iconType == IconType.OTHER) {
-                            actionItem.iconType = IconType.OTHER
-                            binding.actionIcon.setImage(
-                                IconHelper.getIcon(applicationContext, model.pkgName)
-                            )
-                        }
+                lifecycleScope.launch {
+                    try {
+                        syncAppCatalog(applicationContext)
+                        if (isFinishing || isDestroyed) return@launch
+                        DefaultSelectAPPBottomSheet(this@GestureAddActionActivity, lifecycleScope, object : SelectAPPCallBack {
+                            override fun selectCompleted(model: APPModel) {
+                                actionLink.addParams("pkg", model.pkgName)
+                                actionLink.userId = if (actionLink.isDualOpen && model.userId == 0)
+                                    MultiUserAPP(applicationContext).getSerialNumberForUser(model.pkgName)
+                                else model.userId.toLong()
+                                commitAction(configBinding, actionLink)
+                            }
+                        }).show()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Unable to load applications", e)
+                        Toast.makeText(this@GestureAddActionActivity, R.string.guide_load_failed, Toast.LENGTH_LONG).show()
                     }
-                }).show()
+                }
             }
 
             GestureActionType.OPEN_ACTIVITY -> {
@@ -489,11 +596,10 @@ class GestureAddActionActivity : AppCompatActivity() {
                         actionLink.addParams("pkg", model.packageName)
                         actionLink.addParams("activityName", model.activityName)
                         actionLink.addParams("isExported", model.isExported.toString())
-                        applyLink(configBinding)
-                        actionItem.iconType = IconType.OTHER
-                        binding.actionIcon.setImage(
-                            IconHelper.getIcon(applicationContext, model.packageName)
-                        )
+                        commitAction(configBinding, actionLink)
+                        if (configBinding == binding.shortAction && actionItem.iconType == IconType.OTHER) {
+                            binding.actionIcon.setImage(IconHelper.getIcon(applicationContext, model.packageName))
+                        }
                     }
                 }).show()
             }
@@ -508,7 +614,7 @@ class GestureAddActionActivity : AppCompatActivity() {
                     onConfirm = { inputText ->
                         if (inputText.isNotEmpty()) {
                             actionLink.addParams("uri", inputText)
-                            applyLink(configBinding)
+                            commitAction(configBinding, actionLink)
                         }
                     }
                 )
@@ -524,7 +630,7 @@ class GestureAddActionActivity : AppCompatActivity() {
                     onConfirm = { inputText ->
                         if (inputText.isNotEmpty()) {
                             actionLink.addParams("shell", inputText)
-                            applyLink(configBinding)
+                            commitAction(configBinding, actionLink)
                         }
                     }
                 )
@@ -539,39 +645,43 @@ class GestureAddActionActivity : AppCompatActivity() {
             }
 
             GestureActionType.OTHER_SHORTCUT -> {
-                selectOtherShortcut(configBinding)
+                selectOtherShortcut(configBinding, actionLink)
             }
 
             GestureActionType.SHOW_ACTION_VIEW -> {
+                val defaultTag = intent.getStringExtra(EXTRA_DEFAULT_WHEEL_TAG)
+                if (defaultTag != null) {
+                    actionLink.addParams("actionItemsTag", defaultTag)
+                    commitAction(configBinding, actionLink)
+                    return
+                }
                 showPieGroupSelectBottomSheet(
                     activity = this,
                     coroutineScope = lifecycleScope,
                     currentSelectedTag = itemListTag,
                     onSelect = { selectedTag ->
                         actionLink.addParams("actionItemsTag", selectedTag)
-                        applyLink(configBinding)
+                        commitAction(configBinding, actionLink)
                     }
                 )
             }
 
             GestureActionType.ACC_ACTION -> {
                 selectAccAction { actionId, icon ->
-                    val actionLink = configBinding.getActionLink()
                     actionLink.addParams("accAction", actionId.toString())
-                    applyLink(configBinding)
+                    commitAction(configBinding, actionLink)
                 }
             }
 
             GestureActionType.CLIPBOARD_ACTION -> {
                 selectClipboardAction { actionId, icon ->
-                    val actionLink = configBinding.getActionLink()
                     actionLink.addParams("clipAction", actionId)
-                    applyLink(configBinding)
+                    commitAction(configBinding, actionLink)
                 }
             }
 
             else -> {
-                applyLink(configBinding)
+                commitAction(configBinding, actionLink)
             }
         }
     }
@@ -598,7 +708,7 @@ class GestureAddActionActivity : AppCompatActivity() {
                         ).show()
                     } else {
                         actionLink.addParams("minutes", minutes.toString())
-                        applyLink(configBinding)
+                        commitAction(configBinding, actionLink)
                     }
                 }
             )
@@ -631,7 +741,7 @@ class GestureAddActionActivity : AppCompatActivity() {
                         ).show()
                     } else {
                         actionLink.addParams("seconds", seconds.toString())
-                        applyLink(configBinding)
+                        commitAction(configBinding, actionLink)
                     }
                 }
             )
@@ -645,7 +755,7 @@ class GestureAddActionActivity : AppCompatActivity() {
         }
     }
 
-    private fun selectOtherShortcut(configBinding: ActivityGestureAddActionConfigBinding) {
+    private fun selectOtherShortcut(configBinding: ActivityGestureAddActionConfigBinding, actionLink: GestureActionLink) {
         val bottomSheet = BottomSheetDialog(
             this, R.style.ThemeOverlay_BottomSheetDialog_Scrollable
         )
@@ -660,6 +770,7 @@ class GestureAddActionActivity : AppCompatActivity() {
                         shortcutIntent.setPackage(model.pkgName)
                         val activities = packageManager.queryIntentActivities(shortcutIntent, 0)
                         if (activities.isNotEmpty()) {
+                            pendingShortcutLink = actionLink
                             shortcutPickerLauncher.launch(shortcutIntent)
                         } else {
                             Toast.makeText(
@@ -677,10 +788,9 @@ class GestureAddActionActivity : AppCompatActivity() {
                 bottomSheet.dismiss()
                 LocalUserShortcutSheet(this, lifecycleScope, object : SelectShortcutCallback {
                     override fun selectCompleted(model: ShortcutModel) {
-                        val actionLink = configBinding.getActionLink()
                         actionLink.addParams("uri", model.scheme)
                         actionLink.addParams("pkg", model.packageName)
-                        applyLink(configBinding)
+                        commitAction(configBinding, actionLink)
                     }
                 }).show()
             }
@@ -689,45 +799,82 @@ class GestureAddActionActivity : AppCompatActivity() {
         bottomSheet.show()
     }
 
-    private fun applyLink(
-        configBinding: ActivityGestureAddActionConfigBinding, needSyncToLongAction: Boolean = true
-    ) {
-        val actionLink = configBinding.getActionLink()
-        configBinding.actionLink.setText(actionLink.buildLink())
-
-        if (
-            needSyncToLongAction &&
-            !externalActionMode &&
-            configBinding == binding.shortAction &&
-            binding.longAction.actionLink.text.isNullOrEmpty()
-        ) {
-            fillActionConfig(binding.longAction, firstActionLink.buildLink())
-        }
+    private fun applyLink(configBinding: ActivityGestureAddActionConfigBinding) {
+        configBinding.actionLink.setText(configBinding.getActionLink().buildLink())
     }
 
     private fun syncLink(
         sourceConfig: ActivityGestureAddActionConfigBinding,
         targetConfig: ActivityGestureAddActionConfigBinding
     ) {
+        val previous = targetConfig.actionLink.text.toString()
+        if (parseValidLink(sourceConfig.actionLink.text.toString()) == null) return
         targetConfig.getButtonsState().enable = false
         fillActionConfig(targetConfig, sourceConfig.actionLink.text.toString())
+        Snackbar.make(binding.root, R.string.action_config_copied, Snackbar.LENGTH_LONG)
+            .setAction(R.string.action_undo) {
+                targetConfig.getActionLink().apply {
+                    actionType = GestureActionType.NONE
+                    queryList.clear()
+                    isFreeform = false
+                    isNewWindow = false
+                    isTimeout = false
+                    userId = 0
+                }
+                if (parseValidLink(previous) == null) {
+                    fillActionConfig(targetConfig, GestureActionLink().buildLink())
+                    targetConfig.actionLink.setText(previous)
+                } else fillActionConfig(targetConfig, previous)
+            }.show()
     }
 
 
-    private fun batchSavePlaceHolder(total: Int) = lifecycleScope.launch(Dispatchers.IO) {
-        for (i in 1..total) {
-            val item = GestureActionItem()
-            item.iconType = IconType.INVISIBLE
-            item.tag = buildTag()
-            GestureActionDataManager.addActionItem(
-                applicationContext, itemListTag, item
-            )
+    private fun batchSavePlaceHolder(total: Int) {
+        if (savingAction) return
+        savingAction = true
+        binding.fab.isEnabled = false
+        lifecycleScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    repeat(total) {
+                        val item = GestureActionItem().apply { iconType = IconType.INVISIBLE }
+                        GestureActionDataManager.addActionItem(applicationContext, itemListTag, item)
+                    }
+                }
+                finish()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Unable to save placeholders", e)
+                Toast.makeText(this@GestureAddActionActivity, R.string.gesture_add_action_save_failed, Toast.LENGTH_LONG).show()
+            } finally {
+                savingAction = false
+                binding.fab.isEnabled = true
+            }
         }
+    }
 
-        finish()
+    private fun validateDraft(): Boolean {
+        val configs = if (externalActionMode || selectTriggerActionMode) listOf(binding.shortAction)
+            else listOf(binding.shortAction, binding.longAction)
+        for (config in configs) {
+            val raw = config.actionLink.text.toString()
+            if (raw.isBlank() && (config == binding.longAction ||
+                    (!externalActionMode && !selectTriggerActionMode &&
+                        (!actionItem.subActionListTag.isNullOrBlank() || actionItem.iconType == IconType.INVISIBLE ||
+                            !binding.longAction.actionLink.text.isNullOrBlank())))) continue
+            if (parseValidLink(raw) == null) {
+                config.actionLinkLayout.isVisible = raw.isNotBlank()
+                config.actionLinkLayout.error = getString(if (raw.isBlank()) R.string.external_action_select_required else R.string.action_link_invalid)
+                Snackbar.make(binding.root, if (raw.isBlank()) R.string.external_action_select_required else R.string.action_link_invalid, Snackbar.LENGTH_LONG).show()
+                return false
+            }
+        }
+        return true
     }
 
     private fun saveExternalAction() {
+        if (!validateDraft()) return
         val link = binding.shortAction.actionLink.text?.toString().orEmpty()
         if (link.isEmpty()) {
             Toast.makeText(
@@ -747,7 +894,7 @@ class GestureAddActionActivity : AppCompatActivity() {
     }
 
     private fun saveAction(isPlaceHolder: Boolean) {
-        if (savingAction) return
+        if (savingAction || (!isPlaceHolder && !validateDraft())) return
         val savedItem = actionItem.copy().apply {
             firstStageLink = binding.shortAction.actionLink.text.toString()
             secondStageLink = binding.longAction.actionLink.text.toString()
@@ -755,7 +902,6 @@ class GestureAddActionActivity : AppCompatActivity() {
         }
         savingAction = true
         binding.fab.isEnabled = false
-        binding.fabPlaceholder.isEnabled = false
         lifecycleScope.launch {
             try {
                 withContext(Dispatchers.IO) {
@@ -781,7 +927,6 @@ class GestureAddActionActivity : AppCompatActivity() {
             } finally {
                 savingAction = false
                 binding.fab.isEnabled = true
-                binding.fabPlaceholder.isEnabled = true
             }
         }
     }
@@ -818,6 +963,17 @@ class GestureAddActionActivity : AppCompatActivity() {
 
 
     companion object {
+        private val CONFIGURABLE_ACTIONS = setOf(
+            GestureActionType.OPEN_APP, GestureActionType.FREEZE_APP, GestureActionType.OPEN_ACTIVITY,
+            GestureActionType.OTHER_SHORTCUT, GestureActionType.OTHER_LINK, GestureActionType.OPEN_SHELL,
+            GestureActionType.CLIPBOARD_ACTION, GestureActionType.TEMP_DND, GestureActionType.PAUSE_GESTURE,
+            GestureActionType.SHOW_ACTION_VIEW, GestureActionType.ACC_ACTION
+        )
+        private const val STATE_SHORTCUT_LINK = "pending_shortcut_link"
+        private const val STATE_SHORTCUT_LONG = "pending_shortcut_long"
+        const val EXTRA_ALLOW_WHEEL = "allow_wheel"
+        const val EXTRA_ALLOW_NONE = "allow_none"
+        const val EXTRA_DEFAULT_WHEEL_TAG = "default_wheel_tag"
         const val TAG = "GestureAddActionActivity"
         const val EXTRA_EXTERNAL_ACTION_MODE = "extra_external_action_mode"
         const val EXTRA_EXTERNAL_ACTION_LINK = "extra_external_action_link"

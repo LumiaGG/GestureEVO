@@ -1,98 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content">
-
-
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/actionTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:text="@string/gesture_add_action_config_short_press"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/actionSelect"
-        style="@style/Widget.Material3.Button.OutlinedButton"
-        android:layout_width="300dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="@string/gesture_add_action_config_select_event"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/actionTitle" />
-
-    <HorizontalScrollView
-        android:id="@+id/actionExternButtonsHS"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:overScrollMode="never"
-        android:paddingHorizontal="20dp"
-        android:scrollbars="none"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/actionSelect">
-
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/actionExternButtons"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:selectionRequired="false"
-            app:singleSelection="false">
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/actionFreeform"
-                style="@style/Widget.Material3.Chip.Filter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/gesture_add_action_config_freeform" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/actionNewWindow"
-                style="@style/Widget.Material3.Chip.Filter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/gesture_add_action_config_new_window" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/actionDualOpen"
-                style="@style/Widget.Material3.Chip.Filter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/gesture_add_action_config_dual_open" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/actionTimeout"
-                style="@style/Widget.Material3.Chip.Filter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/gesture_add_action_config_timeout_execute" />
-        </com.google.android.material.chip.ChipGroup>
-    </HorizontalScrollView>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/actionLinkLayout"
-        android:layout_width="300dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:hint="@string/gesture_add_action_config_link_hint"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/actionExternButtonsHS">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/actionLink"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent" android:layout_height="wrap_content"
+  android:orientation="vertical" android:padding="16dp" android:background="@drawable/bg_settings_tile">
+  <com.google.android.material.textview.MaterialTextView android:id="@+id/actionTitle"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:text="@string/gesture_add_action_config_short_press" android:textAppearance="?attr/textAppearanceTitleMedium" />
+  <com.google.android.material.button.MaterialButton android:id="@+id/actionSelect"
+    style="@style/Widget.Material3.Button.TonalButton" android:layout_width="match_parent"
+    android:layout_height="wrap_content" android:layout_marginTop="12dp" android:minHeight="56dp"
+    android:gravity="start|center_vertical" android:text="@string/gesture_add_action_config_select_event" />
+  <com.google.android.material.textview.MaterialTextView android:id="@+id/actionSummary"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+    android:text="@string/action_not_selected" android:textAppearance="?attr/textAppearanceBodyMedium"
+    android:textColor="?attr/colorOnSurfaceVariant" />
+  <com.google.android.material.button.MaterialButton android:id="@+id/configureAction"
+    style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent"
+    android:layout_height="wrap_content" android:gravity="start|center_vertical" android:visibility="gone"
+    android:text="@string/action_configure" />
+  <com.google.android.material.button.MaterialButton android:id="@+id/executionToggle"
+    style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent"
+    android:layout_height="wrap_content" android:gravity="start|center_vertical"
+    android:text="@string/action_execution_options" />
+  <com.google.android.material.chip.ChipGroup android:id="@+id/actionExternButtons"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"
+    app:selectionRequired="false" app:singleSelection="false" app:singleLine="false">
+    <com.google.android.material.chip.Chip android:id="@+id/actionFreeform"
+      style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
+      android:layout_height="wrap_content" android:text="@string/gesture_add_action_config_freeform" />
+    <com.google.android.material.chip.Chip android:id="@+id/actionNewWindow"
+      style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
+      android:layout_height="wrap_content" android:text="@string/gesture_add_action_config_new_window" />
+    <com.google.android.material.chip.Chip android:id="@+id/actionDualOpen"
+      style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
+      android:layout_height="wrap_content" android:text="@string/gesture_add_action_config_dual_open" />
+    <com.google.android.material.chip.Chip android:id="@+id/actionTimeout"
+      style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
+      android:layout_height="wrap_content" android:text="@string/gesture_add_action_config_timeout_execute" />
+  </com.google.android.material.chip.ChipGroup>
+  <com.google.android.material.button.MaterialButton android:id="@+id/advancedToggle"
+    style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent"
+    android:layout_height="wrap_content" android:gravity="start|center_vertical" android:text="@string/action_advanced" />
+  <com.google.android.material.textfield.TextInputLayout android:id="@+id/actionLinkLayout"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:hint="@string/action_raw_link" android:visibility="gone" app:endIconMode="custom"
+    app:endIconDrawable="@drawable/ic_baseline_content_copy_24" app:endIconContentDescription="@string/action_copy_link">
+    <com.google.android.material.textfield.TextInputEditText android:id="@+id/actionLink"
+      android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textMultiLine|textNoSuggestions"
+      android:maxLines="6" android:gravity="top" />
+  </com.google.android.material.textfield.TextInputLayout>
+</LinearLayout>
