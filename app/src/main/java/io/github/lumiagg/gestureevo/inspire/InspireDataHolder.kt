@@ -11,8 +11,8 @@ object InspireDataHolder {
     var screenshotBitmap: ManagedBitmap? = null
         private set
 
-    // Stored accessibility content
-    var accessibilityContent: List<String>? = null
+    // Stored accessibility content, with line breaks preserved from the source screen
+    var accessibilityContent: String? = null
 
     var ocrAllowedTextBoxes: List<Rect>? = null
         private set

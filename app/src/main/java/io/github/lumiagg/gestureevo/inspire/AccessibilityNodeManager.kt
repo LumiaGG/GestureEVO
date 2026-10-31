@@ -92,6 +92,11 @@ suspend fun getScreenContent(service: GestureService, rect: Rect): List<ScreenCo
         }
     }
 
+suspend fun getScreenContentText(service: GestureService, rect: Rect): String =
+    joinAccessibilityTextInReadingOrder(getScreenContent(service, rect).mapNotNull { node ->
+        node.content?.let { AccessibilityTextFragment(it, node.bound.top, node.bound.bottom) }
+    })
+
 suspend fun getScreenView(
     service: GestureService,
     rect: Rect,
@@ -137,7 +142,7 @@ private fun getCharacterLocations(
     val selectedText = selectAccessibilityCharacters(text, locations) {
         RectF.intersects(selectionBounds, it as RectF)
     } ?: return fallback
-    return ScreenContentNode(Rect(selection), selectedText)
+    return ScreenContentNode(fallback.bound, selectedText)
 }
 
 private fun AccessibilityNodeInfo.readAccessibleText(nativeText: String?): String? {

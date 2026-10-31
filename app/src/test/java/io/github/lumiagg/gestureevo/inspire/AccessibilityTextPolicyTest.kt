@@ -84,6 +84,16 @@ class AccessibilityTextPolicyTest {
         assertNull(selectAccessibilityCharacters("甲乙丙", arrayOf(true, true)) { it })
     }
 
+    @Test fun lineBreaksWithoutLocationsArePreservedAfterSelectedText() {
+        assertEquals("甲\n乙", selectAccessibilityCharacters("甲\n乙", arrayOf(true, null, true)) { it })
+        assertEquals("甲\r\n乙", selectAccessibilityCharacters("甲\r\n乙", arrayOf(true, null, null, true)) { it })
+    }
+
+    @Test fun unselectedTextDoesNotIntroduceAnExtraLineBreak() {
+        assertEquals("乙", selectAccessibilityCharacters("甲\n乙", arrayOf(false, null, true)) { it })
+        assertEquals("甲", selectAccessibilityCharacters("甲乙\n", arrayOf(true, false, null)) { it })
+    }
+
     private companion object {
         const val VIEW = "android.view.View"
     }

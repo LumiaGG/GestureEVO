@@ -50,8 +50,19 @@ internal fun <T> selectAccessibilityCharacters(
 ): String? {
     if (locations.size != text.length) return null
     return buildString {
+        var previousCharacterSelected = false
         locations.forEachIndexed { index, location ->
-            if (location != null && isSelected(location)) append(text[index])
+            val character = text[index]
+            if (location != null && isSelected(location)) {
+                append(character)
+                previousCharacterSelected = true
+            } else if ((character == '\n' || character == '\r') && previousCharacterSelected) {
+                // Line-break glyphs commonly have no location. Preserve their source
+                // structure after selected text, including both characters of CRLF.
+                append(character)
+            } else {
+                previousCharacterSelected = false
+            }
         }
     }
 }

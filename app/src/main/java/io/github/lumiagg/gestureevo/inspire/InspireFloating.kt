@@ -589,7 +589,7 @@ class InspireFloating(private val context: GestureService) :
                 scheduleTransition(startUptimeMs)
 
                 val accessibilityJob = async {
-                    getScreenContent(context, dragSelectRect).mapNotNull { it.content }
+                    getScreenContentText(context, dragSelectRect)
                 }
 
                 val takeScreenshotJob = async {
