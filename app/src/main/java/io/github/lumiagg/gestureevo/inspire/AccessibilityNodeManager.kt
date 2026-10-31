@@ -4,179 +4,158 @@ import android.graphics.Bitmap
 import android.graphics.Rect
 import android.graphics.RectF
 import android.os.Build
+import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.annotation.RequiresApi
-import androidx.core.graphics.toRect
 import io.github.lumiagg.gestureevo.gesture.GestureService
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-
 
 data class ScreenContentNode(val bound: Rect, val content: String?) {
     val area: Int
         get() = bound.width() * bound.height()
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
-private suspend fun <T> processAccessibilityNodesInParallel(
-    service: GestureService,
-    nodeProcessor: suspend (AccessibilityNodeInfo, Rect) -> T?,
-    nodeFilter: (AccessibilityNodeInfo, Rect) -> Boolean
-): List<T> = withContext(Dispatchers.Default) {
-    val roots = getNeedWindowsRoot(service)
+private class AccessibilityNodeSnapshot(val info: AccessibilityNodeInfo, val parentIndex: Int?) {
+    val bounds = Rect()
+    var text: String? = null
+    var fromDescription = false
+    var readable = false
 
-    val availableProcessors = Runtime.getRuntime().availableProcessors()
-    val workerCount = availableProcessors.coerceAtLeast(1).coerceAtMost(4)
-    val computeDispatcher = Dispatchers.Default.limitedParallelism(workerCount)
-
-    roots.map { rootNode ->
-        async {
-            val results = ArrayList<MutableList<T>>(workerCount).apply {
-                repeat(workerCount) { add(mutableListOf()) }
-            }
-            val nodeChannel = Channel<Pair<AccessibilityNodeInfo, Rect>>(Channel.BUFFERED)
-
-            val processingJobs = List(workerCount) { workerIndex ->
-                launch(computeDispatcher) {
-                    val localResults = results[workerIndex]
-                    for ((node, bounds) in nodeChannel) {
-                        nodeProcessor(node, bounds)?.let { localResults.add(it) }
-                    }
-                }
-            }
-
-            // Dedicated coroutine for BFS traversal while sending nodes to workers
-            launch {
-                val queue = ArrayDeque<AccessibilityNodeInfo>()
-                queue.add(rootNode)
-
-                while (queue.isNotEmpty()) {
-                    val node = queue.removeFirst()
-                    val bounds = Rect().also { node.getBoundsInScreen(it) }
-                    if (nodeFilter(node, bounds)) {
-                        nodeChannel.send(node to bounds)
-                        for (i in 0 until node.childCount) {
-                            node.getChild(i)?.let { child ->
-                                if (child.isVisibleToUser) {
-                                    queue.add(child)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Close channel once BFS is complete
-                nodeChannel.close()
-            }
-
-            // Await completion of all worker coroutines
-            processingJobs.joinAll()
-
-            results.flatten()
-        }
-    }.awaitAll().flatten()
+    fun intersectsSelection(selection: Rect): Boolean {
+        if (!Rect.intersects(selection, bounds)) return false
+        if (!fromDescription) return true
+        return hasSubstantialAccessibilityOverlap(selection.left, selection.right, bounds.left, bounds.right) &&
+                hasSubstantialAccessibilityOverlap(selection.top, selection.bottom, bounds.top, bounds.bottom)
+    }
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
-suspend fun getScreenContent(
+@Suppress("DEPRECATION") // Accessibility node pooling is still used before Android 13.
+private suspend fun <T> withAccessibilityNodes(
     service: GestureService,
-    rect: Rect,
-): List<ScreenContentNode> = processAccessibilityNodesInParallel(
-    service = service,
-    nodeProcessor = { node, outBounds ->
-        val text =
-            node.text ?: return@processAccessibilityNodesInParallel null
-        if (text.isNotEmpty()) {
-            if (Rect.intersects(rect, outBounds) || rect.contains(outBounds)) {
-                return@processAccessibilityNodesInParallel when {
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> getCharacterLocations(
-                        node,
-                        rect
-                    )
-
-                    else -> ScreenContentNode(outBounds, text.toString())
-                }
+    readText: Boolean = true,
+    block: (List<AccessibilityNodeSnapshot>) -> T,
+): T = withContext(Dispatchers.Default) {
+    val snapshots = mutableListOf<AccessibilityNodeSnapshot>()
+    val pending = ArrayDeque<Pair<AccessibilityNodeInfo, Int?>>()
+    try {
+        getWindowRoots(service).asReversed().forEach { pending.addLast(it to null) }
+        while (pending.isNotEmpty()) {
+            ensureActive()
+            val (node, parentIndex) = pending.removeLast()
+            val snapshot = AccessibilityNodeSnapshot(node, parentIndex)
+            val index = snapshots.size
+            snapshots.add(snapshot)
+            node.getBoundsInScreen(snapshot.bounds)
+            snapshot.readable = node.isVisibleToUser && !snapshot.bounds.isEmpty
+            if (readText && snapshot.readable) {
+                val nativeText = node.text?.toString()
+                snapshot.fromDescription = nativeText.isNullOrEmpty()
+                snapshot.text = node.readAccessibleText(nativeText)
+            }
+            // Do not prune by container visibility or selection: Flutter virtual
+            // containers can have empty bounds while their descendants are visible.
+            for (childIndex in node.childCount - 1 downTo 0) {
+                node.getChild(childIndex)?.let { pending.addLast(it to index) }
             }
         }
-        return@processAccessibilityNodesInParallel null
-    },
-    nodeFilter = { _, outBounds ->
-        Rect.intersects(rect, outBounds) || outBounds.contains(rect)
+        block(snapshots)
+    } finally {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            snapshots.forEach { it.info.recycle() }
+            pending.forEach { it.first.recycle() }
+        }
     }
-)
+}
 
-@OptIn(ExperimentalCoroutinesApi::class)
+suspend fun getScreenContent(service: GestureService, rect: Rect): List<ScreenContentNode> =
+    withAccessibilityNodes(service) { snapshots ->
+        val entries = snapshots.map { AccessibilityTextEntry(it.parentIndex, it.text, it.readable) }
+        val intersecting = mutableSetOf<Int>()
+        val fullyContained = mutableSetOf<Int>()
+        snapshots.forEachIndexed { index, snapshot ->
+            if (snapshot.text != null) {
+                if (snapshot.intersectsSelection(rect)) intersecting.add(index)
+                if (rect.contains(snapshot.bounds)) fullyContained.add(index)
+            }
+        }
+        selectedAccessibilityTextIndices(entries, intersecting, fullyContained).mapNotNull { index ->
+            val snapshot = snapshots[index]
+            val content = ScreenContentNode(snapshot.bounds, snapshot.text)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !snapshot.fromDescription) {
+                getCharacterLocations(snapshot.info, content, rect)
+            } else {
+                content
+            }
+        }
+    }
+
 suspend fun getScreenView(
     service: GestureService,
     rect: Rect,
-    clickMode: Boolean
-): List<ScreenContentNode> {
-
-    return processAccessibilityNodesInParallel(
-        service = service,
-        nodeProcessor = { node, outBounds ->
-            val isRoiView = if (clickMode) {
-                true
-            } else {
-                (node.className == "android.widget.TextView" && node.text != null) ||
-                        node.className == "android.view.View" && node.contentDescription != null ||
-                        node.className == "android.widget.ImageView"
-            }
-            if (isRoiView) {
-                // Send matching node to caller
-                return@processAccessibilityNodesInParallel ScreenContentNode(outBounds, null)
-            }
-            return@processAccessibilityNodesInParallel null
-        },
-        nodeFilter = { _, outBounds ->
-            Rect.intersects(outBounds, rect) || outBounds.contains(rect)
+    clickMode: Boolean,
+): List<ScreenContentNode> = withAccessibilityNodes(service, readText = !clickMode) { snapshots ->
+    snapshots.mapNotNull { snapshot ->
+        val isTarget = clickMode || snapshot.text != null || snapshot.info.className == "android.widget.ImageView"
+        if (snapshot.readable && isTarget && Rect.intersects(rect, snapshot.bounds)) {
+            ScreenContentNode(snapshot.bounds, null)
+        } else {
+            null
         }
-    )
+    }
 }
 
-fun getNeedWindowsRoot(service: GestureService): MutableList<AccessibilityNodeInfo> {
-    val roots = mutableListOf<AccessibilityNodeInfo>()
-    val windows: List<AccessibilityWindowInfo> = service.windows
-    for (window in windows) {
+private fun getWindowRoots(service: GestureService): List<AccessibilityNodeInfo> = buildList {
+    for (window in service.windows) {
         if (window.type == AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY) continue
-        val root = window.root ?: continue
-        if (root.childCount > 0) roots.add(root)
+        window.root?.let(::add)
     }
-    return roots
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
-fun getCharacterLocations(
-    nodeInfo: AccessibilityNodeInfo, rectOutline: Rect
-): ScreenContentNode {
-    val text = nodeInfo.text
-    val bundle = nodeInfo.extras
-    bundle.putInt(AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_ARG_START_INDEX, 0)
-    bundle.putInt(
-        AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_ARG_LENGTH, text.length
+private fun getCharacterLocations(
+    node: AccessibilityNodeInfo,
+    fallback: ScreenContentNode,
+    selection: Rect,
+): ScreenContentNode? {
+    val text = fallback.content ?: return fallback
+    val key = AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY
+    if (key !in node.availableExtraData) return fallback
+    val arguments = Bundle().apply {
+        putInt(AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_ARG_START_INDEX, 0)
+        putInt(AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_ARG_LENGTH, text.length)
+    }
+    if (!node.refreshWithExtraData(key, arguments)) return fallback
+    // The selected snapshot no longer describes this node if its text has changed.
+    if (node.text?.toString() != text) return null
+    @Suppress("DEPRECATION") // The untyped overload also supports Android 8-12.
+    val locations = node.extras.getParcelableArray(key) ?: return fallback
+    if (locations.any { it != null && it !is RectF }) return fallback
+    val selectionBounds = RectF(selection)
+    val selectedText = selectAccessibilityCharacters(text, locations) {
+        RectF.intersects(selectionBounds, it as RectF)
+    } ?: return fallback
+    return ScreenContentNode(Rect(selection), selectedText)
+}
+
+private fun AccessibilityNodeInfo.readAccessibleText(nativeText: String?): String? {
+    if (!nativeText.isNullOrEmpty()) return nativeText
+    val textGranularities = AccessibilityNodeInfo.MOVEMENT_GRANULARITY_CHARACTER or
+            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_WORD
+    val supportsTextSelection = isEditable || (movementGranularities and textGranularities) != 0 ||
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && isTextSelectable)
+    return accessibilityNodeText(
+        text = nativeText,
+        description = contentDescription,
+        className = className,
+        isClickable = isClickable,
+        isLongClickable = isLongClickable,
+        isCheckable = isCheckable,
+        isScrollable = isScrollable,
+        hasTextSelection = supportsTextSelection,
     )
-    nodeInfo.refreshWithExtraData(
-        AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY, bundle
-    )
-    val refreshedExtras = nodeInfo.extras
-    val contentBuilder = StringBuilder()
-    refreshedExtras.getParcelableArray(AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY)
-        ?.forEachIndexed { index, rectF ->
-            if (rectF != null) {
-                val charRect = (rectF as RectF).toRect()
-                if (Rect.intersects(rectOutline, charRect) || rectOutline.contains(charRect)) {
-                    contentBuilder.append(text[index])
-                }
-            }
-        }
-    return ScreenContentNode(rectOutline, contentBuilder.toString())
 }
 
 fun Bitmap.cropByRect(rect: Rect): Bitmap? {
