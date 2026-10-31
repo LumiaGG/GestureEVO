@@ -64,6 +64,9 @@ object OcrTextFormatter {
         if (averageHeight <= 0f) return false
 
         val verticalGap = current.top - prev.bottom
+        // Wrapped lines inside one paragraph keep only the font leading (~0.1-0.3x of the
+        // glyph box), while separate items (list rows, cards) have real spacing. The ratio
+        // splits between those two, so tight lists keep their line breaks.
         if (verticalGap > averageHeight * HARD_BREAK_MIN_VERTICAL_GAP_RATIO) return true
         if (prev.height > current.height * HARD_BREAK_MAX_HEIGHT_RATIO) return true
         if (current.height > prev.height * HARD_BREAK_MAX_HEIGHT_RATIO) return true
@@ -150,7 +153,7 @@ object OcrTextFormatter {
 
     private const val SAME_LINE_MIN_OVERLAP_RATIO = 0.45f
     private const val SAME_LINE_MAX_CENTER_DISTANCE_RATIO = 0.35f
-    private const val HARD_BREAK_MIN_VERTICAL_GAP_RATIO = 0.7f
+    private const val HARD_BREAK_MIN_VERTICAL_GAP_RATIO = 0.45f
     private const val HARD_BREAK_MAX_HEIGHT_RATIO = 1.35f
     private const val SHORT_HEADING_MAX_TEXT_LENGTH = 16
     private const val SHORT_HEADING_MAX_WIDTH_RATIO = 0.65f
