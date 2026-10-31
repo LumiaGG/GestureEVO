@@ -15,15 +15,14 @@ internal object AccessibilityTextCorrection {
 
     fun correctUrlText(
         text: String,
-        accessibilityContent: List<String>?,
+        accessibilityContent: String?,
     ): String = correctUrlTextWithResult(text, accessibilityContent).text
 
     fun correctUrlTextWithResult(
         text: String,
-        accessibilityContent: List<String>?,
+        accessibilityContent: String?,
     ): CorrectionResult {
         val accessibilityText = accessibilityContent
-            ?.joinToString("")
             ?.takeIf { it.isNotBlank() }
             ?: return CorrectionResult(text, corrected = false)
         val candidates = UrlDetector.findUrls(accessibilityText)
@@ -41,7 +40,7 @@ internal object AccessibilityTextCorrection {
 
     fun correctOcrResult(
         result: OcrProcessingResult,
-        accessibilityContent: List<String>?,
+        accessibilityContent: String?,
     ): OcrCorrectionResult {
         val rawTextResult = correctUrlTextWithResult(
             text = result.rawText,

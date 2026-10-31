@@ -38,41 +38,45 @@ private suspend fun <T> processAccessibilityNodesInParallel(
 
     roots.map { rootNode ->
         async {
-            val results = ArrayList<MutableList<T>>(workerCount).apply {
+            val results = ArrayList<MutableList<Pair<Int, T>>>(workerCount).apply {
                 repeat(workerCount) { add(mutableListOf()) }
             }
-            val nodeChannel = Channel<Pair<AccessibilityNodeInfo, Rect>>(Channel.BUFFERED)
+            val nodeChannel = Channel<Triple<Int, AccessibilityNodeInfo, Rect>>(Channel.BUFFERED)
 
             val processingJobs = List(workerCount) { workerIndex ->
                 launch(computeDispatcher) {
                     val localResults = results[workerIndex]
-                    for ((node, bounds) in nodeChannel) {
-                        nodeProcessor(node, bounds)?.let { localResults.add(it) }
+                    for ((sequence, node, bounds) in nodeChannel) {
+                        nodeProcessor(node, bounds)?.let { localResults.add(sequence to it) }
                     }
                 }
             }
 
-            // Dedicated coroutine for BFS traversal while sending nodes to workers
+            // Dedicated coroutine for pre-order DFS traversal while sending nodes to workers.
+            // The traversal sequence travels with each node, so merging the per-worker
+            // results afterwards restores the view-hierarchy order deterministically.
             launch {
-                val queue = ArrayDeque<AccessibilityNodeInfo>()
-                queue.add(rootNode)
+                val nodeStack = ArrayDeque<AccessibilityNodeInfo>()
+                nodeStack.addLast(rootNode)
+                var sequence = 0
 
-                while (queue.isNotEmpty()) {
-                    val node = queue.removeFirst()
+                while (nodeStack.isNotEmpty()) {
+                    val node = nodeStack.removeLast()
                     val bounds = Rect().also { node.getBoundsInScreen(it) }
                     if (nodeFilter(node, bounds)) {
-                        nodeChannel.send(node to bounds)
-                        for (i in 0 until node.childCount) {
+                        nodeChannel.send(Triple(sequence++, node, bounds))
+                        // Push in reverse so children are visited in declaration order.
+                        for (i in node.childCount - 1 downTo 0) {
                             node.getChild(i)?.let { child ->
                                 if (child.isVisibleToUser) {
-                                    queue.add(child)
+                                    nodeStack.addLast(child)
                                 }
                             }
                         }
                     }
                 }
 
-                // Close channel once BFS is complete
+                // Close channel once DFS is complete
                 nodeChannel.close()
             }
 
@@ -80,6 +84,8 @@ private suspend fun <T> processAccessibilityNodesInParallel(
             processingJobs.joinAll()
 
             results.flatten()
+                .sortedBy { it.first }
+                .map { it.second }
         }
     }.awaitAll().flatten()
 }
@@ -98,6 +104,7 @@ suspend fun getScreenContent(
                 return@processAccessibilityNodesInParallel when {
                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> getCharacterLocations(
                         node,
+                        outBounds,
                         rect
                     )
 
@@ -111,6 +118,43 @@ suspend fun getScreenContent(
         Rect.intersects(rect, outBounds) || outBounds.contains(rect)
     }
 )
+
+/**
+ * Extracts the text of all nodes intersecting [rect] as a single string. Nodes whose
+ * bounds do not share a visual row are separated by a line break, so the result keeps
+ * the line structure of the source screen instead of flattening it.
+ */
+suspend fun getScreenContentText(
+    service: GestureService,
+    rect: Rect,
+): String = joinScreenContentInReadingOrder(getScreenContent(service, rect))
+
+private fun joinScreenContentInReadingOrder(nodes: List<ScreenContentNode>): String {
+    val builder = StringBuilder()
+    var previousBound: Rect? = null
+    for (node in nodes) {
+        val content = node.content?.takeIf { it.isNotEmpty() } ?: continue
+        val previous = previousBound
+        if (previous != null &&
+            !sharesVisualRow(previous, node.bound) &&
+            !builder.endsWith("\n") &&
+            !content.startsWith("\n")
+        ) {
+            builder.append('\n')
+        }
+        builder.append(content)
+        previousBound = node.bound
+    }
+    return builder.toString()
+}
+
+/** True when two bounds overlap vertically enough to belong to the same visual row. */
+private fun sharesVisualRow(first: Rect, second: Rect): Boolean {
+    val overlap = minOf(first.bottom, second.bottom) - maxOf(first.top, second.top)
+    if (overlap <= 0) return false
+    val smallerHeight = minOf(first.height(), second.height())
+    return smallerHeight > 0 && overlap * 2 >= smallerHeight
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 suspend fun getScreenView(
@@ -154,7 +198,7 @@ fun getNeedWindowsRoot(service: GestureService): MutableList<AccessibilityNodeIn
 
 @RequiresApi(Build.VERSION_CODES.O)
 fun getCharacterLocations(
-    nodeInfo: AccessibilityNodeInfo, rectOutline: Rect
+    nodeInfo: AccessibilityNodeInfo, nodeBounds: Rect, rectOutline: Rect
 ): ScreenContentNode {
     val text = nodeInfo.text
     val bundle = nodeInfo.extras
@@ -167,16 +211,28 @@ fun getCharacterLocations(
     )
     val refreshedExtras = nodeInfo.extras
     val contentBuilder = StringBuilder()
+    var previousCharSelected = false
     refreshedExtras.getParcelableArray(AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY)
         ?.forEachIndexed { index, rectF ->
+            val char = text[index]
             if (rectF != null) {
                 val charRect = (rectF as RectF).toRect()
                 if (Rect.intersects(rectOutline, charRect) || rectOutline.contains(charRect)) {
-                    contentBuilder.append(text[index])
+                    contentBuilder.append(char)
+                    previousCharSelected = true
+                    return@forEachIndexed
                 }
             }
+            // A newline glyph has no usable character bounds of its own; keep the break
+            // when the line before it was selected so multi-line nodes stay multi-line.
+            // CRLF runs keep both characters; the segmenter collapses them into one break.
+            if ((char == '\n' || char == '\r') && previousCharSelected) {
+                contentBuilder.append(char)
+            } else {
+                previousCharSelected = false
+            }
         }
-    return ScreenContentNode(rectOutline, contentBuilder.toString())
+    return ScreenContentNode(nodeBounds, contentBuilder.toString())
 }
 
 fun Bitmap.cropByRect(rect: Rect): Bitmap? {
