@@ -210,9 +210,7 @@ class ClipboardToInspireActivityUtils(val activity: AppCompatActivity) {
                 PinPoolStore.addScreenContentImageIfEnabled(activity, it.requireBitmap())
             }
             text?.let {
-                ArrayList<String>().apply { add(it) }.let { words ->
-                    InspireDataHolder.accessibilityContent = words
-                }
+                InspireDataHolder.accessibilityContent = it
             }
             InspireContentActivity.start(activity)
             activity.finish()

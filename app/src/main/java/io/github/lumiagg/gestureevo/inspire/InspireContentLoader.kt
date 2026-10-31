@@ -16,7 +16,7 @@ internal class InspireContentLoader(private val context: Context) {
                 context.settingsStore.readKey(KEY_DEFAULT_IMAGE_TEXT_OVERLAY, false)
         val hasScreenshot = screenshotBitmapHandle?.bitmapOrNull != null
         val accessibilityContent = InspireDataHolder.accessibilityContent
-        val hasAccessibilityContent = accessibilityContent?.any { it.trim().isNotEmpty() } == true
+        val hasAccessibilityContent = !accessibilityContent.isNullOrBlank()
         val initialDisplayMode = if (defaultImageTextOverlay && hasScreenshot) {
             InspireDisplayMode.IMAGE_TEXT_SELECTION
         } else {
@@ -48,11 +48,10 @@ internal class InspireContentLoader(private val context: Context) {
     suspend fun buildAccessibilityContents(): List<String>? {
         val accessibilityContent = InspireDataHolder.accessibilityContent
         return accessibilityContent?.let {
-            val isAccessibilityEmpty = !it.any { content -> content.trim().isNotEmpty() }
-            if (isAccessibilityEmpty) {
+            if (it.isBlank()) {
                 listOf(context.getString(R.string.inspire_content_accessibility_empty))
             } else {
-                SmartSegmenter.segment(context.applicationContext, it.joinToString(""))
+                SmartSegmenter.segment(context.applicationContext, it)
             }
         }
     }

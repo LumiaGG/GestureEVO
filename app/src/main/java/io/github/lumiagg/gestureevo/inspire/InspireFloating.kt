@@ -589,11 +589,8 @@ class InspireFloating(private val context: GestureService) :
                 scheduleTransition(startUptimeMs)
 
                 val accessibilityJob = async {
-                    val words = mutableListOf<String>()
-                    for (copyNode in getScreenContent(context, dragSelectRect)) {
-                        copyNode.content?.let { words.add(it) }
-                    }
-                    InspireDataHolder.accessibilityContent = words
+                    InspireDataHolder.accessibilityContent =
+                        getScreenContentText(context, dragSelectRect)
                 }
 
                 val takeScreenshotJob = async {

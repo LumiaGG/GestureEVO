@@ -309,7 +309,9 @@ class ExternalDropFloating(private val service: GestureService) :
             } else if (action == Action.TOKENIZE) {
                 InspireDataHolder.clear()
                 InspireDataHolder.replaceScreenshotBitmap(tokenImage)
-                InspireDataHolder.accessibilityContent = tokenText.takeIf { it.isNotEmpty() }
+                InspireDataHolder.accessibilityContent = tokenText
+                    .joinToString("\n")
+                    .takeIf { it.isNotEmpty() }
                 InspireContentActivity.start(service)
             } else if (action == Action.POOL) {
                 toast(R.string.external_drop_added)
