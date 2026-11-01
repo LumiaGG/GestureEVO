@@ -5,14 +5,19 @@ import androidx.core.graphics.withTranslation
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.LinearGradient
+import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -29,7 +34,6 @@ import io.github.lumiagg.gestureevo.inspire.imageeditor.state.EditorSession
 import io.github.lumiagg.gestureevo.inspire.imageeditor.state.EditorUiState
 import io.github.lumiagg.gestureevo.inspire.imageeditor.utils.EditorExportEngine
 import io.github.lumiagg.gestureevo.inspire.imageeditor.utils.EditorRenderUtils
-import io.github.lumiagg.gestureevo.inspire.imageeditor.utils.FastBlurHelper
 import io.github.lumiagg.gestureevo.inspire.useSoftwareBitmap
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
@@ -79,10 +83,20 @@ class InspireImageEditorView @JvmOverloads constructor(
 
     var callback: Callback? = null
 
-    private var backgroundBlurredBitmap: Bitmap? = null
-    private val backgroundFilterPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
-    private val backgroundScrimPaint = Paint().apply { style = Paint.Style.FILL }
-    private val bgDestRect = RectF()
+    private var imageBackgroundColors: List<Int> = emptyList()
+    private val backgroundPaint = Paint()
+    private val upperGlowPaint = Paint()
+    private val lowerGlowPaint = Paint()
+    private val checkerboardPaint = Paint()
+    private val checkerboardMatrix = Matrix()
+    private val isDarkTheme: Boolean
+        get() = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    private val checkerboardShader by lazy {
+        val light = if (isDarkTheme) Color.rgb(65, 65, 65) else Color.rgb(242, 242, 242)
+        val dark = if (isDarkTheme) Color.rgb(52, 52, 52) else Color.rgb(221, 221, 221)
+        val tile = Bitmap.createBitmap(intArrayOf(light, dark, dark, light), 2, 2, Bitmap.Config.ARGB_8888)
+        BitmapShader(tile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+    }
     private val imageBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1f.dp2px
@@ -253,7 +267,7 @@ class InspireImageEditorView @JvmOverloads constructor(
         releaseBaseBitmap()
         baseBitmapHandle = handle.acquire()
         rebuildMosaicBitmap()
-        rebuildBlurredBackgroundBitmap()
+        updateCanvasColors()
         resetViewport()
         ensureCropSelectionInitialized()
         invalidate()
@@ -359,9 +373,7 @@ class InspireImageEditorView @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        if (backgroundBlurredBitmap == null && baseBitmap != null) {
-            rebuildBlurredBackgroundBitmap()
-        }
+        rebuildCanvasBackground()
         notifyContentChanged()
     }
 
@@ -376,6 +388,7 @@ class InspireImageEditorView @JvmOverloads constructor(
 
         val imgW = bitmap.width * scale
         val imgH = bitmap.height * scale
+        imageShadowPaint.color = Color.argb(if (isDarkTheme) 55 else 28, 0, 0, 0)
         val shadowSpread = 2f.dp2px
         canvas.drawRect(
             originX - shadowSpread,
@@ -385,9 +398,7 @@ class InspireImageEditorView @JvmOverloads constructor(
             imageShadowPaint
         )
 
-        val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        imageBorderPaint.color = if (isDark) Color.argb(45, 255, 255, 255) else Color.argb(35, 0, 0, 0)
-        canvas.drawRect(originX, originY, originX + imgW, originY + imgH, imageBorderPaint)
+        drawTransparencyGrid(canvas, bitmap, originX, originY, imgW, imgH)
 
         canvas.withTranslation(originX, originY) {
             canvas.scale(scale, scale)
@@ -413,6 +424,13 @@ class InspireImageEditorView @JvmOverloads constructor(
                 drawSelectedTextHandle(canvas, action)
             }
         }
+        // Draw outside the image so opaque edge pixels cannot cover the outline.
+        val halfBorder = imageBorderPaint.strokeWidth / 2f
+        imageBorderPaint.color = if (isDarkTheme) Color.argb(65, 255, 255, 255) else Color.argb(45, 0, 0, 0)
+        canvas.drawRect(
+            originX - halfBorder, originY - halfBorder,
+            originX + imgW + halfBorder, originY + imgH + halfBorder, imageBorderPaint
+        )
         drawCenterBrushPreview(canvas)
         notifyContentChanged()
     }
@@ -1200,32 +1218,21 @@ class InspireImageEditorView @JvmOverloads constructor(
     }
 
     private fun drawBackground(canvas: Canvas) {
-        val bg = backgroundBlurredBitmap
-        val w = width.toFloat()
-        val h = height.toFloat()
-        if (bg != null && !bg.isRecycled && w > 0f && h > 0f) {
-            val bgW = bg.width.toFloat()
-            val bgH = bg.height.toFloat()
-            val scale = max(w / bgW, h / bgH) * 1.06f
-            val drawW = bgW * scale
-            val drawH = bgH * scale
-            val left = (w - drawW) / 2f
-            val top = (h - drawH) / 2f
-            bgDestRect.set(left, top, left + drawW, top + drawH)
-            canvas.drawBitmap(bg, null, bgDestRect, backgroundFilterPaint)
-
-            val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-            val scrimColor = if (isDark) {
-                Color.argb(28, 0, 0, 0)
-            } else {
-                Color.argb(10, 0, 0, 0)
-            }
-            backgroundScrimPaint.color = scrimColor
-            canvas.drawRect(0f, 0f, w, h, backgroundScrimPaint)
-        } else {
-            val fallback = MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurface, Color.BLACK)
-            canvas.drawColor(fallback)
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), backgroundPaint)
+        if (upperGlowPaint.shader != null) {
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), upperGlowPaint)
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), lowerGlowPaint)
         }
+    }
+
+    private fun drawTransparencyGrid(canvas: Canvas, bitmap: Bitmap, x: Float, y: Float, w: Float, h: Float) {
+        if (!bitmap.hasAlpha()) return
+        // Keep cells readable at every zoom level, anchored to the image's origin.
+        checkerboardMatrix.setScale(8f.dp2px, 8f.dp2px)
+        checkerboardMatrix.postTranslate(x, y)
+        checkerboardShader.setLocalMatrix(checkerboardMatrix)
+        checkerboardPaint.shader = checkerboardShader
+        canvas.drawRect(x, y, x + w, y + h, checkerboardPaint)
     }
 
     fun renderSubRegionToBitmap(regionInView: Rect, targetBitmap: Bitmap) {
@@ -1252,6 +1259,7 @@ class InspireImageEditorView @JvmOverloads constructor(
                 val imgRect = RectF(originX, originY, originX + imgW, originY + imgH)
 
                 if (RectF.intersects(imgRect, RectF(regionInView))) {
+                    drawTransparencyGrid(canvas, bitmap, originX, originY, imgW, imgH)
                     canvas.withTranslation(originX, originY) {
                         canvas.scale(scale, scale)
                         bitmap.useSoftwareBitmap { safeBitmap ->
@@ -1450,10 +1458,67 @@ class InspireImageEditorView @JvmOverloads constructor(
         mosaicBitmap = baseBitmap?.let(EditorRenderUtils::generateMosaicBitmap)
     }
 
-    private fun rebuildBlurredBackgroundBitmap() {
-        backgroundBlurredBitmap?.takeIf { !it.isRecycled }?.recycle()
-        backgroundBlurredBitmap = baseBitmap?.let(FastBlurHelper::createBlurredBackground)
+    private fun updateCanvasColors() {
+        imageBackgroundColors = baseBitmap?.useSoftwareBitmap { bitmap ->
+            // Bound sampling work even for large images. Ignore transparent RGB values.
+            val columns = min(32, bitmap.width)
+            val rows = min(32, bitmap.height)
+            // Overlapping upper/lower samples retain color variation without image detail.
+            val sums = Array(2) { LongArray(4) }
+            for (row in 0 until rows) {
+                for (column in 0 until columns) {
+                    val x = ((column + 0.5f) * bitmap.width / columns).toInt().coerceAtMost(bitmap.width - 1)
+                    val y = ((row + 0.5f) * bitmap.height / rows).toInt().coerceAtMost(bitmap.height - 1)
+                    val pixel = bitmap.getPixel(x, y)
+                    val alpha = Color.alpha(pixel).toLong()
+                    for (region in sums.indices) {
+                        val weight = alpha * if (region == 0) rows - row else row + 1
+                        sums[region][0] += weight
+                        sums[region][1] += Color.red(pixel) * weight
+                        sums[region][2] += Color.green(pixel) * weight
+                        sums[region][3] += Color.blue(pixel) * weight
+                    }
+                }
+            }
+            sums.mapNotNull { sum ->
+                if (sum[0] == 0L) null else Color.rgb(
+                    (sum[1] / sum[0]).toInt(), (sum[2] / sum[0]).toInt(), (sum[3] / sum[0]).toInt()
+                )
+            }
+        }.orEmpty()
+        rebuildCanvasBackground()
         notifyContentChanged()
+    }
+
+    private fun rebuildCanvasBackground() {
+        val surface = MaterialColors.getColor(this, MaterialR.attr.colorSurface)
+        val neutral = if (isDarkTheme) Color.rgb(27, 27, 27) else Color.rgb(244, 244, 244)
+        val base = ColorUtils.blendARGB(neutral, surface, 0.2f)
+        backgroundPaint.color = base
+        backgroundPaint.shader = if (width > 0 && height > 0) LinearGradient(
+            0f, 0f, width.toFloat(), height.toFloat(),
+            ColorUtils.blendARGB(base, Color.WHITE, if (isDarkTheme) 0.06f else 0.02f),
+            ColorUtils.blendARGB(base, Color.BLACK, if (isDarkTheme) 0.08f else 0.07f),
+            Shader.TileMode.CLAMP
+        ) else null
+        upperGlowPaint.shader = null
+        lowerGlowPaint.shader = null
+        if (width <= 0 || height <= 0 || imageBackgroundColors.isEmpty()) return
+        val radius = max(width, height).toFloat() * 0.95f
+        listOf(upperGlowPaint, lowerGlowPaint).forEachIndexed { index, paint ->
+            val hsl = FloatArray(3)
+            ColorUtils.colorToHSL(imageBackgroundColors[index], hsl)
+            hsl[1] = (hsl[1] * 1.25f).coerceAtMost(0.65f)
+            hsl[2] = if (isDarkTheme) 0.48f else 0.64f
+            val color = ColorUtils.HSLToColor(hsl)
+            paint.shader = RadialGradient(
+                width * if (index == 0) 0.08f else 0.92f,
+                height * if (index == 0) 0.12f else 0.88f,
+                radius,
+                intArrayOf(ColorUtils.setAlphaComponent(color, 175), ColorUtils.setAlphaComponent(color, 0)),
+                null, Shader.TileMode.CLAMP
+            )
+        }
     }
 
     private fun cancelActiveDrawing() {
@@ -1497,8 +1562,8 @@ class InspireImageEditorView @JvmOverloads constructor(
     private fun releaseBaseBitmap() {
         mosaicBitmap?.takeIf { !it.isRecycled }?.recycle()
         mosaicBitmap = null
-        backgroundBlurredBitmap?.takeIf { !it.isRecycled }?.recycle()
-        backgroundBlurredBitmap = null
+        imageBackgroundColors = emptyList()
+        rebuildCanvasBackground()
         baseBitmapHandle?.close()
         baseBitmapHandle = null
         notifyContentChanged()
