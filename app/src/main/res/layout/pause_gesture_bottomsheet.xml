@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/gesture_add_action_pause_seconds_title"
+        android:textAppearance="?attr/textAppearanceHeadline6" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/pause_seconds_layout"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:hint="@string/gesture_add_action_pause_seconds_hint">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/pause_seconds"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:maxLines="1" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/pause_gesture_scope_title"
+        android:textAppearance="?attr/textAppearanceTitleMedium" />
+    <RadioGroup
+        android:id="@+id/pause_scope"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <RadioButton
+            android:id="@+id/pause_current"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/pause_gesture_scope_current" />
+        <RadioButton
+            android:id="@+id/pause_all"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/pause_gesture_scope_all" />
+    </RadioGroup>
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/pause_gesture_scope_description"
+        android:textAppearance="?attr/textAppearanceBodySmall" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:gravity="end"
+        android:orientation="horizontal">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_cancel"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/edit_bottomsheet_cancel" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_confirm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/edit_bottomsheet_confirm" />
+    </LinearLayout>
+</LinearLayout>

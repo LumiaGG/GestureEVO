@@ -351,7 +351,11 @@ class GestureAddActionActivity : AppCompatActivity() {
                 "8" to R.string.acc_action_select_lock_screen, "9" to R.string.acc_action_select_screenshot
             )[params["accAction"]]?.let(::getString)
             GestureActionType.TEMP_DND -> params["minutes"]?.let { getString(R.string.action_minutes_summary, it) }
-            GestureActionType.PAUSE_GESTURE -> params["seconds"]?.let { getString(R.string.action_seconds_summary, it) }
+            GestureActionType.PAUSE_GESTURE -> getString(
+                R.string.pause_gesture_action_summary,
+                getString(if (params["scope"] == "all") R.string.pause_gesture_scope_all else R.string.pause_gesture_scope_current),
+                params["seconds"] ?: "3"
+            )
             GestureActionType.SHOW_ACTION_VIEW -> getString(R.string.quick_setup_action_wheel_desc)
             GestureActionType.OPEN_ACTIVITY -> params["activityName"]
             GestureActionType.OTHER_LINK, GestureActionType.OTHER_SHORTCUT -> params["uri"]
@@ -725,26 +729,27 @@ class GestureAddActionActivity : AppCompatActivity() {
         oldQueryList: ArrayList<Pair<String, String>>
     ) {
         val showSecondsInput = {
-            showEditTextBottomSheet(
-                activity = this,
-                coroutineScope = lifecycleScope,
-                title = getString(R.string.gesture_add_action_pause_seconds_title),
-                hint = getString(R.string.gesture_add_action_pause_seconds_hint),
-                defaultText = oldQueryList.find { it.first == "seconds" }?.second ?: "3",
-                onConfirm = { inputText ->
-                    val seconds = inputText.trim().toIntOrNull()
-                    if (seconds == null || seconds <= 0) {
-                        Toast.makeText(
-                            this,
-                            getString(R.string.gesture_add_action_pause_seconds_invalid),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    } else {
-                        actionLink.addParams("seconds", seconds.toString())
-                        commitAction(configBinding, actionLink)
-                    }
+            val dialog = BottomSheetDialog(this, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
+            val content = layoutInflater.inflate(R.layout.pause_gesture_bottomsheet, null)
+            val input = content.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.pause_seconds)
+            val inputLayout = content.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.pause_seconds_layout)
+            val scope = content.findViewById<android.widget.RadioGroup>(R.id.pause_scope)
+            input.setText(oldQueryList.find { it.first == "seconds" }?.second ?: "3")
+            scope.check(if (oldQueryList.find { it.first == "scope" }?.second == "all") R.id.pause_all else R.id.pause_current)
+            content.findViewById<View>(R.id.btn_cancel).setOnClickListener { dialog.dismiss() }
+            content.findViewById<View>(R.id.btn_confirm).setOnClickListener {
+                val seconds = input.text.toString().trim().toIntOrNull()
+                if (seconds == null || seconds !in 1..io.github.lumiagg.gestureevo.gesture.GestureManager.MAX_PAUSE_GESTURE_SECONDS) {
+                    inputLayout.error = getString(R.string.gesture_add_action_pause_seconds_invalid)
+                } else {
+                    actionLink.addParams("seconds", seconds.toString())
+                    actionLink.addParams("scope", if (scope.checkedRadioButtonId == R.id.pause_all) "all" else "current")
+                    commitAction(configBinding, actionLink)
+                    dialog.dismiss()
                 }
-            )
+            }
+            dialog.setContentView(content)
+            dialog.show()
         }
         // The countdown notification is the only handle on a paused trigger, so ask for
         // notification access while the action is being configured.

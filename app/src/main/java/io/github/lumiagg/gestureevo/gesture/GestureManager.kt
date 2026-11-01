@@ -383,15 +383,8 @@ class GestureManager(
                         }
 
                         GestureActionType.PAUSE_GESTURE -> {
-                            val seconds = action?.firstStageUri
-                                ?.getQueryParameter("seconds")?.toIntOrNull()
-                                ?.coerceIn(1, MAX_PAUSE_GESTURE_SECONDS)
-                                ?: DEFAULT_PAUSE_GESTURE_SECONDS
-                            freeTriggerFloating.pauseTriggerTemporarily(
-                                triggerConfig.tag,
-                                seconds * 1000L,
-                                triggerConfig.name
-                            )
+                            ActionProxy(context, action?.firstStageLink ?: "")
+                                .execute(sourceTriggerTag = triggerConfig.tag)
                         }
 
                         GestureActionType.CLICK_THROUGH -> {

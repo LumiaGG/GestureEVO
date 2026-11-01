@@ -917,7 +917,12 @@
     <string name="gesture_action_pause_gesture">Pause gestures</string>
     <string name="gesture_add_action_pause_seconds_title">Pause gestures</string>
     <string name="gesture_add_action_pause_seconds_hint">Enter duration in seconds</string>
-    <string name="gesture_add_action_pause_seconds_invalid">Enter a number of seconds greater than 0</string>
+    <string name="gesture_add_action_pause_seconds_invalid">Enter between 1 and 86400 seconds</string>
+    <string name="pause_gesture_scope_title">Pause scope</string>
+    <string name="pause_gesture_scope_current">Current trigger area</string>
+    <string name="pause_gesture_scope_all">All trigger areas</string>
+    <string name="pause_gesture_scope_description">Current trigger area pauses the area used for this gesture, or the area that opened the wheel. Its mirrored area is included.</string>
+    <string name="pause_gesture_action_summary">%1$s · %2$s s</string>
     <string name="temp_dnd_policy_access_required">Please grant Do Not Disturb access first</string>
     <plurals name="temp_dnd_enabled_minutes">
         <item quantity="one">Do Not Disturb enabled for %1$d minute</item>

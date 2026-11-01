@@ -40,6 +40,8 @@ import io.github.lumiagg.gestureevo.gesture.KeyboardEvent
 import io.github.lumiagg.gestureevo.gesture.PinPoolEvent
 import io.github.lumiagg.gestureevo.gesture.PointerEvent
 import io.github.lumiagg.gestureevo.gesture.TriggerSide
+import io.github.lumiagg.gestureevo.gesture.FreeTriggerFloating
+import io.github.lumiagg.gestureevo.gesture.GestureManager
 import io.github.lumiagg.gestureevo.gesture.ScreenSearchEvent
 import io.github.lumiagg.gestureevo.gesture.ActionViewEvent
 import io.github.lumiagg.gestureevo.gesture.config.FreeTriggerDataManager
@@ -83,7 +85,7 @@ class ActionProxy(private val context: Context, linkString: String) {
     val useCustomTabs: Boolean = link.getBooleanQueryParameter("useCustomTabs", false)
     val triggerSideParam: String? = link.getQueryParameter("triggerSide")
 
-    suspend fun execute(anchor: TriggerSide.Point? = null, side: String? = null) {
+    suspend fun execute(anchor: TriggerSide.Point? = null, side: String? = null, sourceTriggerTag: String? = null) {
         val startedAt = android.os.SystemClock.elapsedRealtime()
         SystemLogCapture.rememberTarget(pkg)
         AppLogger.event(LogModule.ACTION, "action_triggered", trace = trace,
@@ -97,7 +99,7 @@ class ActionProxy(private val context: Context, linkString: String) {
             TriggerSide.record(effectiveSide)
         }
         try {
-            executeAction()
+            executeAction(sourceTriggerTag)
             AppLogger.event(LogModule.ACTION, "action_dispatch_returned", trace = trace,
                 fields = mapOf("durationMs" to android.os.SystemClock.elapsedRealtime() - startedAt))
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -111,7 +113,7 @@ class ActionProxy(private val context: Context, linkString: String) {
         }
     }
 
-    private suspend fun executeAction() {
+    private suspend fun executeAction(sourceTriggerTag: String?) {
         when (event) {
             GestureActionType.OPEN_APP -> {
                 pkg?.let {
@@ -234,6 +236,7 @@ class ActionProxy(private val context: Context, linkString: String) {
             GestureActionType.SHOW_ACTION_VIEW -> {
                 val selectedActionItemsTag = link.getQueryParameter("actionItemsTag") ?: return
                 val selectedTriggerTag = link.getQueryParameter("triggerTag")
+                    ?.takeIf { it.isNotBlank() } ?: sourceTriggerTag
                 val triggerConfig = selectedTriggerTag?.takeIf { it.isNotBlank() }?.let {
                     FreeTriggerDataManager.getTrigger(context, it)
                 }
@@ -250,8 +253,16 @@ class ActionProxy(private val context: Context, linkString: String) {
                 )
             }
             GestureActionType.CLICK_THROUGH -> {}
-            // Handled by GestureManager, which knows the trigger that fired the action.
-            GestureActionType.PAUSE_GESTURE -> {}
+            GestureActionType.PAUSE_GESTURE -> {
+                val seconds = link.getQueryParameter("seconds")?.toIntOrNull()
+                    ?.coerceIn(1, GestureManager.MAX_PAUSE_GESTURE_SECONDS)
+                    ?: GestureManager.DEFAULT_PAUSE_GESTURE_SECONDS
+                FreeTriggerFloating.current()?.pauseGestureTemporarily(
+                    sourceTriggerTag,
+                    seconds * 1000L,
+                    allTriggers = link.getQueryParameter("scope") == "all"
+                )
+            }
             GestureActionType.NONE -> {}
         }
 
