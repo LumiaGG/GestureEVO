@@ -120,7 +120,9 @@ class ActionProxy(private val context: Context, linkString: String) {
             }
 
             GestureActionType.FREEZE_APP -> {
-                AShizuku.operate(pkg ?: return, false, context)
+                if (!AShizuku.operate(pkg ?: return, false, context)) {
+                    ToastHelper.showInUIThread(context, context.getString(R.string.shizuku_call_failed))
+                }
             }
 
             GestureActionType.RECENT_APP -> {
@@ -160,7 +162,11 @@ class ActionProxy(private val context: Context, linkString: String) {
                     if (freeform) {
                         launcherAPP(pkg, countOpen = false)
                     }
-                    ensureAppEnabledIfFrozen(pkg, context)
+                    if (!ensureAppEnabledIfFrozen(pkg, context)) {
+                        AppLogger.event(LogModule.ACTION, "unfreeze_failed", LogLevel.WARN, trace,
+                            mapOf("package" to pkg))
+                        return
+                    }
                     val launched = if (!launchTemporaryAssistant(context, pkg, activityName)) {
                         launchUri(otherLink ?: return, pkg)
                     } else {
@@ -259,7 +265,11 @@ class ActionProxy(private val context: Context, linkString: String) {
 
     private suspend fun launcherAPP(pkg: String, countOpen: Boolean = true): Boolean =
         withContext(Dispatchers.Default) {
-            ensureAppEnabledIfFrozen(pkg, context)
+            if (!ensureAppEnabledIfFrozen(pkg, context)) {
+                AppLogger.event(LogModule.ACTION, "unfreeze_failed", LogLevel.WARN, trace,
+                    mapOf("package" to pkg))
+                return@withContext false
+            }
             val intent = context.packageManager.getLaunchIntentForPackage(pkg) ?: let {
                 AppLogger.event(LogModule.ACTION, "launch_intent_missing", LogLevel.WARN, trace,
                     mapOf("package" to pkg))
@@ -280,7 +290,11 @@ class ActionProxy(private val context: Context, linkString: String) {
     private suspend fun launchUri(uri: String, pkgName: String): Boolean {
         try {
             if (pkgName.isNotEmpty()) {
-                ensureAppEnabledIfFrozen(pkgName, context)
+                if (!ensureAppEnabledIfFrozen(pkgName, context)) {
+                    AppLogger.event(LogModule.ACTION, "unfreeze_failed", LogLevel.WARN, trace,
+                        mapOf("package" to pkgName))
+                    return false
+                }
             }
             val launchUri = UrlDetector.normalizeForOpening(uri) ?: uri
             val intent = Intent.parseUri(launchUri, Intent.URI_ALLOW_UNSAFE)

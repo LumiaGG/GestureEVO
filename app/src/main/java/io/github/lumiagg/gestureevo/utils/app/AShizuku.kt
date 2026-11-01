@@ -48,18 +48,21 @@ object AShizuku {
     }
 
     suspend fun operate(packageName: String, enable: Boolean, context: Context): Boolean {
-        if (!checkPermission(context)) {
-            ToastHelper.showInUIThread(context, context.getString(R.string.shizuku_call_failed))
-            return false
-        }
+        if (!checkPermission(context)) return false
         if (context.getAppEnabledState(packageName) == null) return false
         val command = packageStateCommand(packageName, enable, Os.getuid() / ANDROID_UIDS_PER_USER)
         val (success, _) = doCmdWithShizuku(command)
         return success && context.getAppEnabledState(packageName) == enable
     }
 
-    suspend fun ensureAppEnabledIfFrozen(packageName: String, context: Context) {
-        if (context.getAppEnabledState(packageName) == false) operate(packageName, true, context)
+    /** Returns false when the package is frozen and could not be enabled for launch. */
+    suspend fun ensureAppEnabledIfFrozen(packageName: String, context: Context): Boolean {
+        if (context.getAppEnabledState(packageName) != false) return true
+        if (!operate(packageName, true, context)) {
+            ToastHelper.showInUIThread(context, context.getString(R.string.shizuku_call_failed))
+            return false
+        }
+        return true
     }
 
     suspend fun checkPermission(context: Context): Boolean = permissionMutex.withLock {
