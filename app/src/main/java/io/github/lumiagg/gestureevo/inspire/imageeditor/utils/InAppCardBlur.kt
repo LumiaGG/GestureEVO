@@ -4,7 +4,6 @@ import androidx.core.graphics.withClip
 import androidx.core.graphics.createBitmap
 
 import android.content.Context
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -19,7 +18,6 @@ import androidx.core.graphics.ColorUtils
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.MaterialColors
 import io.github.lumiagg.gestureevo.inspire.imageeditor.ui.InspireImageEditorView
-import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.GlassEffectUtils
 import kotlin.math.max
 
@@ -140,21 +138,12 @@ object InAppCardBlur {
                     canvas.drawBitmap(bmp, null, roundRect, filterPaint)
                 }
 
-                // Glass scrim overlay
-                val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-                val surfaceColor = DynamicColorUtils.surfaceContainerColor.takeIf { it != 0 }
-                    ?: MaterialColors.getColor(card, com.google.android.material.R.attr.colorSurface, Color.DKGRAY)
-
-                val scrimAlpha = if (isDark) 0.30f else 0.22f
-                val targetColor = if (!isDark) {
-                    ColorUtils.setAlphaComponent(
-                        ColorUtils.blendARGB(surfaceColor, Color.WHITE, 0.40f),
-                        (scrimAlpha * 255).toInt()
-                    )
-                } else {
-                    ColorUtils.setAlphaComponent(surfaceColor, (scrimAlpha * 255).toInt())
-                }
-                scrimPaint.color = targetColor
+                // Keep the themed surface stable over both light and dark images.
+                // A faint blur remains, without letting the image determine text contrast.
+                val surfaceColor = MaterialColors.getColor(
+                    card, com.google.android.material.R.attr.colorSurfaceContainerHigh
+                )
+                scrimPaint.color = ColorUtils.setAlphaComponent(surfaceColor, 240)
                 canvas.drawRect(roundRect, scrimPaint)
             }
         }

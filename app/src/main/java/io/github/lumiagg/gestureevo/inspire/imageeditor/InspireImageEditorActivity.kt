@@ -2,6 +2,7 @@ package io.github.lumiagg.gestureevo.inspire.imageeditor
 
 import android.annotation.SuppressLint
 import androidx.core.graphics.drawable.toDrawable
+import androidx.core.graphics.ColorUtils
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
@@ -262,7 +263,7 @@ class InspireImageEditorActivity : AppCompatActivity() {
 
         InAppCardBlur.apply(bottomBarCard, editorView)
         InAppCardBlur.apply(modeQuickToolsCard, editorView)
-
+        applyToolbarColors()
 
         btnUndo.setOnClickListener { editorSession.undo() }
         btnRedo.setOnClickListener { editorSession.redo() }
@@ -361,18 +362,39 @@ class InspireImageEditorActivity : AppCompatActivity() {
         renderCompactBrushPreview(state)
     }
 
+    private fun applyToolbarColors() = with(binding) {
+        val foreground = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnSurface)
+        val colors = ColorStateList(
+            arrayOf(intArrayOf(-android.R.attr.state_enabled), intArrayOf()),
+            intArrayOf(ColorUtils.setAlphaComponent(foreground, 97), foreground)
+        )
+        listOf(
+            btnClose, btnUndo, btnRedo, btnPin, btnCopy, btnShare, btnSave,
+            btnTopClearCrop, btnTopApplyCrop, compactAddTextButton
+        ).forEach { button ->
+            button.setTextColor(colors)
+            button.iconTint = colors
+            button.rippleColor = ColorStateList.valueOf(ColorUtils.setAlphaComponent(foreground, 31))
+        }
+        btnTopApplyCrop.setTextColor(MaterialColors.getColor(root, androidx.appcompat.R.attr.colorPrimary))
+    }
+
     private fun renderModeSelection(currentMode: EditorMode) {
-        val selectedBackground = DynamicColorUtils.secondaryContainerColor
+        val selectedBackground = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSecondaryContainer)
         val selectedText = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnSecondaryContainer)
         val defaultBackground = Color.TRANSPARENT
-        val defaultText = DynamicColorUtils.onSurfaceVariantColor
+        val defaultText = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnSurface)
 
         modeButtons.forEach { (button, mode) ->
             val selected = mode == currentMode
+            button.isSelected = selected
             button.backgroundTintList = ColorStateList.valueOf(
                 if (selected) selectedBackground else defaultBackground
             )
             button.setTextColor(if (selected) selectedText else defaultText)
+            button.rippleColor = ColorStateList.valueOf(ColorUtils.setAlphaComponent(
+                if (selected) selectedText else defaultText, 31
+            ))
         }
     }
 
@@ -1209,7 +1231,7 @@ class InspireImageEditorActivity : AppCompatActivity() {
             Color.TRANSPARENT
         )
         button.setTextColor(
-            DynamicColorUtils.onSurfaceColor
+            MaterialColors.getColor(button, com.google.android.material.R.attr.colorOnSurface)
         )
         button.strokeWidth = 0
         button.cornerRadius = 0
