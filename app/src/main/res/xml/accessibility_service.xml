@@ -1,6 +1,6 @@
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:accessibilityEventTypes="typeWindowStateChanged|typeNotificationStateChanged"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged|typeNotificationStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:accessibilityFlags="flagReportViewIds|flagIncludeNotImportantViews|flagRetrieveInteractiveWindows|flagRequestEnhancedWebAccessibility"
     android:canPerformGestures="true"
