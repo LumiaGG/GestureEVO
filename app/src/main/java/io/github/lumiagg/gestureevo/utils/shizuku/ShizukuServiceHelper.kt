@@ -6,6 +6,7 @@ import io.github.lumiagg.gestureevo.diagnostics.LogModule
 import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
 import io.github.lumiagg.gestureevo.BuildConfig
@@ -54,6 +55,23 @@ object ShizukuServiceHelper {
 
     init {
         Shizuku.addBinderDeadListener { onConnectionLost() }
+        Shizuku.addBinderReceivedListenerSticky { prebindIfPermitted() }
+    }
+
+    /**
+     * The Shizuku server pushes its binder to running apps on every start, so this fires again
+     * after each server restart. Re-binding right away keeps the user service warm, instead of
+     * paying the service start cost on the first frozen-app launch after a restart.
+     */
+    private fun prebindIfPermitted() {
+        if (bindingRequested || isServiceBound) return
+        runCatching {
+            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                bindUserService(null)
+            }
+        }.onFailure {
+            Log.i(TAG, "Skip pre-bind on binder received: ${it.message}")
+        }
     }
 
     private fun onConnectionLost() {
