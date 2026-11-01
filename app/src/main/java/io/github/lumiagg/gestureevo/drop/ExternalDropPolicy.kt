@@ -5,9 +5,10 @@ internal object ExternalDropPolicy {
 
     enum class Content { TEXT, IMAGE, URI }
 
-    fun content(mimeTypes: List<String>): Content = when {
-        mimeTypes.any { it.startsWith("image/") } -> Content.IMAGE
-        mimeTypes.any { it.startsWith("text/") && it != "text/uri-list" } -> Content.TEXT
+    // ClipDescription comes from external apps and may contain null MIME entries.
+    fun content(mimeTypes: List<String?>): Content = when {
+        mimeTypes.any { it?.startsWith("image/") == true } -> Content.IMAGE
+        mimeTypes.any { it?.startsWith("text/") == true && it != "text/uri-list" } -> Content.TEXT
         else -> Content.URI
     }
 
@@ -17,8 +18,8 @@ internal object ExternalDropPolicy {
         Content.URI -> true // The provider's URI type is only available at ACTION_DROP.
     }
 
-    fun accepts(fromEvo: Boolean, hasLocalState: Boolean, mimeTypes: List<String>): Boolean =
+    fun accepts(fromEvo: Boolean, hasLocalState: Boolean, mimeTypes: List<String?>): Boolean =
         !fromEvo && !hasLocalState && mimeTypes.any {
-            it.startsWith("text/") || it.startsWith("image/")
+            it?.startsWith("text/") == true || it?.startsWith("image/") == true
         }
 }
