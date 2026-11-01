@@ -33,6 +33,14 @@ class FreeTriggerConfig {
         return gestureActionList?.find { it.tag == key }
     }
 
+    fun isPackageAllowed(targetPkg: String, selfPackage: String): Boolean {
+        if (targetPkg == selfPackage) return true
+        val inWhitelist = !getState(FLAG_WHITELIST) ||
+            whiteList.isEmpty() || targetPkg in whiteList
+        val notBlacklisted = !getState(FLAG_BLACKLIST) || targetPkg !in blackList
+        return inWhitelist && notBlacklisted
+    }
+
     suspend fun updateGestureActionList(context: Context) {
         gestureActionList = GestureActionDataManager.readActionItemList(context, tag)
     }
