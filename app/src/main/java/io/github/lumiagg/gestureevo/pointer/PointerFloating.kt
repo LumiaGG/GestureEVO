@@ -397,8 +397,11 @@ class PointerFloating(
         }
 
         suspend fun updateTrailConfig() {
+            // The trail setting only decides whether trailing copies are drawn. It must not
+            // touch the pointer icon: doing so used to clear the dot whenever the trail was on,
+            // which silently disabled every shape and size setting in that mode.
             enable = context.settingsStore.readKey(KEY_SHOW_POINTER_TRAIL, false)
-            pointerManger.showViewCenter(!enable)
+            if (!enable) clearTrail()
             withContext(Dispatchers.Main) {
                 refreshTheme()
             }
@@ -718,14 +721,6 @@ class PointerFloating(
             val color = getPointerColor()
             drawable.setTint(color)
             return drawable
-        }
-
-        /**
-         * The trail setting only controls the trailing dots, not the pointer itself. The dot
-         * stays visible in both modes so the configured shape and size always apply.
-         */
-        suspend fun showViewCenter(boolean: Boolean) = withContext(Dispatchers.Main) {
-            if (pointerIcon.drawable == null) applyPointerAppearance()
         }
 
         fun enterDragMode() {
