@@ -142,7 +142,6 @@
     <string name="appearance_settings_pointer_shape">指针形状</string>
     <string name="appearance_settings_pointer_shape_dot">圆点</string>
     <string name="appearance_settings_pointer_shape_small_dot">小圆点</string>
-    <string name="appearance_settings_pointer_shape_ring">圆环</string>
     <string name="appearance_settings_pointer_shape_cross">十字准星</string>
     <string name="appearance_settings_pointer_shape_arrow">箭头</string>
     <string name="appearance_settings_pointer_size">指针大小</string>

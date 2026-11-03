@@ -61,13 +61,11 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         /** Single source of truth for the pointer shape keys and size range. */
         const val POINTER_SHAPE_DOT = "dot"
         const val POINTER_SHAPE_SMALL_DOT = "small_dot"
-        const val POINTER_SHAPE_RING = "ring"
         const val POINTER_SHAPE_CROSS = "cross"
         const val POINTER_SHAPE_ARROW = "arrow"
         val POINTER_SHAPE_KEYS = listOf(
             POINTER_SHAPE_DOT,
             POINTER_SHAPE_SMALL_DOT,
-            POINTER_SHAPE_RING,
             POINTER_SHAPE_CROSS,
             POINTER_SHAPE_ARROW
         )
@@ -138,7 +136,6 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         val labels = listOf(
             getString(R.string.appearance_settings_pointer_shape_dot),
             getString(R.string.appearance_settings_pointer_shape_small_dot),
-            getString(R.string.appearance_settings_pointer_shape_ring),
             getString(R.string.appearance_settings_pointer_shape_cross),
             getString(R.string.appearance_settings_pointer_shape_arrow),
         )

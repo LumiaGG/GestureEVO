@@ -12,6 +12,7 @@ import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.drawable.Drawable
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -21,6 +22,7 @@ import android.view.WindowManager
 import androidx.constraintlayout.utils.widget.ImageFilterView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.view.doOnNextLayout
 import com.google.android.material.card.MaterialCardView
 import com.google.zxing.common.detector.MathUtils.distance
@@ -41,7 +43,6 @@ import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companio
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SHAPE_ARROW
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SHAPE_CROSS
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SHAPE_DOT
-import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SHAPE_RING
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SHAPE_SMALL_DOT
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SIZE_DEFAULT
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SIZE_MAX
@@ -133,9 +134,11 @@ class PointerFloating(
     }
 
     fun refreshTheme() {
-        trailView.refreshTheme()
         highlightRectView.setStrokeColor(pointerManger.getPointerColor())
         pointerManger.refreshTheme()
+        // The trail stamps a copy of the pointer artwork, so it has to be rebuilt after the
+        // pointer itself picks up the new shape and colour.
+        trailView.refreshTheme()
     }
 
     private fun initFloatingWindow() {
@@ -230,7 +233,6 @@ class PointerFloating(
         private val POINTER_SHAPES = setOf(
             POINTER_SHAPE_DOT,
             POINTER_SHAPE_SMALL_DOT,
-            POINTER_SHAPE_RING,
             POINTER_SHAPE_CROSS,
             POINTER_SHAPE_ARROW
         )
@@ -258,6 +260,10 @@ class PointerFloating(
          * ring 42.5px on a 30dp box), 0.245 reproduces the original dot-to-ring proportion.
          */
         const val POINTER_DOT_INSET_RATIO = 0.245f
+
+        /** Trail stencil size range: the newest copy is largest, the oldest smallest. */
+        const val TRAIL_STENCIL_MIN_DP = 4f
+        const val TRAIL_STENCIL_GROWTH_DP = 10f
     }
 
     var enable = false
@@ -279,6 +285,10 @@ class PointerFloating(
         highlightRectView.setStrokeColor(pointerManger.getPointerColor())
         pointerFloatingView.visibility = View.VISIBLE
         updateTouchView()
+        // Apply shape and size first: the trail setting below only refreshes trail points and
+        // the theme, but it must see the current shape so it does not tint a cut-out shape's
+        // background.
+        pointerManger.applyPointerAppearance()
         pointerManger.showPointer()
         pointerManger.viewPositionMonitor.start()
         trailView.updateTrailConfig()
@@ -372,6 +382,10 @@ class PointerFloating(
             color = DynamicColorUtils.primaryFixedColor
         }
 
+        // Trail copies of the pointer artwork, so the trail keeps the configured shape.
+        private var shapeDrawable: Drawable? = null
+        private var shapeBounds = Rect()
+
         fun addPoint(x: Float, y: Float) {
             if (enable) {
                 trailPoints.add(Pair(x, y))
@@ -392,6 +406,8 @@ class PointerFloating(
 
         fun refreshTheme() {
             trailPaint.color = pointerManger.getPointerColor()
+            // Re-create the stamp so it matches the shape and colour currently in use.
+            shapeDrawable = pointerManger.createTrailStencil()
             invalidate()
         }
 
@@ -405,13 +421,28 @@ class PointerFloating(
 
             if (trailPoints.size < 2) return
 
-            // Draw dots with decreasing size and opacity
+            val stencil = shapeDrawable
             trailPoints.forEachIndexed { index, point ->
-                val alpha = (255 * (index.toFloat() / trailPoints.size)).toInt()
-                val radius = (3 * (index.toFloat() / trailPoints.size) + 1f.dp2px).dp2px
+                val ratio = index.toFloat() / trailPoints.size
+                val alpha = (255 * ratio).toInt().coerceIn(0, 255)
+                // The trailing copies shrink along the tail and fade towards the oldest point.
+                val size = (TRAIL_STENCIL_MIN_DP + TRAIL_STENCIL_GROWTH_DP * ratio).dp2px
+                val half = size / 2f
 
-                trailPaint.alpha = alpha
-                canvas.drawCircle(point.first, point.second, radius, trailPaint)
+                if (stencil != null) {
+                    shapeBounds.set(
+                        (point.first - half).toInt(),
+                        (point.second - half).toInt(),
+                        (point.first + half).toInt(),
+                        (point.second + half).toInt()
+                    )
+                    stencil.alpha = alpha
+                    stencil.bounds = shapeBounds
+                    stencil.draw(canvas)
+                } else {
+                    trailPaint.alpha = alpha
+                    canvas.drawCircle(point.first, point.second, half, trailPaint)
+                }
             }
         }
     }
@@ -609,7 +640,6 @@ class PointerFloating(
 
         private fun pointerShapeRes(): Int = when (pointerShape) {
             POINTER_SHAPE_SMALL_DOT -> R.drawable.pointer_shape_small_dot
-            POINTER_SHAPE_RING -> R.drawable.pointer_shape_ring
             POINTER_SHAPE_CROSS -> R.drawable.pointer_shape_cross
             POINTER_SHAPE_ARROW -> R.drawable.pointer_shape_arrow
             // The default dot is the original artwork, unchanged.
@@ -636,7 +666,8 @@ class PointerFloating(
             appliedSizeDp = pointerSizeDp
         }
 
-        private fun applyPointerAppearance() {
+        /** Applies the configured shape and size. Safe to call on every show. */
+        fun applyPointerAppearance() {
             if (pointerShape == POINTER_SHAPE_DOT) {
                 // Original artwork: ring backplate plus baseline_circle_24, sized by the slider.
                 restoreStockGeometry()
@@ -653,23 +684,48 @@ class PointerFloating(
                 }
                 val inset = (sizePx * POINTER_ICON_INSET_RATIO).toInt()
                 setPadding(inset, inset, inset, inset)
-                background = null
+                // Cut-out shapes have no backplate: drop both the drawable and its tint so
+                // nothing is painted behind the icon.
+                backgroundTintList = null
+                setBackgroundResource(0)
+                imageTintList = ColorStateList.valueOf(getPointerColor())
                 geometryCustomized = true
-                applyPointerTheme(this)
                 requestLayout()
             }
         }
 
         fun refreshTheme() {
-            applyPointerTheme(pointerIcon)
+            val color = getPointerColor()
+            pointerIcon.imageTintList = ColorStateList.valueOf(color)
+            // Only the dot owns the ring backplate. Tinting the background of a cut-out shape
+            // makes ImageFilterView paint a solid disc behind it.
+            if (pointerShape == POINTER_SHAPE_DOT) {
+                pointerIcon.backgroundTintList = ColorStateList.valueOf(color)
+            } else {
+                pointerIcon.backgroundTintList = null
+            }
         }
 
+        /**
+         * A standalone copy of the current pointer artwork, tinted with the pointer colour.
+         * The trail draws this at each trailing point so it follows the configured shape
+         * instead of always being a plain circle.
+         */
+        fun createTrailStencil(): Drawable? {
+            val drawable = runCatching {
+                AppCompatResources.getDrawable(context, pointerShapeRes())?.mutate()
+            }.getOrNull() ?: return null
+            val color = getPointerColor()
+            drawable.setTint(color)
+            return drawable
+        }
+
+        /**
+         * The trail setting only controls the trailing dots, not the pointer itself. The dot
+         * stays visible in both modes so the configured shape and size always apply.
+         */
         suspend fun showViewCenter(boolean: Boolean) = withContext(Dispatchers.Main) {
-            if (boolean) {
-                applyPointerAppearance()
-            } else {
-                pointerIcon.setImageDrawable(null)
-            }
+            if (pointerIcon.drawable == null) applyPointerAppearance()
         }
 
         fun enterDragMode() {
@@ -691,8 +747,10 @@ class PointerFloating(
                 trailView.clearTrail()
                 pointerIcon.apply {
                     setImageResource(R.drawable.baseline_add_24)
-                    applyPointerTheme(this)
-                    background = null
+                    // The crosshair has no backplate, so only the image is tinted.
+                    imageTintList = ColorStateList.valueOf(getPointerColor())
+                    setBackgroundResource(0)
+                    backgroundTintList = null
                     setPadding(0, 0, 0, 0)
                     // The drag-select crosshair keeps a fixed size regardless of the pointer setting.
                     val fixed = POINTER_SIZE_DEFAULT_DP.dp2px.toInt()
@@ -724,10 +782,8 @@ class PointerFloating(
             lastPotentialThinRect = null
             context.gestureManager?.setInteractionMode(InteractionMode.NORMAL)
             context.postOnMain {
-                pointerIcon.apply {
-                    setBackgroundResource(R.drawable.pointer)
-                    applyPointerTheme(this)
-                }
+                // applyPointerAppearance restores the backplate, tint and size for the
+                // configured shape, so the intermediate theme call is not needed here.
                 applyPointerAppearance()
                 trailView.updateTrailConfig()
                 highlightRectView.hideRect()

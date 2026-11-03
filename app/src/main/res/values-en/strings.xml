@@ -138,7 +138,6 @@
     <string name="appearance_settings_pointer_shape">Pointer shape</string>
     <string name="appearance_settings_pointer_shape_dot">Dot</string>
     <string name="appearance_settings_pointer_shape_small_dot">Small dot</string>
-    <string name="appearance_settings_pointer_shape_ring">Ring</string>
     <string name="appearance_settings_pointer_shape_cross">Crosshair</string>
     <string name="appearance_settings_pointer_shape_arrow">Arrow</string>
     <string name="appearance_settings_pointer_size">Pointer size</string>
