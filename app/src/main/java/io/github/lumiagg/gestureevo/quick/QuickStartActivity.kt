@@ -49,7 +49,7 @@ import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.saveKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import io.github.lumiagg.gestureevo.utils.uriBuilder
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -100,6 +100,8 @@ class QuickStartActivity : AppCompatActivity() {
     private var keyboardCardBackgroundBlurEnabled = false
     private val minSize = MIN_SIZE.dp2px.toInt()
     private var triggerSide: String? = null
+    private var currentInputSequence = ""
+    private var searchJob: Job? = null
 
     private fun isLandscape(): Boolean {
         val displayMetrics = resources.displayMetrics
@@ -337,13 +339,8 @@ class QuickStartActivity : AppCompatActivity() {
         binding.keyboard.onChangeListener = object : KeyboardOnChangeListener {
             override fun onInput(inputSequence: String) {
                 super.onInput(inputSequence)
-                CoroutineScope(Dispatchers.Main).launch {
-                    binding.appRecycler.models = if (inputSequence.isNotEmpty()) {
-                        withContext(Dispatchers.IO) { filterResult(inputSequence) }
-                    } else {
-                        listOf()
-                    }
-                }
+                currentInputSequence = inputSequence
+                refreshAppResults()
             }
 
             override fun onEnter(longClick: Boolean) {
@@ -372,15 +369,24 @@ class QuickStartActivity : AppCompatActivity() {
     }
 
     private fun requestAppDbSync() {
-        lifecycleScope.launch(Dispatchers.Default) {
-            syncAppCatalogIfNeeded(applicationContext)
-            val inputSequence = binding.keyboard.getInputKeys()
-            if (inputSequence.isNotEmpty()) {
-                val results = withContext(Dispatchers.IO) { filterResult(inputSequence) }
-                withContext(Dispatchers.Main) {
-                    binding.appRecycler.models = results
-                }
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) { syncAppCatalogIfNeeded(applicationContext) }
+            // getInputKeys() is a slash-separated persistence format, not a search query.
+            // Read the latest input on Main after sync, including restored input whose
+            // backing key buffer KeyboardView clears after notifying onInput().
+            refreshAppResults()
+        }
+    }
+
+    private fun refreshAppResults() {
+        searchJob?.cancel()
+        val query = currentInputSequence
+        val keyboardType = binding.keyboard.keyboardType
+        searchJob = lifecycleScope.launch {
+            val results = if (query.isEmpty()) emptyList() else {
+                withContext(Dispatchers.IO) { filterResult(query, keyboardType) }
             }
+            binding.appRecycler.models = results
         }
     }
 
@@ -390,9 +396,9 @@ class QuickStartActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun filterResult(inputSequence: String): List<APPModel> {
+    private suspend fun filterResult(inputSequence: String, keyboardType: KeyboardType): List<APPModel> {
         val resultSet = LinkedHashSet<APPModel>()
-        when (binding.keyboard.keyboardType) {
+        when (keyboardType) {
             KeyboardType.T9 -> {
                 resultSet.addAll(
                     getAPPDao().findByInitialsT9(inputSequence, APPModel.FLAG_LAUNCHER)
@@ -413,7 +419,7 @@ class QuickStartActivity : AppCompatActivity() {
         }
 
         return resultSet.toList().sortedWith(
-            when (binding.keyboard.keyboardType) {
+            when (keyboardType) {
                 KeyboardType.T9 -> compareByDescending<APPModel> { it.openCount }
                     .thenBy { -TextUtil.calculateSimilarity(inputSequence, it.initialsT9) }
                     .thenBy { -TextUtil.calculateSimilarity(inputSequence, it.pinyinT9) }
