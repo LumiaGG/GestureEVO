@@ -18,6 +18,16 @@
       android:layout_height="wrap_content"
       android:orientation="vertical"
       app:liftOnScroll="true">
+      <com.google.android.material.textview.MaterialTextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="16dp"
+        android:accessibilityHeading="true"
+        android:text="@string/settings_title"
+        android:textAppearance="?attr/textAppearanceHeadlineMedium"
+        android:textColor="?attr/colorOnSurface" />
       <com.google.android.material.card.MaterialCardView
         android:id="@+id/settingsSearchEntryCard"
         android:layout_width="match_parent"

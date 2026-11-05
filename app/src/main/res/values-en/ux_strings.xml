@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_group_start">Get started</string>
+    <string name="settings_group_gestures">Gestures and wheels</string>
+    <string name="settings_group_tools">Quick tools</string>
+    <string name="settings_group_maintenance">Data and maintenance</string>
+    <string name="settings_service_summary">Manage the accessibility service used by gestures</string>
+    <string name="settings_appearance_summary">Theme, colors and visual effects</string>
+    <string name="settings_tools_summary">Screen content, OCR, Pin and other tools</string>
+    <string name="settings_search_summary">Manage search engines and search behavior</string>
+    <string name="settings_freeform_summary">Configure floating window launch and compatibility</string>
+    <string name="settings_backup_summary">Local backup, restore and WebDAV</string>
+    <string name="settings_external_summary">Manage external actions and permissions</string>
+    <string name="settings_background_summary">Background operation and battery settings</string>
+    <string name="settings_about_summary">Version and project information</string>
+    <string name="settings_trigger_count">Trigger areas: %1$d; enabled: %2$d</string>
+    <string name="settings_wheel_count">Wheel groups: %1$d; default: %2$s</string>
+    <string name="settings_summary_unavailable">Unable to read configuration. Tap to view</string>
+    <string name="trigger_preview_title">Position and availability</string>
+    <string name="trigger_preview_legend">Primary color: current area. Light color: mirror. Gray: other enabled areas. Preview uses the current screen proportions.</string>
+    <string name="trigger_config_done">Done</string>
+    <string name="trigger_summary_geometry">%1$d × %2$d dp · Horizontal %3$d%% · Vertical %4$d%%</string>
+    <string name="trigger_summary_orientation">Orientations: %1$s</string>
+    <string name="trigger_summary_both">Portrait and landscape</string>
+    <string name="trigger_summary_mirror_on">Horizontal mirror: on</string>
+    <string name="trigger_summary_mirror_off">Horizontal mirror: off</string>
+    <string name="trigger_summary_none">No orientation selected</string>
+    <string name="trigger_summary_apps_all">Apps: all apps</string>
+    <string name="trigger_summary_apps_black">Excluded apps: %1$d</string>
+    <string name="trigger_summary_apps_white">Allowed apps only: %1$d</string>
+    <string name="trigger_summary_apps_combined">Allowed apps only: %1$d; excluded apps: %2$d</string>
+    <string name="trigger_summary_self">Trigger areas are always allowed within this app</string>
+    <string name="trigger_summary_disabled">This area is disabled. Editing does not enable it</string>
+    <string name="trigger_summary_saved">Changes save automatically; size saves when adjustment ends</string>
+    <string name="trigger_warning_overlap">Overlaps with “%1$s”; triggering may be affected when both are active.</string>
+    <string name="trigger_warning_mirror">This area overlaps with its mirror.</string>
+    <string name="trigger_warning_size_pending">Size adjustment has not been saved yet.</string>
+    <string name="trigger_warning_size">Large area: %1$s. It may intercept app interactions.</string>
+    <string name="trigger_warning_orientation">No orientation selected. This area will not appear.</string>
+    <string name="trigger_warning_service">Accessibility service is off. Only the in-page preview is available.</string>
+    <string name="action_copy_panel_title">Copy settings</string>
+    <string name="action_copy_panel_hint">Choose a direction. You can undo the replacement.</string>
+    <string name="action_copy_panel_empty">Choose an action before copying settings.</string>
+    <string name="action_copy_short_compact">Short → Long</string>
+    <string name="action_copy_long_compact">Long → Short</string>
+    <string name="action_copy_result">Copied to %1$s. Save to apply.</string>
+</resources>

@@ -337,6 +337,7 @@ class GestureAddActionActivity : AppCompatActivity() {
     private fun renderConfig(configBinding: ActivityGestureAddActionConfigBinding) {
         val raw = configBinding.actionLink.text.toString()
         val link = parseValidLink(raw)
+        updateCopyButtons()
         configBinding.actionLinkLayout.error = if (raw.isNotBlank() && link == null) getString(R.string.action_link_invalid) else null
         configBinding.actionSelect.text = link?.actionType?.showName(this) ?: getString(R.string.gesture_add_action_config_select_event)
         val params = link?.queryList?.toMap().orEmpty()
@@ -816,7 +817,9 @@ class GestureAddActionActivity : AppCompatActivity() {
         if (parseValidLink(sourceConfig.actionLink.text.toString()) == null) return
         targetConfig.getButtonsState().enable = false
         fillActionConfig(targetConfig, sourceConfig.actionLink.text.toString())
-        Snackbar.make(binding.root, R.string.action_config_copied, Snackbar.LENGTH_LONG)
+        val targetTitle = targetConfig.actionTitle.text
+        Snackbar.make(binding.root, getString(R.string.action_copy_result, targetTitle), Snackbar.LENGTH_LONG)
+            .setAnchorView(binding.fab)
             .setAction(R.string.action_undo) {
                 targetConfig.getActionLink().apply {
                     actionType = GestureActionType.NONE
@@ -831,6 +834,14 @@ class GestureAddActionActivity : AppCompatActivity() {
                     targetConfig.actionLink.setText(previous)
                 } else fillActionConfig(targetConfig, previous)
             }.show()
+    }
+
+    private fun updateCopyButtons() {
+        val hasShort = parseValidLink(binding.shortAction.actionLink.text.toString()) != null
+        val hasLong = parseValidLink(binding.longAction.actionLink.text.toString()) != null
+        binding.btnSyncDown.isEnabled = hasShort
+        binding.btnSyncUp.isEnabled = hasLong
+        binding.copyConfigHint.setText(if (hasShort || hasLong) R.string.action_copy_panel_hint else R.string.action_copy_panel_empty)
     }
 
 

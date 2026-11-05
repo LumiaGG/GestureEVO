@@ -3,6 +3,8 @@ package io.github.lumiagg.gestureevo.settings
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.graphics.Rect
+import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,12 +14,14 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
 import com.google.android.material.slider.LabelFormatter
 import com.google.android.material.slider.Slider
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.FreeTriggerConfigBottomsheetBinding
 import io.github.lumiagg.gestureevo.gesture.EventBusManager.produceFreeTriggerEvent
 import io.github.lumiagg.gestureevo.gesture.FreeTriggerEvent
+import io.github.lumiagg.gestureevo.gesture.freeTriggerBounds
 import io.github.lumiagg.gestureevo.gesture.config.FreeTriggerConfig
 import io.github.lumiagg.gestureevo.gesture.config.FreeTriggerDataManager
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionDataManager
@@ -37,6 +41,7 @@ import io.github.lumiagg.gestureevo.settings.ui.OnQuadrantClick
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.ScreenUtil
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.ceil
@@ -56,6 +61,9 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
     private var sizeAdjustMode = SizeAdjustMode.SMALL
     private var ignoreSizeSliderChange = false
     private var isShowingSizeRiskDialog = false
+    private var otherTriggers: List<FreeTriggerConfig> = emptyList()
+    private var serviceEnabled = false
+    private var isDraggingSlider = false
 
     private enum class SizeAdjustMode(val gain: Int) {
         SMALL(1),
@@ -70,7 +78,8 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
         setContentView(binding.root)
         applySystemBarInsets()
 
-        val triggerJson = intent.getStringExtra(EXTRA_TRIGGER_JSON)
+        val triggerJson = savedInstanceState?.getString(EXTRA_TRIGGER_JSON)
+            ?: intent.getStringExtra(EXTRA_TRIGGER_JSON)
         trigger = FreeTriggerConfig.toModel(triggerJson ?: "") ?: run {
             finish()
             return
@@ -79,27 +88,48 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
         registerSelectionLauncher()
         setupViews()
         isInitializingViews = false
+        refreshPreview()
     }
 
     private fun applySystemBarInsets() {
         val initialPaddingTop = binding.root.paddingTop
+        val initialPaddingBottom = binding.root.paddingBottom
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.setPadding(
                 view.paddingLeft,
                 initialPaddingTop + systemBars.top,
                 view.paddingRight,
-                view.paddingBottom
+                initialPaddingBottom + systemBars.bottom
             )
             insets
         }
         ViewCompat.requestApplyInsets(binding.root)
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        if (::trigger.isInitialized) outState.putString(EXTRA_TRIGGER_JSON, trigger.toJson())
+        super.onSaveInstanceState(outState)
+    }
+
     override fun onResume() {
         super.onResume()
+        if (!::trigger.isInitialized) return
+        serviceEnabled = evoAccessibilityServiceIsEnable(this)
+        refreshPreview()
         lifecycleScope.launch {
-            produceFreeTriggerEvent(FreeTriggerEvent(isConfig = true, configTrigger = trigger))
+            try {
+                otherTriggers = FreeTriggerDataManager.readTriggers(applicationContext)
+                    .filter { it.tag != trigger.tag }.map { it.copy() }
+                refreshPreview()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                android.util.Log.w("FreeTriggerConfig", "Unable to load other trigger areas", failure)
+            }
+            if (!deleted && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                produceFreeTriggerEvent(FreeTriggerEvent(isConfig = true, configTrigger = trigger))
+            }
         }
     }
 
@@ -111,8 +141,11 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
     }
 
     private fun createSliderTouchListener(onStop: (() -> Unit)? = null) = object : Slider.OnSliderTouchListener {
-        override fun onStartTrackingTouch(slider: Slider) = Unit
+        override fun onStartTrackingTouch(slider: Slider) {
+            isDraggingSlider = true
+        }
         override fun onStopTrackingTouch(slider: Slider) {
+            isDraggingSlider = false
             onStop?.invoke() ?: saveTriggerConfig(onlyShowThisView = true)
         }
     }
@@ -263,10 +296,14 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
             widthSlider.addOnChangeListener { slider, _, fromUser ->
                 if (!fromUser || ignoreSizeSliderChange) return@addOnChangeListener
                 pendingWidth = sliderValueToActual(slider.value)
+                refreshPreview()
+                if (!isDraggingSlider) commitSizeChangeIfNeeded()
             }
             heightSlider.addOnChangeListener { slider, _, fromUser ->
                 if (!fromUser || ignoreSizeSliderChange) return@addOnChangeListener
                 pendingHeight = sliderValueToActual(slider.value)
+                refreshPreview()
+                if (!isDraggingSlider) commitSizeChangeIfNeeded()
             }
             sizeModeChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
                 if (isInitializingViews || checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
@@ -340,17 +377,17 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
                     reasons.joinToString("、")
                 )
             )
-            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
-                dialog.dismiss()
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
                 restoreSavedSize()
             }
-            .setPositiveButton(R.string.free_trigger_size_risk_confirm) { dialog, _ ->
-                dialog.dismiss()
+            .setPositiveButton(R.string.free_trigger_size_risk_confirm) { _, _ ->
                 savedWidth = pendingWidth
                 savedHeight = pendingHeight
                 saveTriggerConfig(onlyShowThisView = true)
             }
             .setOnDismissListener {
+                // Back and outside-tap cancel the pending size just like Cancel.
+                if (pendingWidth != savedWidth || pendingHeight != savedHeight) restoreSavedSize()
                 isShowingSizeRiskDialog = false
             }
             .show()
@@ -360,6 +397,7 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
         pendingWidth = savedWidth
         pendingHeight = savedHeight
         syncSizeSlidersFromPending()
+        refreshPreview()
     }
 
     private fun getSizeRiskReasons(widthDp: Int, heightDp: Int): List<String> {
@@ -433,8 +471,9 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
             trigger.setState(FreeTriggerConfig.FLAG_WHITELIST, whitelistChip.isChecked)
             trigger.xRelativeValue = xPositionSlider.value
             trigger.yRelativeValue = yPositionSlider.value
-            trigger.width = pendingWidth
-            trigger.height = pendingHeight
+            // Unrelated edits must not persist an unconfirmed large size.
+            trigger.width = savedWidth
+            trigger.height = savedHeight
             trigger.setState(FreeTriggerConfig.FLAG_MIRROR, mirrorSwitch.isChecked)
             trigger.setState(FreeTriggerConfig.FLAG_BELOW_KEYBOARD, belowKeyboardSwitch.isChecked)
             trigger.setState(
@@ -444,6 +483,7 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
             trigger.setState(FreeTriggerConfig.FLAG_FEEDBACK, feedbackSwitch.isChecked)
             trigger.setQuadrant(pieConfigQuadrant.getQuadrantClickedList())
         }
+        refreshPreview()
 
         lifecycleScope.launch {
             FreeTriggerDataManager.updateTrigger(this@FreeTriggerConfigActivity, trigger)
@@ -454,6 +494,72 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
             }
             setResult(RESULT_OK)
         }
+    }
+
+    private fun refreshPreview() {
+        if (!::trigger.isInitialized || isInitializingViews) return
+        val preview = FreeTriggerConfig().apply {
+            tag = trigger.tag
+            width = pendingWidth
+            height = pendingHeight
+            xRelativeValue = binding.xPositionSlider.value
+            yRelativeValue = binding.yPositionSlider.value
+            setState(FreeTriggerConfig.FLAG_MIRROR, binding.mirrorSwitch.isChecked)
+        }
+        binding.triggerPreview.bind(preview, otherTriggers)
+        val orientation = when {
+            binding.portraitChip.isChecked && binding.landscapeChip.isChecked -> getString(R.string.trigger_summary_both)
+            binding.portraitChip.isChecked -> getString(R.string.free_trigger_orientation_portrait)
+            binding.landscapeChip.isChecked -> getString(R.string.free_trigger_orientation_landscape)
+            else -> getString(R.string.trigger_summary_none)
+        }
+        val white = binding.whitelistChip.isChecked && trigger.whiteList.isNotEmpty()
+        val black = binding.blacklistChip.isChecked && trigger.blackList.isNotEmpty()
+        val apps = when {
+            white && black -> getString(R.string.trigger_summary_apps_combined, trigger.whiteList.size, trigger.blackList.size)
+            white -> getString(R.string.trigger_summary_apps_white, trigger.whiteList.size)
+            black -> getString(R.string.trigger_summary_apps_black, trigger.blackList.size)
+            else -> getString(R.string.trigger_summary_apps_all)
+        }
+        binding.triggerGeometry.text = getString(R.string.trigger_summary_geometry, pendingWidth, pendingHeight,
+            (preview.xRelativeValue * 100).toInt(), (preview.yRelativeValue * 100).toInt())
+        binding.triggerSummary.text = listOfNotNull(
+            getString(R.string.trigger_summary_orientation, orientation),
+            apps,
+            getString(if (binding.mirrorSwitch.isChecked) R.string.trigger_summary_mirror_on else R.string.trigger_summary_mirror_off),
+            getString(R.string.trigger_summary_self),
+            if (!trigger.enable) getString(R.string.trigger_summary_disabled) else null,
+            getString(R.string.trigger_summary_saved)
+        ).joinToString("\n")
+        val warnings = mutableListOf<String>()
+        if (!serviceEnabled) warnings += getString(R.string.trigger_warning_service)
+        if (!binding.portraitChip.isChecked && !binding.landscapeChip.isChecked) {
+            warnings += getString(R.string.trigger_warning_orientation)
+        }
+        if (pendingWidth != savedWidth || pendingHeight != savedHeight) {
+            warnings += getString(R.string.trigger_warning_size_pending)
+        }
+        val risks = getSizeRiskReasons(pendingWidth, pendingHeight)
+        if (risks.isNotEmpty()) warnings += getString(R.string.trigger_warning_size, risks.joinToString("、"))
+        val bounds = listOfNotNull(freeTriggerBounds(this, preview),
+            if (binding.mirrorSwitch.isChecked) freeTriggerBounds(this, preview, true) else null)
+        if (bounds.size == 2 && Rect.intersects(bounds[0], bounds[1])) {
+            warnings += getString(R.string.trigger_warning_mirror)
+        }
+        val overlapping = otherTriggers.filter { other ->
+            other.enable && (
+                (binding.portraitChip.isChecked && other.getState(FreeTriggerConfig.FLAG_PORTRAIT)) ||
+                    (binding.landscapeChip.isChecked && other.getState(FreeTriggerConfig.FLAG_LANDSCAPE))
+                ) && bounds.any { current ->
+                Rect.intersects(current, freeTriggerBounds(this, other)) ||
+                    (other.getState(FreeTriggerConfig.FLAG_MIRROR) && Rect.intersects(current, freeTriggerBounds(this, other, true)))
+            }
+        }
+        if (overlapping.isNotEmpty()) {
+            warnings += getString(R.string.trigger_warning_overlap, overlapping.joinToString("、") { it.name })
+        }
+        binding.triggerWarning.text = warnings.joinToString("\n")
+        binding.triggerWarning.visibility = if (warnings.isEmpty()) View.GONE else View.VISIBLE
     }
 
     private fun startActionSelection(gestureTypeEvent: GestureTypeEvent) {

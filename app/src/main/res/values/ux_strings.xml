@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_group_start">开始使用</string>
+    <string name="settings_group_gestures">手势与轮盘</string>
+    <string name="settings_group_tools">快捷工具</string>
+    <string name="settings_group_maintenance">数据与维护</string>
+    <string name="settings_service_summary">管理手势运行所需的无障碍服务</string>
+    <string name="settings_appearance_summary">主题、颜色与视觉效果</string>
+    <string name="settings_tools_summary">屏幕内容、OCR、Pin 与其他工具</string>
+    <string name="settings_search_summary">管理搜索引擎与搜索行为</string>
+    <string name="settings_freeform_summary">配置小窗启动方式与兼容选项</string>
+    <string name="settings_backup_summary">本地备份、恢复与 WebDAV</string>
+    <string name="settings_external_summary">管理外部调用与授权</string>
+    <string name="settings_background_summary">后台运行与电池设置指引</string>
+    <string name="settings_about_summary">版本信息与项目说明</string>
+    <string name="settings_trigger_count">%1$d 个触发区，已启用 %2$d 个</string>
+    <string name="settings_wheel_count">%1$d 个轮盘组，默认组：%2$s</string>
+    <string name="settings_summary_unavailable">暂时无法读取配置，点按进入查看</string>
+    <string name="trigger_preview_title">位置与生效范围</string>
+    <string name="trigger_preview_legend">主色为当前触发区，浅色为镜像，灰色为其他已启用区域。示意图按当前屏幕比例显示。</string>
+    <string name="trigger_config_done">完成</string>
+    <string name="trigger_summary_geometry">宽 %1$d × 高 %2$d dp · 水平 %3$d%% · 垂直 %4$d%%</string>
+    <string name="trigger_summary_orientation">生效方向：%1$s</string>
+    <string name="trigger_summary_both">竖屏和横屏</string>
+    <string name="trigger_summary_mirror_on">左右镜像：已开启</string>
+    <string name="trigger_summary_mirror_off">左右镜像：未开启</string>
+    <string name="trigger_summary_none">未选择方向</string>
+    <string name="trigger_summary_apps_all">应用范围：所有应用</string>
+    <string name="trigger_summary_apps_black">应用范围：排除 %1$d 个应用</string>
+    <string name="trigger_summary_apps_white">应用范围：仅限 %1$d 个应用</string>
+    <string name="trigger_summary_apps_combined">应用范围：仅限 %1$d 个应用，同时排除 %2$d 个应用</string>
+    <string name="trigger_summary_self">本应用内始终允许显示触发区</string>
+    <string name="trigger_summary_disabled">此触发区已停用，配置不会使其自动启用</string>
+    <string name="trigger_summary_saved">修改自动保存；宽高在结束调整后保存</string>
+    <string name="trigger_warning_overlap">与“%1$s”的区域重叠；同时生效时可能影响触发。</string>
+    <string name="trigger_warning_mirror">当前触发区与其镜像重叠。</string>
+    <string name="trigger_warning_size_pending">宽高调整尚未保存。</string>
+    <string name="trigger_warning_size">当前范围较大：%1$s，可能遮挡应用操作。</string>
+    <string name="trigger_warning_orientation">未选择生效方向，此触发区不会显示。</string>
+    <string name="trigger_warning_service">无障碍服务未开启，当前仅显示页面内示意。</string>
+    <string name="action_copy_panel_title">复制配置</string>
+    <string name="action_copy_panel_hint">选择复制方向，覆盖后可撤销</string>
+    <string name="action_copy_panel_empty">先选择动作，再复制到另一侧</string>
+    <string name="action_copy_short_compact">短按 → 长按</string>
+    <string name="action_copy_long_compact">长按 → 短按</string>
+    <string name="action_copy_result">已复制到%1$s，保存后生效</string>
+</resources>
