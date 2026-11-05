@@ -142,7 +142,6 @@
     <string name="appearance_settings_pointer_shape">指针形状</string>
     <string name="appearance_settings_pointer_shape_dot">圆点</string>
     <string name="appearance_settings_pointer_shape_small_dot">小圆点</string>
-    <string name="appearance_settings_pointer_shape_ring">圆环</string>
     <string name="appearance_settings_pointer_shape_cross">十字准星</string>
     <string name="appearance_settings_pointer_shape_arrow">箭头</string>
     <string name="appearance_settings_pointer_size">指针大小</string>
@@ -1001,7 +1000,12 @@
     <string name="gesture_action_pause_gesture">临时禁用手势</string>
     <string name="gesture_add_action_pause_seconds_title">临时禁用手势</string>
     <string name="gesture_add_action_pause_seconds_hint">请输入禁用秒数</string>
-    <string name="gesture_add_action_pause_seconds_invalid">请输入大于0的秒数</string>
+    <string name="gesture_add_action_pause_seconds_invalid">请输入 1 至 86400 的秒数</string>
+    <string name="pause_gesture_scope_title">禁用范围</string>
+    <string name="pause_gesture_scope_current">当前触发区</string>
+    <string name="pause_gesture_scope_all">全部触发区</string>
+    <string name="pause_gesture_scope_description">当前触发区：仅禁用本次手势所在的触发区；从轮盘调用时，禁用唤出该轮盘的触发区。包含该触发区的镜像区域。</string>
+    <string name="pause_gesture_action_summary">%1$s · %2$s 秒</string>
     <string name="temp_dnd_policy_access_required">请先授权“免打扰权限”</string>
     <plurals name="temp_dnd_enabled_minutes">
         <item quantity="one">已开启免打扰 %1$d 分钟</item>

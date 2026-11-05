@@ -241,6 +241,16 @@ class FreeTriggerFloating(
         }
     }
 
+    /** A trigger group includes both the original area and its mirror. */
+    suspend fun pauseGestureTemporarily(
+        sourceTriggerTag: String?,
+        durationMs: Long,
+        allTriggers: Boolean
+    ) = withContext(Dispatchers.Main) {
+        val tags = if (allTriggers) triggerViews.keys.toList() else listOfNotNull(sourceTriggerTag)
+        tags.forEach { pauseTriggerTemporarily(it, durationMs) }
+    }
+
     suspend fun pauseTriggerTemporarily(
         tag: String,
         durationMs: Long,

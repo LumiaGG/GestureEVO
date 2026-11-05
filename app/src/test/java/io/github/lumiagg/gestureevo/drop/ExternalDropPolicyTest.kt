@@ -1,6 +1,7 @@
 package io.github.lumiagg.gestureevo.drop
 
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -20,6 +21,23 @@ class ExternalDropPolicyTest {
     @Test fun ignoresUnsupportedOrMissingMimeTypes() {
         assertFalse(ExternalDropPolicy.accepts(false, false, emptyList()))
         assertFalse(ExternalDropPolicy.accepts(false, false, listOf("application/pdf", "video/mp4")))
+    }
+
+    @Test fun ignoresNullMimeTypesWhenAcceptingDrags() {
+        assertFalse(ExternalDropPolicy.accepts(false, false, listOf(null)))
+        assertFalse(ExternalDropPolicy.accepts(false, false, listOf(null, "application/pdf")))
+        listOf("text/plain", "text/uri-list", "image/png").forEach {
+            assertTrue(ExternalDropPolicy.accepts(false, false, listOf(null, it, null)))
+        }
+        assertFalse(ExternalDropPolicy.accepts(true, false, listOf(null, "image/png")))
+        assertFalse(ExternalDropPolicy.accepts(false, true, listOf(null, "text/plain")))
+    }
+
+    @Test fun ignoresNullMimeTypesWhenClassifyingContent() {
+        assertEquals(ExternalDropPolicy.Content.URI, ExternalDropPolicy.content(listOf(null)))
+        assertEquals(ExternalDropPolicy.Content.URI, ExternalDropPolicy.content(listOf(null, "text/uri-list")))
+        assertEquals(ExternalDropPolicy.Content.TEXT, ExternalDropPolicy.content(listOf(null, "text/plain", null)))
+        assertEquals(ExternalDropPolicy.Content.IMAGE, ExternalDropPolicy.content(listOf(null, "text/plain", "image/png")))
     }
 
     @Test fun filtersSearchEnginesByDraggedContent() {
