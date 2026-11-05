@@ -17,6 +17,7 @@ import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
 import io.github.lumiagg.gestureevo.gesture.GestureService
+import io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
 import io.github.lumiagg.gestureevo.inspire.InspireContentActivity
 import io.github.lumiagg.gestureevo.inspire.InspireDataHolder
 import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
@@ -27,10 +28,12 @@ import io.github.lumiagg.gestureevo.search.QuickSearchEnginePager
 import io.github.lumiagg.gestureevo.search.config.EngineType
 import io.github.lumiagg.gestureevo.search.config.SearchEngine
 import io.github.lumiagg.gestureevo.search.config.SearchEngineDataManager
+import io.github.lumiagg.gestureevo.search.setEngineIcon
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SHOW_ENGINES
 import io.github.lumiagg.gestureevo.share.ImageShareLauncher
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
+import io.github.lumiagg.gestureevo.utils.ScreenUtil
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.dp2px
 import io.github.lumiagg.gestureevo.utils.readKey
@@ -52,6 +55,14 @@ class ExternalDropFloating(private val service: GestureService) :
     private val targets = LayoutInflater.from(themeContext)
         .inflate(R.layout.external_drop_floating, null)
     private val enginePager = targets.findViewById<QuickSearchEnginePager>(R.id.externalDropEngines)
+    private val previewIcon = RoundImageTextView(themeContext).apply {
+        alpha = 0f
+        setTransparentBackground(true)
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    }
+    private var previewAction: Action? = null
+    private var previewEngine: SearchEngine? = null
+    private var showImageBadge = true
     private val imageShareLauncher = ImageShareLauncher(service.applicationContext)
     private var dragGeneration = 0
     private var prepareJob: Job? = null
@@ -77,6 +88,18 @@ class ExternalDropFloating(private val service: GestureService) :
             gravity = Gravity.BOTTOM,
             allowDisplayCutout = false,
             title = "GestureEVO:ExternalDrop:Targets",
+        )
+    }
+    private val previewParams = WindowManager.LayoutParams().apply {
+        configureAccessibilityOverlay(
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            width = 100.dp2px.toInt(),
+            height = 100.dp2px.toInt(),
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL,
+            allowDisplayCutout = false,
+            title = "GestureEVO:ExternalDrop:Preview",
         )
     }
 
@@ -131,6 +154,10 @@ class ExternalDropFloating(private val service: GestureService) :
         enginePager.setExternalDropCallbacks(
             accepts = { !destroyed && accepts(it) },
             onDrop = { engine, event -> receive(event, Action.SEARCH, engine) },
+            onHoverChanged = { engine ->
+                if (engine == null) hidePreview(Action.SEARCH)
+                else showPreview(Action.SEARCH, engine)
+            },
         )
     }
 
@@ -163,13 +190,14 @@ class ExternalDropFloating(private val service: GestureService) :
             enginePager.submitList(emptyList())
             return
         }
+        showImageBadge = store.readKey(SearchEngineSettingsActivity.KEY_SHOW_IMAGE_BADGE, true)
         enginePager.configure(QuickSearchEnginePager.Config(
             rowCount = store.readKey(SearchEngineSettingsActivity.KEY_ROW_COUNT, 1)
                 .coerceIn(SearchEngineSettingsActivity.MIN_ROW_COUNT, SearchEngineSettingsActivity.MAX_ROW_COUNT),
             columnCount = store.readKey(SearchEngineSettingsActivity.KEY_COLUMN_COUNT, 5)
                 .coerceIn(SearchEngineSettingsActivity.MIN_COLUMN_COUNT, SearchEngineSettingsActivity.MAX_COLUMN_COUNT),
             showLabel = store.readKey(SearchEngineSettingsActivity.KEY_ENGINE_SHOW_LABEL, true),
-            showImageBadge = store.readKey(SearchEngineSettingsActivity.KEY_SHOW_IMAGE_BADGE, true),
+            showImageBadge = showImageBadge,
             previewSortMode = false,
         ))
         val content = ExternalDropPolicy.content(
@@ -191,20 +219,61 @@ class ExternalDropFloating(private val service: GestureService) :
             setHighlighted(targets.findViewById(it), false)
         }
         attachViewSafely(targets, targetParams, shouldRetry = { dragActive && !destroyed })
+        previewParams.y = ScreenUtil.getScreenHeight(service) / 3
+        attachViewSafely(previewIcon, previewParams, shouldRetry = { dragActive && !destroyed })
     }
 
-    private fun hideTargets() = detachViewSafely(targets)
+    private fun hideTargets() {
+        previewAction = null
+        previewEngine = null
+        previewIcon.animate().cancel()
+        previewIcon.alpha = 0f
+        detachViewSafely(previewIcon)
+        detachViewSafely(targets)
+    }
+
+    private fun showPreview(action: Action, engine: SearchEngine? = null) {
+        if (!dragActive || destroyed || dropped) return
+        if (previewAction == action && previewEngine == engine) return
+        previewAction = action
+        previewEngine = engine
+        previewIcon.animate().cancel()
+        previewIcon.setBadge(null)
+        when (action) {
+            Action.SEARCH -> setEngineIcon(themeContext, previewIcon, checkNotNull(engine), showImageBadge)
+            Action.POOL -> previewIcon.setImageWithBackplate(R.drawable.pinboard_24px)
+            Action.PIN -> previewIcon.setImageWithBackplate(R.drawable.baseline_push_pin_24)
+            Action.TOKENIZE -> previewIcon.setImageWithBackplate(R.drawable.outline_center_focus_weak_24)
+        }
+        previewIcon.animate().alpha(1f).setDuration(150).start()
+    }
+
+    private fun hidePreview(action: Action? = null) {
+        // An exit from the previous target must not clear a newer target's preview.
+        if (action != null && previewAction != action) return
+        previewAction = null
+        previewEngine = null
+        previewIcon.animate().cancel()
+        previewIcon.animate().alpha(0f).setDuration(150).start()
+    }
 
     private fun bindTarget(id: Int, action: Action) {
         val card = targets.findViewById<MaterialCardView>(id)
         card.setOnDragListener { _, event ->
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> !destroyed && accepts(event)
-                DragEvent.ACTION_DRAG_ENTERED -> { setHighlighted(card, true); true }
+                DragEvent.ACTION_DRAG_ENTERED -> {
+                    setHighlighted(card, true)
+                    showPreview(action)
+                    true
+                }
                 DragEvent.ACTION_DRAG_LOCATION -> true
-                DragEvent.ACTION_DRAG_EXITED -> { setHighlighted(card, false); true }
+                DragEvent.ACTION_DRAG_EXITED, DragEvent.ACTION_DRAG_ENDED -> {
+                    setHighlighted(card, false)
+                    hidePreview(action)
+                    true
+                }
                 DragEvent.ACTION_DROP -> receive(event, action)
-                DragEvent.ACTION_DRAG_ENDED -> { setHighlighted(card, false); true }
                 else -> false
             }
         }
@@ -219,6 +288,7 @@ class ExternalDropFloating(private val service: GestureService) :
     }
 
     private fun receive(event: DragEvent, action: Action, engine: SearchEngine? = null): Boolean {
+        hidePreview()
         if (destroyed || dropped) return false
         val clip = event.clipData ?: return false
         if (clip.itemCount == 0) return false
