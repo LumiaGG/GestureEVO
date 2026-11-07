@@ -176,9 +176,7 @@ class ExternalDropFloating(private val service: GestureService) :
             (0 until description.mimeTypeCount).map(description::getMimeType)
         )
         val engines = SearchEngineDataManager.readSearchEngineList(service).filter {
-            it.showInSearchEngineList && ExternalDropPolicy.showsEngine(
-                content, it.engineType == EngineType.SHARE_IMAGE_TO_APP
-            )
+            it.showInSearchEngineList && ExternalDropPolicy.showsEngine(content, it)
         }
         enginePager.submitList(engines)
         enginePager.scrollTo(0, 0)
@@ -250,20 +248,22 @@ class ExternalDropFloating(private val service: GestureService) :
     private suspend fun search(clip: ClipData, engine: SearchEngine) {
         val images = mutableListOf<Uri>()
         val texts = mutableListOf<String>()
+        // Pure image engines only collect images; dual-mode engines collect both so
+        // the executor can pick the image flow whenever the clip carries images.
+        val collectImages = engine.supportsImageShare()
+        val collectTexts = engine.engineType != EngineType.SHARE_IMAGE_TO_APP
         for (index in 0 until clip.itemCount) {
             val item = clip.getItemAt(index)
             val uri = item.uri
-            if (engine.engineType == EngineType.SHARE_IMAGE_TO_APP) {
-                if (isImage(clip, uri)) {
-                    decodeImage(checkNotNull(uri))?.use { image ->
-                        // Copy into EVO's sharing cache before the source's transient grant ends.
-                        val payload = withContext(Dispatchers.IO) {
-                            imageShareLauncher.buildPayload(image.requireBitmap(), null)
-                        }
-                        images += checkNotNull(payload).contentUris
+            if (collectImages && isImage(clip, uri)) {
+                decodeImage(checkNotNull(uri))?.use { image ->
+                    // Copy into EVO's sharing cache before the source's transient grant ends.
+                    val payload = withContext(Dispatchers.IO) {
+                        imageShareLauncher.buildPayload(image.requireBitmap(), null)
                     }
+                    images += checkNotNull(payload).contentUris
                 }
-            } else if (!isImage(clip, uri)) {
+            } else if (collectTexts && !isImage(clip, uri)) {
                 val text = withContext(Dispatchers.IO) { item.coerceToText(service)?.toString() }
                 if (!text.isNullOrBlank()) texts += text
             }

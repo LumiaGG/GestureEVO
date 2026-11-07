@@ -20,6 +20,7 @@ import io.github.lumiagg.gestureevo.gesture.config.IconType
 import io.github.lumiagg.gestureevo.search.config.EngineType
 import io.github.lumiagg.gestureevo.search.config.SearchEngine
 import io.github.lumiagg.gestureevo.search.config.SearchEngineDataManager
+import io.github.lumiagg.gestureevo.search.imageBadgeIcon
 import io.github.lumiagg.gestureevo.search.setEngineIcon
 import io.github.lumiagg.gestureevo.settings.ui.ActivityFilters
 import io.github.lumiagg.gestureevo.settings.ui.ActivityModel
@@ -91,6 +92,7 @@ class SearchEngineAddActivity : AppCompatActivity() {
         }
 
         setupModeSelector()
+        setupShareImageDualConfig()
 
         // Initially display configuration for first engine type
         showConfigForType(EngineType.DIRECT_LINK)
@@ -132,6 +134,11 @@ class SearchEngineAddActivity : AppCompatActivity() {
         binding.shareToAppConfig.root.visibility = View.GONE
         binding.shareImageToAppConfig.root.visibility = View.GONE
 
+        // The dual-mode image share section only applies to text modes
+        val showImageShareDualConfig = type != EngineType.SHARE_IMAGE_TO_APP
+        binding.shareImageDualConfig.root.visibility =
+            if (showImageShareDualConfig) View.VISIBLE else View.GONE
+
         // Show corresponding configuration layout
         when (type) {
             EngineType.DIRECT_LINK -> {
@@ -154,13 +161,16 @@ class SearchEngineAddActivity : AppCompatActivity() {
                 setupShareToTextAppConfig()
             }
 
-            EngineType.SHARE_IMAGE_TO_APP -> {
-                binding.shareImageToAppConfig.root.visibility = View.VISIBLE
-                setupShareToImageActivityConfig()
+                EngineType.SHARE_IMAGE_TO_APP -> {
+                    binding.shareImageToAppConfig.root.visibility = View.VISIBLE
+                    setupShareToImageActivityConfig()
+                }
             }
+            if (showImageShareDualConfig) {
+                updateShareImageDualDetails()
+            }
+            updateEngineIconPreview()
         }
-        updateEngineIconPreview()
-    }
 
     private fun setupDirectLinkConfig() {
         updateDirectLinkCustomTabsSwitch()
@@ -315,6 +325,43 @@ class SearchEngineAddActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupShareImageDualConfig() {
+        binding.shareImageDualConfig.imageShareEnableSwitch.setOnCheckedChangeListener { _, isChecked ->
+            searchEngine.imageShareEnabled = isChecked
+            updateShareImageDualDetails()
+            updateEngineIconPreview()
+        }
+        // The engine icon belongs to the text mode, so selecting the image
+        // share target never rewrites the icon automatically.
+        binding.shareImageDualConfig.imageShareDualSelectActivity.setOnClickListener {
+            SelectActivityBottomSheet(this, lifecycleScope, object : SelectActivityCallBack {
+                override fun selectCompleted(model: ActivityModel) {
+                    searchEngine.imageTargetPackage = model.packageName
+                    searchEngine.imageTargetActivity = model.activityName
+                    binding.shareImageDualConfig.imageShareDualTargetActivity.text =
+                        getString(R.string.package_activity_label, model.packageName, model.activityName)
+                }
+            }, ActivityFilters.imageShareFilter()).show()
+        }
+    }
+
+    private fun updateShareImageDualDetails() {
+        binding.shareImageDualConfig.imageShareDualDetails.visibility =
+            if (searchEngine.imageShareEnabled) View.VISIBLE else View.GONE
+    }
+
+    private fun formatImageShareDualTarget(): String = when {
+        searchEngine.imageTargetPackage.isNullOrEmpty() ->
+            getString(R.string.se_share_image_not_set)
+        searchEngine.imageTargetActivity.isNullOrEmpty() ->
+            searchEngine.imageTargetPackage.orEmpty()
+        else -> getString(
+            R.string.package_activity_label,
+            searchEngine.imageTargetPackage,
+            searchEngine.imageTargetActivity
+        )
+    }
+
     private fun initData(savedInstanceState: Bundle?) {
         editMode = intent.getBooleanExtra("editMode", false)
         setupToolbar()
@@ -382,6 +429,14 @@ class SearchEngineAddActivity : AppCompatActivity() {
                     getString(R.string.package_activity_label, searchEngine.targetPackage, searchEngine.targetActivity)
             }
         }
+
+        if (searchEngine.engineType != EngineType.SHARE_IMAGE_TO_APP) {
+            binding.shareImageDualConfig.imageShareEnableSwitch.isChecked =
+                searchEngine.imageShareEnabled
+            binding.shareImageDualConfig.imageShareDualTargetActivity.text =
+                formatImageShareDualTarget()
+            updateShareImageDualDetails()
+        }
     }
 
     private fun updateDirectLinkCustomTabsSwitch() {
@@ -420,7 +475,7 @@ class SearchEngineAddActivity : AppCompatActivity() {
             .setOnClickListener {
                 bottomSheet.dismiss()
                 selectImageLauncher.launch(IconEditorRequest(
-                    imageBadge = searchEngine.engineType == EngineType.SHARE_IMAGE_TO_APP && showImageBadge,
+                    badgeIcon = if (showImageBadge) imageBadgeIcon(searchEngine) ?: 0 else 0,
                 ))
             }
 
@@ -431,7 +486,7 @@ class SearchEngineAddActivity : AppCompatActivity() {
                     override fun selectCompleted(model: APPModel) {
                         selectImageLauncher.launch(IconEditorRequest(
                             appPackage = model.pkgName,
-                            imageBadge = searchEngine.engineType == EngineType.SHARE_IMAGE_TO_APP && showImageBadge,
+                            badgeIcon = if (showImageBadge) imageBadgeIcon(searchEngine) ?: 0 else 0,
                         ))
                     }
                 }).show()
@@ -442,7 +497,7 @@ class SearchEngineAddActivity : AppCompatActivity() {
                 bottomSheet.dismiss()
                 selectTextIconLauncher.launch(TextIconEditorRequest(
                     text = if (searchEngine.iconType == IconType.TEXT) searchEngine.textIcon.orEmpty() else "",
-                    imageBadge = searchEngine.engineType == EngineType.SHARE_IMAGE_TO_APP && showImageBadge,
+                    badgeIcon = if (showImageBadge) imageBadgeIcon(searchEngine) ?: 0 else 0,
                 ))
             }
 
@@ -511,11 +566,8 @@ class SearchEngineAddActivity : AppCompatActivity() {
     }
 
     private fun updateEngineIconBadgePreview() {
-        if (searchEngine.engineType == EngineType.SHARE_IMAGE_TO_APP && showImageBadge) {
-            binding.engineIcon.setBadge(R.drawable.baseline_image_24)
-        } else {
-            binding.engineIcon.setBadge(null)
-        }
+        val badgeIcon = if (showImageBadge) imageBadgeIcon(searchEngine) else null
+        binding.engineIcon.setBadge(badgeIcon)
     }
 
 
@@ -556,7 +608,11 @@ class SearchEngineAddActivity : AppCompatActivity() {
             EngineType.SHARE_IMAGE_TO_APP -> {
                 !searchEngine.targetPackage.isNullOrEmpty()
             }
-        }
+        } &&
+            // Dual-mode engines require a dedicated image share target
+            (currentEngineType == EngineType.SHARE_IMAGE_TO_APP ||
+                !searchEngine.imageShareEnabled ||
+                !searchEngine.imageTargetPackage.isNullOrEmpty())
 
         if (!isValid) {
             withContext(Dispatchers.Main) {

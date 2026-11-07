@@ -141,8 +141,9 @@ class IconEditorActivity : AppCompatActivity() {
             binding.previewHint.setText(R.string.icon_editor_wheel_preview)
         }
         if (textMode) binding.iconPreview.setText("")
-        if (intent.getBooleanExtra(EXTRA_IMAGE_BADGE, false)) {
-            binding.iconPreview.setBadge(R.drawable.baseline_image_24)
+        val badgeIcon = intent.getIntExtra(EXTRA_IMAGE_BADGE, 0)
+        if (badgeIcon != 0) {
+            binding.iconPreview.setBadge(badgeIcon)
         }
     }
 
