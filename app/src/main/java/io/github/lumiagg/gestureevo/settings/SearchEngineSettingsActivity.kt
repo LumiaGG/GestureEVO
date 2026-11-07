@@ -319,13 +319,19 @@ class SearchEngineSettingsActivity : AppCompatActivity() {
                 itemBinding.engineName.text = model.name
 
                 // Set engine type tag
-                itemBinding.engineType.text = when (model.engineType) {
+                val typeLabel = when (model.engineType) {
                     EngineType.DIRECT_LINK -> getString(R.string.search_engine_type_direct_link)
                     EngineType.SHARE_TO_APP -> getString(R.string.search_engine_type_share)
                     EngineType.SHARE_IMAGE_TO_APP -> getString(R.string.search_engine_type_share_image)
                     EngineType.JUMP_TO_ACTIVITY -> getString(R.string.search_engine_type_jump_activity)
                     EngineType.EXTERN_JUMP_LINK -> getString(R.string.search_engine_type_extern_jump)
                 }
+                itemBinding.engineType.text =
+                    if (model.engineType != EngineType.SHARE_IMAGE_TO_APP && model.imageShareEnabled) {
+                        getString(R.string.search_engine_type_with_image, typeLabel)
+                    } else {
+                        typeLabel
+                    }
 
                 // Set default flag
                 val isDefault = model.tag == defaultEngineTag

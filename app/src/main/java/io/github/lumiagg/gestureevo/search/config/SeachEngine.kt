@@ -36,6 +36,30 @@ class SearchEngine {
     var autoInputEnter: Boolean = true
     var showInSearchEngineList: Boolean = true
 
+    // Dual-mode support: a text-mode engine can additionally share images to a dedicated target.
+    var imageShareEnabled: Boolean = false
+    var imageTargetPackage: String? = null
+    var imageTargetActivity: String? = null
+
+    /**
+     * True for pure image engines and for text engines with image share enabled.
+     */
+    fun supportsImageShare(): Boolean =
+        engineType == EngineType.SHARE_IMAGE_TO_APP || imageShareEnabled
+
+    /**
+     * Package used by the image share flow: pure image engines reuse the main
+     * target config, dual-mode engines use their dedicated image target.
+     */
+    fun imageShareTargetPackage(): String? =
+        if (engineType == EngineType.SHARE_IMAGE_TO_APP) targetPackage else imageTargetPackage
+
+    /**
+     * Activity used by the image share flow, following [imageShareTargetPackage].
+     */
+    fun imageShareTargetActivity(): String? =
+        if (engineType == EngineType.SHARE_IMAGE_TO_APP) targetActivity else imageTargetActivity
+
     fun toJson(format: Boolean = true): String {
         return MoshiUtils.toJson(this, format = format)
     }
@@ -80,7 +104,10 @@ class SearchEngine {
             targetPackage = targetPackage,
             targetActivity = targetActivity,
             useCustomTabs = useCustomTabs,
-            autoInputEnter = autoInputEnter
+            autoInputEnter = autoInputEnter,
+            imageShareEnabled = imageShareEnabled,
+            imageTargetPackage = imageTargetPackage,
+            imageTargetActivity = imageTargetActivity
         )
     }
 
@@ -96,7 +123,10 @@ class SearchEngine {
         val targetPackage: String?,
         val targetActivity: String?,
         val useCustomTabs: Boolean,
-        val autoInputEnter: Boolean
+        val autoInputEnter: Boolean,
+        val imageShareEnabled: Boolean = false,
+        val imageTargetPackage: String? = null,
+        val imageTargetActivity: String? = null
     )
 }
 

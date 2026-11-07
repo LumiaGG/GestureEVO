@@ -7,7 +7,7 @@ import androidx.activity.result.contract.ActivityResultContract
 
 data class IconEditorRequest(
     val wheelStyle: String? = null,
-    val imageBadge: Boolean = false,
+    val badgeIcon: Int = 0,
     val appPackage: String? = null,
 )
 
@@ -16,7 +16,7 @@ class IconEditorContract : ActivityResultContract<IconEditorRequest, String?>() 
     override fun createIntent(context: Context, input: IconEditorRequest) =
         Intent(context, IconEditorActivity::class.java)
             .putExtra(IconEditorActivity.EXTRA_WHEEL_STYLE, input.wheelStyle)
-            .putExtra(IconEditorActivity.EXTRA_IMAGE_BADGE, input.imageBadge)
+            .putExtra(IconEditorActivity.EXTRA_IMAGE_BADGE, input.badgeIcon)
             .putExtra(IconEditorActivity.EXTRA_APP_PACKAGE, input.appPackage)
 
     override fun parseResult(resultCode: Int, intent: Intent?): String? =
@@ -24,13 +24,13 @@ class IconEditorContract : ActivityResultContract<IconEditorRequest, String?>() 
         else null
 }
 
-data class TextIconEditorRequest(val text: String, val imageBadge: Boolean = false)
+data class TextIconEditorRequest(val text: String, val badgeIcon: Int = 0)
 
 class TextIconEditorContract : ActivityResultContract<TextIconEditorRequest, String?>() {
     override fun createIntent(context: Context, input: TextIconEditorRequest) =
         Intent(context, IconEditorActivity::class.java)
             .putExtra(IconEditorActivity.EXTRA_TEXT_ICON, input.text)
-            .putExtra(IconEditorActivity.EXTRA_IMAGE_BADGE, input.imageBadge)
+            .putExtra(IconEditorActivity.EXTRA_IMAGE_BADGE, input.badgeIcon)
 
     override fun parseResult(resultCode: Int, intent: Intent?): String? =
         if (resultCode == Activity.RESULT_OK) intent?.getStringExtra(IconEditorActivity.EXTRA_TEXT_ICON)
