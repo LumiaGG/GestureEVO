@@ -1,11 +1,17 @@
 package io.github.lumiagg.gestureevo.drop
 
+import io.github.lumiagg.gestureevo.search.config.EngineType
+import io.github.lumiagg.gestureevo.search.config.SearchEngine
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExternalDropPolicyTest {
+    private val textEngine = SearchEngine()
+    private val imageEngine = SearchEngine().apply { engineType = EngineType.SHARE_IMAGE_TO_APP }
+    private val dualEngine = SearchEngine().apply { imageShareEnabled = true }
+
     @Test fun excludesEvoAndLocalDragsEvenWithSupportedContent() {
         assertFalse(ExternalDropPolicy.accepts(true, false, listOf("image/png")))
         assertFalse(ExternalDropPolicy.accepts(false, true, listOf("text/plain")))
@@ -42,16 +48,29 @@ class ExternalDropPolicyTest {
 
     @Test fun filtersSearchEnginesByDraggedContent() {
         val image = ExternalDropPolicy.content(listOf("image/png", "text/uri-list"))
-        assertTrue(ExternalDropPolicy.showsEngine(image, true))
-        assertFalse(ExternalDropPolicy.showsEngine(image, false))
+        assertTrue(ExternalDropPolicy.showsEngine(image, imageEngine))
+        assertFalse(ExternalDropPolicy.showsEngine(image, textEngine))
         val text = ExternalDropPolicy.content(listOf("text/plain", "text/html"))
-        assertTrue(ExternalDropPolicy.showsEngine(text, false))
-        assertFalse(ExternalDropPolicy.showsEngine(text, true))
+        assertTrue(ExternalDropPolicy.showsEngine(text, textEngine))
+        assertFalse(ExternalDropPolicy.showsEngine(text, imageEngine))
     }
 
     @Test fun leavesBothEngineKindsForUrisWhoseTypeIsUnknownUntilDrop() {
         val uri = ExternalDropPolicy.content(listOf("text/uri-list"))
-        assertTrue(ExternalDropPolicy.showsEngine(uri, false))
-        assertTrue(ExternalDropPolicy.showsEngine(uri, true))
+        assertTrue(ExternalDropPolicy.showsEngine(uri, textEngine))
+        assertTrue(ExternalDropPolicy.showsEngine(uri, imageEngine))
+        assertTrue(ExternalDropPolicy.showsEngine(uri, dualEngine))
+    }
+
+    @Test fun dualModeEnginesAcceptImagesAndTextForEveryTextMode() {
+        EngineType.entries.filter { it != EngineType.SHARE_IMAGE_TO_APP }.forEach { type ->
+            dualEngine.engineType = type
+            assertTrue(ExternalDropPolicy.showsEngine(ExternalDropPolicy.Content.IMAGE, dualEngine))
+            assertTrue(ExternalDropPolicy.showsEngine(ExternalDropPolicy.Content.TEXT, dualEngine))
+            dualEngine.imageShareEnabled = false
+            assertFalse(ExternalDropPolicy.showsEngine(ExternalDropPolicy.Content.IMAGE, dualEngine))
+            assertTrue(ExternalDropPolicy.showsEngine(ExternalDropPolicy.Content.TEXT, dualEngine))
+            dualEngine.imageShareEnabled = true
+        }
     }
 }
