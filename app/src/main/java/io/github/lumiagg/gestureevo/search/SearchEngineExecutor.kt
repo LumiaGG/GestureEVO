@@ -40,7 +40,8 @@ class SearchEngineExecutor(
     fun execute(
         query: String = "",
         bitmapHandle: ManagedBitmap? = null,
-        imageUris: List<Uri> = emptyList()
+        imageUris: List<Uri> = emptyList(),
+        onSearchStarting: () -> Boolean = { true }
     ) =
         activity.lifecycleScope.launch(uiDispatcher) {
             val triggerSide = if (activity is QuickSearchActivity) {
@@ -57,6 +58,7 @@ class SearchEngineExecutor(
             } else {
                 resolvedMode
             }
+            if (!onSearchStarting()) return@launch
             when {
                 mode == SearchContentMode.IMAGE -> {
                     if (!executeShareImageSearch(bitmapHandle, imageUris, triggerSide)) {
