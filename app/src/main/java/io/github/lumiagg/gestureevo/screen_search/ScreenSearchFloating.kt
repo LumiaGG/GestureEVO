@@ -2,6 +2,7 @@ package io.github.lumiagg.gestureevo.screen_search
 
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.Color
 import android.graphics.Rect
 import android.view.ContextThemeWrapper
 import android.view.Gravity
@@ -10,6 +11,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.EditorInfo
+import com.google.android.material.color.MaterialColors
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.ScreenSearchFloatingViewBinding
 import io.github.lumiagg.gestureevo.databinding.ScreenSearchIndicatorViewBinding
@@ -483,8 +485,9 @@ class ScreenSearchFloating(private val context: GestureService) :
     private fun applyThemeColors() {
         val primary = DynamicColorUtils.primaryColor
         val onSurfaceColor = DynamicColorUtils.onSurfaceColor
-        DynamicColorUtils.onSurfaceVariantColor
+        val onSurfaceVariantColor = DynamicColorUtils.onSurfaceVariantColor
         val surfaceHigh = DynamicColorUtils.surfaceContainerHighColor
+        val surfaceHighest = DynamicColorUtils.surfaceContainerHighestColor
         val outlineColor = DynamicColorUtils.outlineColor
 
         binding.panelCard.setCardBackgroundColor(surfaceHigh)
@@ -493,6 +496,42 @@ class ScreenSearchFloating(private val context: GestureService) :
         binding.keywordInput.setTextColor(onSurfaceColor)
         binding.keywordInput.setHintTextColor(primary)
         binding.switchAccessibilityMode.setTextColor(onSurfaceColor)
+        binding.statusText.setTextColor(onSurfaceColor)
+
+        // The filled input box resolves its colors from the theme at inflation;
+        // reapply them so a day/night flip cannot leave a stale box behind.
+        binding.keywordInputLayout.setBoxBackgroundColorStateList(ColorStateList.valueOf(surfaceHighest))
+        binding.keywordInputLayout.boxStrokeColor = primary
+        binding.keywordInputLayout.defaultHintTextColor = ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf()),
+            intArrayOf(primary, onSurfaceVariantColor),
+        )
+
+        // Mirror the Material3 switch palette: checked thumb/track use onPrimary/primary,
+        // unchecked use outline/surfaceContainerHighest, disabled fades towards onSurface.
+        val onPrimary = MaterialColors.getColor(
+            DynamicColorUtils.dynamicThemedContext(context),
+            com.google.android.material.R.attr.colorOnPrimary,
+            primary,
+        )
+        val disabledThumb = Color.argb(0x61, Color.red(onSurfaceColor), Color.green(onSurfaceColor), Color.blue(onSurfaceColor))
+        val disabledTrack = Color.argb(0x1F, Color.red(onSurfaceColor), Color.green(onSurfaceColor), Color.blue(onSurfaceColor))
+        binding.switchAccessibilityMode.thumbTintList = ColorStateList(
+            arrayOf(
+                intArrayOf(-android.R.attr.state_enabled),
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf(),
+            ),
+            intArrayOf(disabledThumb, onPrimary, outlineColor),
+        )
+        binding.switchAccessibilityMode.trackTintList = ColorStateList(
+            arrayOf(
+                intArrayOf(-android.R.attr.state_enabled),
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf(),
+            ),
+            intArrayOf(disabledTrack, primary, surfaceHighest),
+        )
 
         val primaryTint = ColorStateList.valueOf(primary)
         binding.btnClose.setTextColor(primary)
