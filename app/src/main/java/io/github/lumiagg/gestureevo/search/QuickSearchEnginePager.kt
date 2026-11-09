@@ -66,6 +66,7 @@ class QuickSearchEnginePager @JvmOverloads constructor(
     private var onOrderChanged: (List<SearchEngine>) -> Unit = {}
     private var acceptsExternalDrag: ((DragEvent) -> Boolean)? = null
     private var onExternalDrop: ((SearchEngine, DragEvent) -> Boolean)? = null
+    private var onExternalHoverChanged: (SearchEngine?) -> Unit = {}
     private var externalDragActive = false
     private var externalHoverPosition = NO_POSITION
     private var externalEdgeDirection = 0
@@ -147,9 +148,11 @@ class QuickSearchEnginePager @JvmOverloads constructor(
     fun setExternalDropCallbacks(
         accepts: (DragEvent) -> Boolean,
         onDrop: (SearchEngine, DragEvent) -> Boolean,
+        onHoverChanged: (SearchEngine?) -> Unit = {},
     ) {
         acceptsExternalDrag = accepts
         onExternalDrop = onDrop
+        onExternalHoverChanged = onHoverChanged
     }
 
     override fun onDragEvent(event: DragEvent): Boolean {
@@ -194,6 +197,7 @@ class QuickSearchEnginePager @JvmOverloads constructor(
         getChildAt(externalHoverPosition)?.alpha = 1f
         externalHoverPosition = position
         getChildAt(position)?.alpha = 0.55f
+        onExternalHoverChanged(engines.getOrNull(position))
     }
 
     override fun onDetachedFromWindow() {
