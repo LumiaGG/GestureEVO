@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:autoMirrored="true"
+    android:height="24dp"
+    android:tint="@color/theme_color"
+    android:viewportHeight="24"
+    android:viewportWidth="24"
+    android:width="24dp">
+    <!-- Image frame outline: outer rounded rect with an inner hole -->
+    <path
+        android:fillColor="@android:color/white"
+        android:fillType="evenOdd"
+        android:pathData="M21,19V5c0,-1.1 -0.9,-2 -2,-2H5c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2zM19,17.5V6.5C19,5.67 18.33,5 17.5,5H6.5C5.67,5 5,5.67 5,6.5V17.5C5,18.33 5.67,19 6.5,19H17.5C18.33,19 19,18.33 19,17.5z"/>
+    <!-- Text lines on top, image silhouette below -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M8,8.5h8v1.75H8zM8,12.1h5.5v1.75H8zM7.2,16.8l2.8,-3.36 2,2.4 1.6,-1.92 3.6,2.88z"/>
+</vector>

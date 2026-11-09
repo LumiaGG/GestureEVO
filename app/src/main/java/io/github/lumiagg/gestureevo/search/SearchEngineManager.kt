@@ -149,8 +149,8 @@ class SearchEngineManager(
         iconBindings[view] = token
         view.setBadge(null)
         view.setText(if (engine.iconType == IconType.TEXT) engine.textIcon.orEmpty() else engine.name.orEmpty())
-        if (engine.engineType == EngineType.SHARE_IMAGE_TO_APP && badge) {
-            view.setBadge(R.drawable.baseline_image_24)
+        if (badge) {
+            imageBadgeIcon(engine)?.let { view.setBadge(it) }
         }
         if (engine.iconType == IconType.TEXT) return
         lifecycleScope.launch(uiDispatcher) {
@@ -235,6 +235,8 @@ class SearchEngineManager(
         val attachedImages = activity.getAttachedImageUris()
 
         when {
+            // Pure image engines keep their original behavior: fall back to the
+            // clipboard image, or ask the user to pick/capture one.
             engine.isImageSearchEngine() && attachedImages.isEmpty() -> {
                 val clipboardImage = ClipboardUtils.getImage(activity.applicationContext)
                 if (clipboardImage != null) {
@@ -262,14 +264,51 @@ class SearchEngineManager(
                 )
             }
 
-            rawQuery.isBlank() -> {
-                val clipboardText = getClipboardTextOrShowMissing() ?: return
+            // Dual-mode engines switch to the image share flow only when images are
+            // explicitly attached; otherwise they behave like pure text engines.
+            engine.supportsImageShare() && attachedImages.isNotEmpty() -> {
                 executeSearchEngine(
                     engine = engine,
-                    query = clipboardText,
-                    imageUris = emptyList(),
+                    query = rawQuery,
+                    imageUris = attachedImages,
                     freeform = freeform
                 )
+            }
+
+            rawQuery.isBlank() -> {
+                val clipboardText = ClipboardUtils.getText(activity.applicationContext)
+                if (clipboardText.isNotBlank()) {
+                    executeSearchEngine(
+                        engine = engine,
+                        query = clipboardText,
+                        imageUris = emptyList(),
+                        freeform = freeform
+                    )
+                    return
+                }
+                // Dual-mode engines fall back to the clipboard image when no text exists.
+                val clipboardImage = if (engine.supportsImageShare()) {
+                    ClipboardUtils.getImage(activity.applicationContext)
+                } else {
+                    null
+                }
+                if (clipboardImage != null) {
+                    lifecycleScope.launch(uiDispatcher) {
+                        activity.attachClipboardImage(clipboardImage).join()
+                        val updatedImages = activity.getAttachedImageUris()
+                        executeSearchEngine(
+                            engine = engine,
+                            query = rawQuery,
+                            imageUris = updatedImages.ifEmpty { listOf(clipboardImage) },
+                            freeform = freeform
+                        )
+                    }
+                } else {
+                    ToastHelper.showInUIThread(
+                        activity.applicationContext,
+                        R.string.clipboard_content_missing
+                    )
+                }
             }
 
             else -> {
@@ -304,24 +343,22 @@ class SearchEngineManager(
         )
     }
 
-    private fun getClipboardTextOrShowMissing(): String? {
-        val clipboardText = ClipboardUtils.getText(activity.applicationContext)
-        if (clipboardText.isBlank()) {
-            ToastHelper.showInUIThread(
-                activity.applicationContext,
-                R.string.clipboard_content_missing
-            )
-            return null
-        }
-        return clipboardText
-    }
-
     private fun SearchEngine.isImageSearchEngine(): Boolean =
         engineType == EngineType.SHARE_IMAGE_TO_APP
 
     fun getCurrentSearchEngine(): SearchEngine? = currentSearchEngine
 
     fun getSearchEngines(): List<SearchEngine> = searchEngines.toList()
+}
+
+/**
+ * Returns the badge icon marking an engine's image capability: the plain image
+ * badge for pure image engines and the image+text badge for dual-mode engines.
+ */
+fun imageBadgeIcon(item: SearchEngine): Int? = when {
+    item.engineType == EngineType.SHARE_IMAGE_TO_APP -> R.drawable.baseline_image_24
+    item.imageShareEnabled -> R.drawable.baseline_image_text_24
+    else -> null
 }
 
 fun setEngineIcon(
@@ -359,7 +396,7 @@ fun setEngineIcon(
         }
     }
 
-    if (item.engineType == EngineType.SHARE_IMAGE_TO_APP && showImageBadge) {
-        view.setBadge(R.drawable.baseline_image_24)
+    if (showImageBadge) {
+        imageBadgeIcon(item)?.let { view.setBadge(it) }
     }
 }

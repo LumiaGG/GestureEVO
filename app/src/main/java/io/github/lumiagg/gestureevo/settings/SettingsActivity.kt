@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.transition.Fade
 import android.util.Log
+import android.view.View
 import android.view.accessibility.AccessibilityManager
 import androidx.core.app.ActivityOptionsCompat
 import androidx.appcompat.app.AppCompatActivity
@@ -15,10 +16,15 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.ActivitySettingsBinding
+import io.github.lumiagg.gestureevo.gesture.config.ActionConfig
+import io.github.lumiagg.gestureevo.gesture.config.FreeTriggerDataManager
+import io.github.lumiagg.gestureevo.gesture.config.GestureActionDataManager
 import io.github.lumiagg.gestureevo.settings.ui.showAboutBottomSheet
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.PreferenceDataStoreAdapter
@@ -29,6 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 
 class SettingsActivity : AppCompatActivity() {
     lateinit var binding: ActivitySettingsBinding
@@ -99,10 +106,29 @@ class SettingsActivity : AppCompatActivity() {
     class SettingsFragment : PreferenceFragmentCompat() {
         private var preferenceService: Preference? = null
 
+        override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+            super.onViewCreated(view, savedInstanceState)
+            setDivider(null)
+            listView.clipToPadding = false
+            val initialBottom = listView.paddingBottom
+            ViewCompat.setOnApplyWindowInsetsListener(listView) { list, insets ->
+                val bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+                list.setPadding(list.paddingLeft, list.paddingTop, list.paddingRight,
+                    initialBottom + bottom + (16 * resources.displayMetrics.density).toInt())
+                insets
+            }
+            ViewCompat.requestApplyInsets(listView)
+        }
+
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             preferenceManager.preferenceDataStore =
                 PreferenceDataStoreAdapter(requireContext().settingsStore, lifecycleScope)
             setPreferencesFromResource(R.xml.root_preferences, rootKey)
+            lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    refreshConfigurationSummaries()
+                }
+            }
 
             findPreference<Preference>("preferenceSettingsGuide")?.setOnPreferenceClickListener {
                 startActivity(Intent(requireActivity(), SettingsGuideActivity::class.java))
@@ -239,6 +265,28 @@ class SettingsActivity : AppCompatActivity() {
             listView?.post {
                 scrollToPreference(targetPreferenceKey)
                 activity?.intent?.removeExtra(SettingsSearchNavigator.EXTRA_TARGET_PREFERENCE_KEY)
+            }
+        }
+
+        private suspend fun refreshConfigurationSummaries() {
+            val context = requireContext().applicationContext
+            try {
+                val triggers = FreeTriggerDataManager.readTriggers(context)
+                val groups = GestureActionDataManager.readActionListTags(context)
+                findPreference<Preference>("preferenceConfigTrigger")?.summary = getString(
+                    R.string.settings_trigger_count, triggers.size, triggers.count { it.enable }
+                )
+                findPreference<Preference>("preferenceActionView")?.summary = getString(
+                    R.string.settings_wheel_count, groups.size,
+                    groups.firstOrNull { it.tag == ActionConfig.DEFAULT_TAG }?.name.orEmpty()
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                Log.w("SettingsActivity", "Unable to read configuration summaries", failure)
+                listOf("preferenceConfigTrigger", "preferenceActionView").forEach {
+                    findPreference<Preference>(it)?.setSummary(R.string.settings_summary_unavailable)
+                }
             }
         }
 

@@ -1,85 +1,81 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
-
-    <Preference
-        android:icon="@drawable/baseline_check_24"
-        android:key="preferenceSettingsGuide"
-        android:layout="@layout/custom_preference_widget_layout"
-        app:title="@string/guide_title"
-        app:summary="@string/guide_entry_summary" />
-
-    <Preference
-        android:icon="@drawable/icon_service"
-        android:key="preferenceService"
-        android:layout="@layout/custom_preference_widget_layout"
-        app:title="@string/settings_accessibility_off" />
-
-    <Preference
-        android:icon="@drawable/baseline_gesture_24"
-        android:key="preferenceConfigTrigger"
-        android:layout="@layout/custom_preference_widget_layout"
-        app:title="@string/settings_gesture_title" />
-
-    <Preference
-        android:icon="@drawable/baseline_pie_chart_24"
-        android:key="preferenceActionView"
-        android:layout="@layout/custom_preference_widget_layout"
-        app:title="@string/action_view_settings_title" />
-
-    <Preference
-        android:icon="@drawable/baseline_auto_awesome_24"
-        android:key="preferenceAppearance"
-        android:layout="@layout/custom_preference_widget_layout"
-        app:title="@string/appearance_settings_title" />
-
-    <Preference
-        android:icon="@drawable/outline_center_focus_weak_24"
-        android:key="preferenceInspire"
-        android:layout="@layout/custom_preference_widget_layout"
-        app:title="@string/settings_features_title" />
-
-    <Preference
-        android:icon="@drawable/search_24px"
-        android:key="preferenceSearch"
-        android:layout="@layout/custom_preference_widget_layout"
-        app:title="@string/search_engine_settings_title" />
-
-    <Preference
-        android:icon="@drawable/ic_little_window"
-        android:key="preferenceFreeform"
-        android:layout="@layout/custom_preference_widget_layout"
-        app:title="@string/freeform_settings_title" />
-
-
-    <Preference
-        android:icon="@drawable/baseline_save_24"
-        android:key="preferenceData"
-        android:layout="@layout/custom_preference_widget_layout"
-        app:title="@string/data_backup_title" />
-
-    <Preference
-        android:icon="@drawable/ic_baseline_insert_link_24"
-        android:key="preferenceExternalAction"
-        android:layout="@layout/custom_preference_widget_layout"
-        app:title="@string/external_action_settings_title" />
-
-    <Preference
-        android:icon="@drawable/icon_lock"
-        android:key="preferenceBackgroundStability"
-        android:layout="@layout/custom_preference_widget_layout"
-        app:title="@string/background_stability_title" />
-
-    <Preference
-        android:icon="@drawable/baseline_info_24"
-        android:key="preferenceAbout"
-        android:layout="@layout/custom_preference_widget_layout"
-        app:title="@string/settings_about_title" />
-
-
-    <!--    <Preference-->
-    <!--        android:icon="@drawable/icon_adb"-->
-    <!--        android:key="preferenceGeek"-->
-    <!--        android:layout="@layout/custom_preference_widget_layout"-->
-    <!--        app:title="高级权限" />-->
-
+    <PreferenceCategory android:layout="@layout/settings_home_category" app:title="@string/settings_group_start" app:iconSpaceReserved="false">
+        <Preference
+            android:icon="@drawable/baseline_check_24"
+            android:key="preferenceSettingsGuide"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/guide_title"
+            app:summary="@string/guide_entry_summary" />
+        <Preference
+            android:icon="@drawable/icon_service"
+            android:key="preferenceService"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/settings_accessibility_off"
+            app:summary="@string/settings_service_summary" />
+    </PreferenceCategory>
+    <PreferenceCategory android:layout="@layout/settings_home_category" app:title="@string/settings_group_gestures" app:iconSpaceReserved="false">
+        <Preference
+            android:icon="@drawable/baseline_gesture_24"
+            android:key="preferenceConfigTrigger"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/settings_gesture_title" />
+        <Preference
+            android:icon="@drawable/baseline_pie_chart_24"
+            android:key="preferenceActionView"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/action_view_settings_title" />
+        <Preference
+            android:icon="@drawable/baseline_auto_awesome_24"
+            android:key="preferenceAppearance"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/appearance_settings_title"
+            app:summary="@string/settings_appearance_summary" />
+    </PreferenceCategory>
+    <PreferenceCategory android:layout="@layout/settings_home_category" app:title="@string/settings_group_tools" app:iconSpaceReserved="false">
+        <Preference
+            android:icon="@drawable/outline_center_focus_weak_24"
+            android:key="preferenceInspire"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/settings_features_title"
+            app:summary="@string/settings_tools_summary" />
+        <Preference
+            android:icon="@drawable/search_24px"
+            android:key="preferenceSearch"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/search_engine_settings_title"
+            app:summary="@string/settings_search_summary" />
+        <Preference
+            android:icon="@drawable/ic_little_window"
+            android:key="preferenceFreeform"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/freeform_settings_title"
+            app:summary="@string/settings_freeform_summary" />
+    </PreferenceCategory>
+    <PreferenceCategory android:layout="@layout/settings_home_category" app:title="@string/settings_group_maintenance" app:iconSpaceReserved="false">
+        <Preference
+            android:icon="@drawable/baseline_save_24"
+            android:key="preferenceData"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/data_backup_title"
+            app:summary="@string/settings_backup_summary" />
+        <Preference
+            android:icon="@drawable/ic_baseline_insert_link_24"
+            android:key="preferenceExternalAction"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/external_action_settings_title"
+            app:summary="@string/settings_external_summary" />
+        <Preference
+            android:icon="@drawable/icon_lock"
+            android:key="preferenceBackgroundStability"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/background_stability_title"
+            app:summary="@string/settings_background_summary" />
+        <Preference
+            android:icon="@drawable/baseline_info_24"
+            android:key="preferenceAbout"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/settings_about_title"
+            app:summary="@string/settings_about_summary" />
+    </PreferenceCategory>
 </PreferenceScreen>

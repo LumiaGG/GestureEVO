@@ -197,6 +197,9 @@
       <include
         android:id="@+id/externJumpConfig"
         layout="@layout/se_add_config_extern_jump" />
+      <include
+        android:id="@+id/shareImageDualConfig"
+        layout="@layout/se_add_config_share_image_switch" />
     </LinearLayout>
   </androidx.core.widget.NestedScrollView>
   <com.google.android.material.card.MaterialCardView

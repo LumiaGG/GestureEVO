@@ -1,66 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    style="?attr/materialCardViewFilledStyle"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="8dp"
-    android:layout_marginTop="8dp"
-    android:layout_marginEnd="8dp"
-    android:checkable="true"
-    app:cardCornerRadius="@dimen/settings_card_corner_radius">
-
-    <RelativeLayout
-        android:id="@+id/triggerLayout"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="3dp"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardBackgroundColor="?attr/colorSurfaceContainer"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="0dp">
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <com.google.android.material.imageview.ShapeableImageView
+        android:layout_height="wrap_content"
+        android:minHeight="80dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="14dp">
+        <ImageView
             android:id="@android:id/icon"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:layout_centerVertical="true"
-            android:padding="25dp"
-            android:tint="?attr/colorPrimary" />
-
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_settings_home_icon"
+            android:importantForAccessibility="no"
+            android:padding="9dp"
+            app:tint="?attr/colorPrimary" />
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
-            android:layout_marginEnd="20dp"
-            android:layout_toStartOf="@android:id/widget_frame"
-            android:layout_toEndOf="@android:id/icon"
+            android:layout_weight="1"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="8dp"
             android:orientation="vertical">
-
             <com.google.android.material.textview.MaterialTextView
                 android:id="@android:id/title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/setting_gesture"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textAppearance="@style/MaterialAlertDialog.Material3.Title.Text" />
-
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface" />
             <com.google.android.material.textview.MaterialTextView
                 android:id="@android:id/summary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/accessibility_service_off_tips"
-                android:textSize="15sp"
-                android:textAppearance="@style/MaterialAlertDialog.Material3.Body.Text"/>
-
+                android:layout_marginTop="3dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
-
         <LinearLayout
             android:id="@android:id/widget_frame"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentEnd="true"
-            android:layout_centerVertical="true"
-            android:layout_marginEnd="20dp"
             android:orientation="vertical" />
-
-
-    </RelativeLayout>
-
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_chevron_right"
+            app:tint="?attr/colorOnSurfaceVariant" />
+    </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

@@ -23,16 +23,34 @@
       <include android:id="@+id/shortAction" layout="@layout/activity_gesture_add_action_config"
         android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" />
       <LinearLayout android:id="@+id/syncButtonsLayout" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="8dp">
-        <com.google.android.material.button.MaterialButton android:id="@+id/btnSyncDown"
-          style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent"
-          android:layout_height="wrap_content" android:text="@string/action_copy_short" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/btnSyncUp"
-          style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent"
-          android:layout_height="wrap_content" android:text="@string/action_copy_long" />
+        android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="12dp"
+        android:padding="12dp" android:background="@drawable/bg_action_copy_panel">
+        <com.google.android.material.textview.MaterialTextView
+          android:layout_width="match_parent" android:layout_height="wrap_content"
+          android:text="@string/action_copy_panel_title" android:textAppearance="?attr/textAppearanceLabelLarge"
+          android:textColor="?attr/colorOnSurface" />
+        <com.google.android.material.textview.MaterialTextView android:id="@+id/copyConfigHint"
+          android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp"
+          android:text="@string/action_copy_panel_hint" android:textAppearance="?attr/textAppearanceBodySmall"
+          android:textColor="?attr/colorOnSurfaceVariant" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+          android:orientation="horizontal" android:layout_marginTop="8dp" android:baselineAligned="false">
+          <com.google.android.material.button.MaterialButton android:id="@+id/btnSyncDown"
+            style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp"
+            android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="48dp"
+            android:layout_marginEnd="4dp" android:paddingHorizontal="8dp" android:textSize="13sp"
+            android:text="@string/action_copy_short_compact" android:contentDescription="@string/action_copy_short"
+            app:cornerRadius="12dp" />
+          <com.google.android.material.button.MaterialButton android:id="@+id/btnSyncUp"
+            style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp"
+            android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="48dp"
+            android:layout_marginStart="4dp" android:paddingHorizontal="8dp" android:textSize="13sp"
+            android:text="@string/action_copy_long_compact" android:contentDescription="@string/action_copy_long"
+            app:cornerRadius="12dp" />
+        </LinearLayout>
       </LinearLayout>
       <include android:id="@+id/longAction" layout="@layout/activity_gesture_add_action_config"
-        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" />
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" />
       <com.google.android.material.button.MaterialButton android:id="@+id/subWheelButton"
         style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent"
         android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/gesture_add_action_sub_wheel" />

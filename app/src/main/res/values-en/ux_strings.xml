@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_group_start">Get started</string>
+    <string name="settings_group_gestures">Gestures and wheels</string>
+    <string name="settings_group_tools">Quick tools</string>
+    <string name="settings_group_maintenance">Data and maintenance</string>
+    <string name="settings_service_summary">Manage the accessibility service used by gestures</string>
+    <string name="settings_appearance_summary">Theme, colors and visual effects</string>
+    <string name="settings_tools_summary">Screen content, OCR, Pin and other tools</string>
+    <string name="settings_search_summary">Manage search engines and search behavior</string>
+    <string name="settings_freeform_summary">Configure floating window launch and compatibility</string>
+    <string name="settings_backup_summary">Local backup, restore and WebDAV</string>
+    <string name="settings_external_summary">Manage external actions and permissions</string>
+    <string name="settings_background_summary">Background operation and battery settings</string>
+    <string name="settings_about_summary">Version and project information</string>
+    <string name="settings_trigger_count">Trigger areas: %1$d; enabled: %2$d</string>
+    <string name="settings_wheel_count">Wheel groups: %1$d; default: %2$s</string>
+    <string name="settings_summary_unavailable">Unable to read configuration. Tap to view</string>
+    <string name="action_copy_panel_title">Copy settings</string>
+    <string name="action_copy_panel_hint">Choose a direction. You can undo the replacement.</string>
+    <string name="action_copy_panel_empty">Choose an action before copying settings.</string>
+    <string name="action_copy_short_compact">Short → Long</string>
+    <string name="action_copy_long_compact">Long → Short</string>
+    <string name="action_copy_result">Copied to %1$s. Save to apply.</string>
+</resources>

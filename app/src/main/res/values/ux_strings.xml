@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_group_start">开始使用</string>
+    <string name="settings_group_gestures">手势与轮盘</string>
+    <string name="settings_group_tools">快捷工具</string>
+    <string name="settings_group_maintenance">数据与维护</string>
+    <string name="settings_service_summary">管理手势运行所需的无障碍服务</string>
+    <string name="settings_appearance_summary">主题、颜色与视觉效果</string>
+    <string name="settings_tools_summary">屏幕内容、OCR、Pin 与其他工具</string>
+    <string name="settings_search_summary">管理搜索引擎与搜索行为</string>
+    <string name="settings_freeform_summary">配置小窗启动方式与兼容选项</string>
+    <string name="settings_backup_summary">本地备份、恢复与 WebDAV</string>
+    <string name="settings_external_summary">管理外部调用与授权</string>
+    <string name="settings_background_summary">后台运行与电池设置指引</string>
+    <string name="settings_about_summary">版本信息与项目说明</string>
+    <string name="settings_trigger_count">%1$d 个触发区，已启用 %2$d 个</string>
+    <string name="settings_wheel_count">%1$d 个轮盘组，默认组：%2$s</string>
+    <string name="settings_summary_unavailable">暂时无法读取配置，点按进入查看</string>
+    <string name="action_copy_panel_title">复制配置</string>
+    <string name="action_copy_panel_hint">选择复制方向，覆盖后可撤销</string>
+    <string name="action_copy_panel_empty">先选择动作，再复制到另一侧</string>
+    <string name="action_copy_short_compact">短按 → 长按</string>
+    <string name="action_copy_long_compact">长按 → 短按</string>
+    <string name="action_copy_result">已复制到%1$s，保存后生效</string>
+</resources>
