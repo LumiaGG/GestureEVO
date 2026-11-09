@@ -375,8 +375,16 @@
     <string name="se_share_image_target_label">Target App and Image Share Target:</string>
     <string name="se_share_image_not_set">Not Set</string>
     <string name="se_share_image_switch_title">Also Support Image Share</string>
-    <string name="se_share_image_switch_description">Text still uses the selected mode above; when an image is available (added images or the clipboard image), it is shared to the app selected below instead</string>
-    <string name="se_share_image_switch_enable">Use image share when an image is available</string>
+    <string name="se_share_image_switch_description">Search text using the mode above or share images to the app below. When both are available, use the search preference below.</string>
+    <string name="se_share_image_switch_enable">Enable image search</string>
+    <string name="se_mixed_content_mode_title">When text and images are both available</string>
+    <string name="se_mixed_content_mode_description">Applies to screen recognition, the search page, and external drops. When only one content type is available, use its corresponding mode.</string>
+    <string name="se_mixed_content_mode_text">Prefer text</string>
+    <string name="se_mixed_content_mode_image">Prefer images</string>
+    <string name="se_mixed_content_mode_ask">Ask every time</string>
+    <string name="search_content_mode_title">Choose search mode</string>
+    <string name="search_content_mode_text">Text search</string>
+    <string name="search_content_mode_image">Image search</string>
 
 
     <string name="setting_gesture">Settings</string>

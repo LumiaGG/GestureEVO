@@ -20,6 +20,8 @@ import io.github.lumiagg.gestureevo.gesture.config.IconType
 import io.github.lumiagg.gestureevo.search.config.EngineType
 import io.github.lumiagg.gestureevo.search.config.SearchEngine
 import io.github.lumiagg.gestureevo.search.config.SearchEngineDataManager
+import io.github.lumiagg.gestureevo.search.config.SearchContentMode
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.lumiagg.gestureevo.search.imageBadgeIcon
 import io.github.lumiagg.gestureevo.search.setEngineIcon
 import io.github.lumiagg.gestureevo.settings.ui.ActivityFilters
@@ -326,6 +328,18 @@ class SearchEngineAddActivity : AppCompatActivity() {
     }
 
     private fun setupShareImageDualConfig() {
+        binding.shareImageDualConfig.mixedContentModeRow.setOnClickListener {
+            val modes = SearchContentMode.entries
+            val labels = modes.map { getString(contentModeLabel(it)) }.toTypedArray()
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.se_mixed_content_mode_title)
+                .setSingleChoiceItems(labels, modes.indexOf(searchEngine.mixedContentMode)) { dialog, which ->
+                    searchEngine.mixedContentMode = modes[which]
+                    updateShareImageDualDetails()
+                    dialog.dismiss()
+                }
+                .show()
+        }
         binding.shareImageDualConfig.imageShareEnableSwitch.setOnCheckedChangeListener { _, isChecked ->
             searchEngine.imageShareEnabled = isChecked
             updateShareImageDualDetails()
@@ -348,6 +362,13 @@ class SearchEngineAddActivity : AppCompatActivity() {
     private fun updateShareImageDualDetails() {
         binding.shareImageDualConfig.imageShareDualDetails.visibility =
             if (searchEngine.imageShareEnabled) View.VISIBLE else View.GONE
+        binding.shareImageDualConfig.mixedContentModeValue.setText(contentModeLabel(searchEngine.mixedContentMode))
+    }
+
+    private fun contentModeLabel(mode: SearchContentMode): Int = when (mode) {
+        SearchContentMode.TEXT -> R.string.se_mixed_content_mode_text
+        SearchContentMode.IMAGE -> R.string.se_mixed_content_mode_image
+        SearchContentMode.ASK -> R.string.se_mixed_content_mode_ask
     }
 
     private fun formatImageShareDualTarget(): String = when {

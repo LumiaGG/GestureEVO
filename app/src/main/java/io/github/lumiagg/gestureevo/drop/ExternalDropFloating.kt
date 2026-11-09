@@ -318,8 +318,7 @@ class ExternalDropFloating(private val service: GestureService) :
     private suspend fun search(clip: ClipData, engine: SearchEngine) {
         val images = mutableListOf<Uri>()
         val texts = mutableListOf<String>()
-        // Pure image engines only collect images; dual-mode engines collect both so
-        // the executor can pick the image flow whenever the clip carries images.
+        // Dual-mode engines keep both content types for the executor's mode selection.
         val collectImages = engine.supportsImageShare()
         val collectTexts = engine.engineType != EngineType.SHARE_IMAGE_TO_APP
         for (index in 0 until clip.itemCount) {

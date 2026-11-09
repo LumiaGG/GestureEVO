@@ -79,6 +79,19 @@
             android:textSize="15sp" />
         </LinearLayout>
       </com.google.android.material.card.MaterialCardView>
+      <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+        android:id="@+id/mixedContentModeRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        app:settingsRowTitle="@string/se_mixed_content_mode_title"
+        app:settingsRowSummary="@string/se_mixed_content_mode_description">
+        <TextView
+          android:id="@+id/mixedContentModeValue"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/se_mixed_content_mode_text" />
+      </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
     </LinearLayout>
   </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

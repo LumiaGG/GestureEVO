@@ -2,6 +2,7 @@ package io.github.lumiagg.gestureevo.search
 
 import io.github.lumiagg.gestureevo.search.config.EngineType
 import io.github.lumiagg.gestureevo.search.config.SearchEngine
+import io.github.lumiagg.gestureevo.search.config.SearchContentMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -13,6 +14,25 @@ class SearchEngineCompatibilityTest {
         assertFalse(engine.imageShareEnabled)
         assertFalse(engine.supportsImageShare())
         assertNull(engine.imageTargetPackage)
+        assertEquals(SearchContentMode.TEXT, engine.mixedContentMode)
+    }
+
+    @Test fun oldDualEngineJsonDefaultsToTextWhenBothContentTypesExist() {
+        val engine = requireNotNull(SearchEngine.toModel("""{"engineType":"DIRECT_LINK","imageShareEnabled":true,"imageTargetPackage":"example.image"}"""))
+        assertEquals(SearchContentMode.TEXT, engine.resolveContentMode(true, true))
+    }
+
+    @Test fun savingAndExportingPreservesEveryMixedContentPreference() {
+        for (mode in SearchContentMode.entries) {
+            val engine = SearchEngine().apply {
+                imageShareEnabled = true
+                mixedContentMode = mode
+            }
+            val restored = requireNotNull(SearchEngine.toModel(engine.toJson()))
+            val imported = requireNotNull(SearchEngine.toModelList(SearchEngine.toExportJsonList(listOf(engine)))).single()
+            assertEquals(mode, restored.resolveContentMode(true, true))
+            assertEquals(mode, imported.resolveContentMode(true, true))
+        }
     }
 
     @Test fun exportingAndImportingPreservesSeparateImageAndTextTargets() {
