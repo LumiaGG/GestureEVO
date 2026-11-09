@@ -403,6 +403,9 @@
     <string name="se_share_image_select_activity">选择图片分享接口</string>
     <string name="se_share_image_target_label">目标应用和图片分享接口：</string>
     <string name="se_share_image_not_set">未设置</string>
+    <string name="se_share_image_switch_title">同时支持分享图片</string>
+    <string name="se_share_image_switch_description">开启后仍按上方所选模式搜索文字；当有图片可用（已添加的图片或剪贴板图片）时，将把图片分享到下方所选应用</string>
+    <string name="se_share_image_switch_enable">图片可用时改用图片分享</string>
 
 
     <string name="setting_gesture">设置</string>
@@ -813,6 +816,7 @@
     <string name="search_engine_type_extern_jump">外部跳转</string>
     <string name="search_engine_type_share">分享</string>
     <string name="search_engine_type_share_image">分享图片</string>
+    <string name="search_engine_type_with_image">%1$s + 图片分享</string>
     <string name="search_engine_option_hide">隐藏</string>
     <string name="search_engine_option_show">显示</string>
     <string name="search_engine_option_edit">编辑</string>

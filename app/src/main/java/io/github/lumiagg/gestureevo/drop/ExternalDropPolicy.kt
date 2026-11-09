@@ -1,5 +1,8 @@
 package io.github.lumiagg.gestureevo.drop
 
+import io.github.lumiagg.gestureevo.search.config.EngineType
+import io.github.lumiagg.gestureevo.search.config.SearchEngine
+
 internal object ExternalDropPolicy {
     const val EVO_SOURCE_EXTRA = "io.github.lumiagg.gestureevo.drag_source"
 
@@ -12,9 +15,10 @@ internal object ExternalDropPolicy {
         else -> Content.URI
     }
 
-    fun showsEngine(content: Content, imageEngine: Boolean): Boolean = when (content) {
-        Content.IMAGE -> imageEngine
-        Content.TEXT -> !imageEngine
+    fun showsEngine(content: Content, engine: SearchEngine): Boolean = when (content) {
+        // Dual-mode engines handle image content too.
+        Content.IMAGE -> engine.supportsImageShare()
+        Content.TEXT -> engine.engineType != EngineType.SHARE_IMAGE_TO_APP
         Content.URI -> true // The provider's URI type is only available at ACTION_DROP.
     }
 
