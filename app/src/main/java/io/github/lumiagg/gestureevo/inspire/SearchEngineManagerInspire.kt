@@ -67,9 +67,12 @@ class SearchEngineManagerInspire(
 
     private fun clickSearchEngine(engine: SearchEngine, isPress: Boolean) {
         val query = if (engine.engineType == EngineType.SHARE_IMAGE_TO_APP) "" else queryProvider()
+        val imageHandle = if (engine.supportsImageShare()) imageHandleProvider() else null
         SearchEngineExecutor(activity, engine, isPress) {
             InspireDataHolder.clear()
             activity.finish()
-        }.execute(query = query, bitmapHandle = imageHandleProvider())
+        }.execute(query = query, bitmapHandle = imageHandle).invokeOnCompletion {
+            imageHandle?.close()
+        }
     }
 }

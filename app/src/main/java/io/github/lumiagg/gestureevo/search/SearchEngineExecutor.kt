@@ -52,7 +52,7 @@ class SearchEngineExecutor(
                 (engine.imageShareEnabled && (bitmapHandle != null || imageUris.isNotEmpty()))
             when {
                 imageMode -> {
-                    if (!executeShareImageSearch(bitmapHandle, imageUris, query, triggerSide)) {
+                    if (!executeShareImageSearch(bitmapHandle, imageUris, triggerSide)) {
                         return@launch
                     }
                 }
@@ -183,7 +183,6 @@ class SearchEngineExecutor(
     private suspend fun executeShareImageSearch(
         bitmapHandle: ManagedBitmap?,
         imageUris: List<Uri>,
-        query: String,
         triggerSide: String? = null
     ): Boolean {
         val pkg = engine.imageShareTargetPackage() ?: return false
@@ -222,12 +221,8 @@ class SearchEngineExecutor(
         }
 
         return when (result) {
-            ImageShareLauncher.LaunchResult.SUCCESS -> {
-                if (!freeFrom) {
-                    executedAfterSearch(query)
-                }
-                true
-            }
+            ImageShareLauncher.LaunchResult.SUCCESS -> true
+            ImageShareLauncher.LaunchResult.UNFREEZE_FAILED -> false
 
             ImageShareLauncher.LaunchResult.TARGET_NOT_FOUND -> {
                 ToastHelper.showInUIThread(
