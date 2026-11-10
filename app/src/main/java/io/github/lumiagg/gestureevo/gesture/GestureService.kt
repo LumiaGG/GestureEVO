@@ -165,7 +165,9 @@ class GestureService : AccessibilityService(), CoroutineScope {
         val nightMode = newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
         if (nightMode != lastNightMode) {
             lastNightMode = nightMode
-            DynamicColorUtils.refreshSurfaceColors(createConfigurationContext(newConfig))
+            // Day/night flips are theme revisions too: overlays built on stale themed
+            // contexts (e.g. the external drop panel) must be recreated.
+            DynamicColorUtils.notifySystemThemeChanged(createConfigurationContext(newConfig))
         }
         super.onConfigurationChanged(newConfig)
         gestureManager?.onConfigurationChanged(newConfig)

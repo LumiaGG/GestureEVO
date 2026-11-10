@@ -10,6 +10,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.EditorInfo
+import androidx.core.content.withStyledAttributes
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.ScreenSearchFloatingViewBinding
 import io.github.lumiagg.gestureevo.databinding.ScreenSearchIndicatorViewBinding
@@ -483,8 +484,9 @@ class ScreenSearchFloating(private val context: GestureService) :
     private fun applyThemeColors() {
         val primary = DynamicColorUtils.primaryColor
         val onSurfaceColor = DynamicColorUtils.onSurfaceColor
-        DynamicColorUtils.onSurfaceVariantColor
+        val onSurfaceVariantColor = DynamicColorUtils.onSurfaceVariantColor
         val surfaceHigh = DynamicColorUtils.surfaceContainerHighColor
+        val surfaceHighest = DynamicColorUtils.surfaceContainerHighestColor
         val outlineColor = DynamicColorUtils.outlineColor
 
         binding.panelCard.setCardBackgroundColor(surfaceHigh)
@@ -493,6 +495,34 @@ class ScreenSearchFloating(private val context: GestureService) :
         binding.keywordInput.setTextColor(onSurfaceColor)
         binding.keywordInput.setHintTextColor(primary)
         binding.switchAccessibilityMode.setTextColor(onSurfaceColor)
+        binding.statusText.setTextColor(onSurfaceColor)
+
+        val themedContext = DynamicColorUtils.dynamicThemedContext(context)
+        binding.keywordInputLayout.setBoxBackgroundColorStateList(ColorStateList.valueOf(surfaceHighest))
+        themedContext.withStyledAttributes(
+            attrs = R.styleable.ScreenSearchInputTheme,
+            defStyleAttr = com.google.android.material.R.attr.textInputStyle,
+        ) {
+            getColorStateList(R.styleable.ScreenSearchInputTheme_boxStrokeColor)
+                ?.let(binding.keywordInputLayout::setBoxStrokeColorStateList)
+        }
+        binding.keywordInputLayout.defaultHintTextColor = ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf()),
+            intArrayOf(primary, onSurfaceVariantColor),
+        )
+
+        // Resolve the widget's state lists again so all layers follow the new theme.
+        themedContext.withStyledAttributes(
+            attrs = R.styleable.ScreenSearchSwitchTheme,
+            defStyleAttr = com.google.android.material.R.attr.materialSwitchStyle,
+        ) {
+            binding.switchAccessibilityMode.thumbTintList =
+                getColorStateList(R.styleable.ScreenSearchSwitchTheme_thumbTint)
+            binding.switchAccessibilityMode.trackTintList =
+                getColorStateList(R.styleable.ScreenSearchSwitchTheme_trackTint)
+            binding.switchAccessibilityMode.trackDecorationTintList =
+                getColorStateList(R.styleable.ScreenSearchSwitchTheme_trackDecorationTint)
+        }
 
         val primaryTint = ColorStateList.valueOf(primary)
         binding.btnClose.setTextColor(primary)
