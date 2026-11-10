@@ -1,5 +1,9 @@
 <resources>
     <string name="external_drop_pool">加入 Pin 池</string>
+    <string name="external_drop_page_up_arrow" translatable="false">˄</string>
+    <string name="external_drop_page_down_arrow" translatable="false">˅</string>
+    <string name="external_drop_previous_page">悬停翻到上一页</string>
+    <string name="external_drop_next_page">悬停翻到下一页</string>
     <string name="external_drop_pin">Pin 图</string>
     <string name="external_drop_tokenize">分词</string>
     <string name="external_drop_added">已加入 Pin 池</string>
@@ -482,8 +486,20 @@
     <string name="inspire_settings_default_share_behavior_title">默认分享行为</string>
     <string name="inspire_settings_share_settings_title">分享设置</string>
     <string name="inspire_settings_share_settings_description">设置默认分享行为与外部拖放接收</string>
-    <string name="inspire_settings_external_drop">外部拖放悬浮窗</string>
-    <string name="inspire_settings_external_drop_desc">其他应用拖动文字或图片时，显示加入 Pin 池、Pin 图和分词等接收选项</string>
+    <string name="inspire_settings_external_drop">拖放时显示工具按钮</string>
+    <string name="inspire_settings_external_drop_desc">其他应用拖动文字或图片时，显示 Pin池、Pin图和分词三个工具按钮</string>
+    <string name="inspire_settings_external_drop_position">拖放悬浮窗位置</string>
+    <string name="inspire_settings_external_drop_position_bottom">底部</string>
+    <string name="inspire_settings_external_drop_position_left">左侧</string>
+    <string name="inspire_settings_external_drop_position_right">右侧</string>
+    <string name="inspire_settings_external_drop_sidebar_max_columns">侧边最大列数</string>
+    <string name="inspire_settings_external_drop_sidebar_max_height">侧边最大高度</string>
+    <string name="inspire_settings_external_drop_sidebar_max_height_desc">以屏幕安全可用高度的百分比设定高度上限；过小时至少容纳基本投放目标，且不超出屏幕</string>
+    <string name="inspire_settings_external_drop_sidebar_height_percent">%1$d%%</string>
+    <string name="inspire_settings_external_drop_sidebar_fill_priority">排布优先级</string>
+    <string name="inspire_settings_external_drop_sidebar_fill_priority_desc">优先利用高度使面板更窄；优先展开列使面板更短</string>
+    <string name="inspire_settings_external_drop_fill_height">优先利用高度</string>
+    <string name="inspire_settings_external_drop_fill_columns">优先展开列</string>
     <string name="inspire_settings_external_drop_engines">拖放时显示搜索引擎</string>
     <string name="inspire_settings_external_drop_engines_desc">在外部拖放悬浮窗中，根据内容类型显示已配置的搜索引擎</string>
     <string name="inspire_settings_default_share_behavior_desc">选择分享到分词或Pin池的默认行为</string>

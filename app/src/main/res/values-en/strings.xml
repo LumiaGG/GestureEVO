@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="external_drop_pool">Add to Pin Pool</string>
+    <string name="external_drop_previous_page">Hover for previous page</string>
+    <string name="external_drop_next_page">Hover for next page</string>
     <string name="external_drop_pin">Pin</string>
     <string name="external_drop_tokenize">Tokenize</string>
     <string name="external_drop_added">Added to Pin Pool</string>
@@ -1080,8 +1082,20 @@
     <string name="gesture_type_batch_selected_count">Selected gestures: %1$d; stages: %2$d</string>
     <string name="inspire_settings_screen_content_description">Manage screen text recognition, copying and screenshots</string>
     <string name="inspire_settings_share_settings_description">Configure default sharing and external drag and drop</string>
-    <string name="inspire_settings_external_drop">External Drag and Drop Overlay</string>
-    <string name="inspire_settings_external_drop_desc">Show Pin Pool, Pin, and Tokenize targets when dragging text or images from other apps</string>
+    <string name="inspire_settings_external_drop">Show Tool Buttons when Dragging</string>
+    <string name="inspire_settings_external_drop_desc">Show the Pin Pool, Pin, and Tokenize tool buttons when dragging text or images from other apps</string>
+    <string name="inspire_settings_external_drop_position">Drag and Drop Overlay Position</string>
+    <string name="inspire_settings_external_drop_position_bottom">Bottom</string>
+    <string name="inspire_settings_external_drop_position_left">Left</string>
+    <string name="inspire_settings_external_drop_position_right">Right</string>
+    <string name="inspire_settings_external_drop_sidebar_max_columns">Sidebar Maximum Columns</string>
+    <string name="inspire_settings_external_drop_sidebar_max_height">Sidebar Maximum Height</string>
+    <string name="inspire_settings_external_drop_sidebar_max_height_desc">Set a height limit as a percentage of the safe available screen height. Small limits still allow basic drop targets to fit, without extending beyond the screen.</string>
+    <string name="inspire_settings_external_drop_sidebar_height_percent">%1$d%%</string>
+    <string name="inspire_settings_external_drop_sidebar_fill_priority">Layout Priority</string>
+    <string name="inspire_settings_external_drop_sidebar_fill_priority_desc">Use height first for a narrower panel, or expand columns first for a shorter panel</string>
+    <string name="inspire_settings_external_drop_fill_height">Use Height First</string>
+    <string name="inspire_settings_external_drop_fill_columns">Expand Columns First</string>
     <string name="inspire_settings_external_drop_engines">Show Search Engines when Dragging</string>
     <string name="inspire_settings_external_drop_engines_desc">Show configured search engines matching the content type in the external drop overlay</string>
     <string name="inspire_settings_app_selection_description">Choose default apps for translation, search and opening images</string>

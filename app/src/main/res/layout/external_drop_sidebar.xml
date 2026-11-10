@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<io.github.lumiagg.gestureevo.drop.ExternalDropScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:clipToPadding="false"
+    android:scrollbars="vertical"
+    android:padding="8dp">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/externalDropPanel"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="?attr/colorSurfaceContainer"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="2dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="6dp">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/externalDropEnginesCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <FrameLayout
+                        android:id="@+id/externalDropPrevious"
+                        android:layout_width="match_parent"
+                        android:layout_height="32dp"
+                        android:contentDescription="@string/external_drop_previous_page">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:importantForAccessibility="no"
+                            android:text="@string/external_drop_page_up_arrow"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="20sp" />
+
+                        <View
+                            android:id="@+id/externalDropPreviousProgress"
+                            android:layout_width="match_parent"
+                            android:layout_height="2dp"
+                            android:layout_gravity="bottom"
+                            android:background="?attr/colorPrimary"
+                            android:importantForAccessibility="no"
+                            android:scaleX="0" />
+                    </FrameLayout>
+
+                    <io.github.lumiagg.gestureevo.search.QuickSearchEnginePager
+                        android:id="@+id/externalDropEngines"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:padding="2dp" />
+
+                    <FrameLayout
+                        android:id="@+id/externalDropNext"
+                        android:layout_width="match_parent"
+                        android:layout_height="32dp"
+                        android:contentDescription="@string/external_drop_next_page">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:importantForAccessibility="no"
+                            android:text="@string/external_drop_page_down_arrow"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="20sp" />
+
+                        <View
+                            android:id="@+id/externalDropNextProgress"
+                            android:layout_width="match_parent"
+                            android:layout_height="2dp"
+                            android:layout_gravity="top"
+                            android:background="?attr/colorPrimary"
+                            android:importantForAccessibility="no"
+                            android:scaleX="0" />
+                    </FrameLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <GridLayout
+                android:id="@+id/externalDropTools"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="2">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/externalDropPool"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/external_drop_pool"
+                    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:importantForAccessibility="no"
+                        android:padding="12dp"
+                        android:scaleType="center"
+                        app:srcCompat="@drawable/pinboard_24px"
+                        app:tint="?attr/colorOnSurface" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/externalDropPin"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/external_drop_pin"
+                    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:importantForAccessibility="no"
+                        android:padding="12dp"
+                        android:scaleType="center"
+                        app:srcCompat="@drawable/baseline_push_pin_24"
+                        app:tint="?attr/colorOnSurface" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/externalDropTokenize"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:contentDescription="@string/external_drop_tokenize"
+                    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:importantForAccessibility="no"
+                        android:padding="12dp"
+                        android:scaleType="center"
+                        app:srcCompat="@drawable/outline_center_focus_weak_24"
+                        app:tint="?attr/colorOnSurface" />
+                </com.google.android.material.card.MaterialCardView>
+            </GridLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+</io.github.lumiagg.gestureevo.drop.ExternalDropScrollView>
