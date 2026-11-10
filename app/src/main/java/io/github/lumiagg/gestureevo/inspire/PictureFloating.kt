@@ -38,6 +38,7 @@ import androidx.core.animation.addListener
 import androidx.core.view.doOnAttach
 import androidx.core.view.isVisible
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.color.MaterialColors
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.PinFloatingControlPanelBinding
 import io.github.lumiagg.gestureevo.databinding.PinFloatingViewBinding
@@ -1863,6 +1864,24 @@ class PictureFloating(
         applyControlPanelTheme()
         setBorderColor(DynamicColorUtils.primaryColor)
         if (::sendCancelBar.isInitialized) PinDragSend.applyBarTheme(sendCancelBar)
+        applyContentTheme()
+    }
+
+    // The content card resolves its surface and text colors from the theme at inflation;
+    // reapply them so a day/night flip cannot leave a stale card behind.
+    private fun applyContentTheme() {
+        val surface = MaterialColors.getColor(
+            DynamicColorUtils.dynamicThemedContext(context),
+            com.google.android.material.R.attr.colorSurface,
+            0
+        )
+        if (surface != 0) {
+            // Docking caches the expanded color to restore it later; keep the cache in sync.
+            if (expandedCardColor != null) expandedCardColor = ColorStateList.valueOf(surface)
+            val docked = !contentBinding.imageView.isVisible && !contentBinding.textView.isVisible
+            if (!docked) contentBinding.root.setCardBackgroundColor(surface)
+        }
+        contentBinding.textView.setTextColor(DynamicColorUtils.onSurfaceColor)
     }
 
     private fun releaseContent() {

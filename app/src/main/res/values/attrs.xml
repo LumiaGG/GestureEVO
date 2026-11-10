@@ -41,4 +41,14 @@
         <attr name="settingsRowTitle" />
         <attr name="settingsRowSummary" />
     </declare-styleable>
+
+    <declare-styleable name="ScreenSearchInputTheme">
+        <attr name="boxStrokeColor" />
+    </declare-styleable>
+
+    <declare-styleable name="ScreenSearchSwitchTheme">
+        <attr name="thumbTint" />
+        <attr name="trackTint" />
+        <attr name="trackDecorationTint" />
+    </declare-styleable>
 </resources>

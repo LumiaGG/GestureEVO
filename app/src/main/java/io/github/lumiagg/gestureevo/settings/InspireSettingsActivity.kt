@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 
 class InspireSettingsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityInspireSettingsBinding
+    private var externalDropPosition = EXTERNAL_DROP_POSITION_BOTTOM
 
     private val notSelection: String
         get() = getString(R.string.inspire_settings_current_not_selected)
@@ -82,7 +83,16 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val PIN_POOL_DISPLAY_MODE_LEGACY_SIDEBAR = "sidebar"
         const val KEY_DEFAULT_SHARE_BEHAVIOR = "key_default_share_behavior"
         const val KEY_EXTERNAL_DROP_ENABLED = "key_external_drop_enabled"
+        const val KEY_EXTERNAL_DROP_POSITION = "key_external_drop_position"
+        const val EXTERNAL_DROP_POSITION_BOTTOM = "bottom"
+        const val EXTERNAL_DROP_POSITION_LEFT = "left"
+        const val EXTERNAL_DROP_POSITION_RIGHT = "right"
         const val KEY_EXTERNAL_DROP_SHOW_ENGINES = "key_external_drop_show_engines"
+        const val KEY_EXTERNAL_DROP_SIDEBAR_MAX_COLUMNS = "key_external_drop_sidebar_max_columns"
+        const val KEY_EXTERNAL_DROP_SIDEBAR_MAX_HEIGHT_PERCENT = "key_external_drop_sidebar_max_height_percent"
+        const val KEY_EXTERNAL_DROP_SIDEBAR_FILL_PRIORITY = "key_external_drop_sidebar_fill_priority"
+        const val EXTERNAL_DROP_FILL_HEIGHT = "height"
+        const val EXTERNAL_DROP_FILL_COLUMNS = "columns"
         const val DEFAULT_NOTIFICATION_IMAGE_DISPLAY_SECONDS = 6
 //        const val KEY_POINTER_ICON_PATH = "key_pointer_icon_PATH"
     }
@@ -137,6 +147,18 @@ class InspireSettingsActivity : AppCompatActivity() {
         updateDefaultShareBehaviorText(defaultShareBehavior)
         binding.externalDropSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_ENABLED, true)
         binding.externalDropEnginesSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true)
+        updateExternalDropPositionText(
+            settingsStore.readKey(KEY_EXTERNAL_DROP_POSITION, EXTERNAL_DROP_POSITION_BOTTOM)
+        )
+        updateExternalDropSidebarMaxColumnsText(
+            settingsStore.readKey(KEY_EXTERNAL_DROP_SIDEBAR_MAX_COLUMNS, 2)
+        )
+        updateExternalDropSidebarMaxHeightText(
+            settingsStore.readKey(KEY_EXTERNAL_DROP_SIDEBAR_MAX_HEIGHT_PERCENT, 50)
+        )
+        updateExternalDropSidebarFillPriorityText(
+            settingsStore.readKey(KEY_EXTERNAL_DROP_SIDEBAR_FILL_PRIORITY, EXTERNAL_DROP_FILL_HEIGHT)
+        )
 
         // Notification icon
         binding.notificationIconSwitch.isChecked =
@@ -291,10 +313,24 @@ class InspireSettingsActivity : AppCompatActivity() {
         }
 
         binding.externalDropSwitch.setOnCheckedChangeListener { _, isChecked ->
+            updateExternalDropSettingsEnabled()
             lifecycleScope.launch { settingsStore.saveKey(KEY_EXTERNAL_DROP_ENABLED, isChecked) }
         }
+        binding.externalDropPositionRow.setOnClickListener {
+            showExternalDropPositionDialog()
+        }
         binding.externalDropEnginesSwitch.setOnCheckedChangeListener { _, isChecked ->
+            updateExternalDropSettingsEnabled()
             lifecycleScope.launch { settingsStore.saveKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, isChecked) }
+        }
+        binding.externalDropSidebarMaxColumnsRow.setOnClickListener {
+            showExternalDropSidebarMaxColumnsDialog()
+        }
+        binding.externalDropSidebarMaxHeightRow.setOnClickListener {
+            showExternalDropSidebarMaxHeightDialog()
+        }
+        binding.externalDropSidebarFillPriorityRow.setOnClickListener {
+            showExternalDropSidebarFillPriorityDialog()
         }
 
         binding.keyboardTypeRow.setOnClickListener {
@@ -565,6 +601,146 @@ class InspireSettingsActivity : AppCompatActivity() {
         binding.selectedDefaultShareBehaviorText.text = when (value) {
             "pinpool" -> getString(R.string.inspire_settings_share_to_pinpool)
             else -> getString(R.string.inspire_settings_share_to_tokenization)
+        }
+    }
+
+    private fun updateExternalDropSettingsEnabled() {
+        val enabled = binding.externalDropSwitch.isChecked || binding.externalDropEnginesSwitch.isChecked
+        binding.externalDropPositionRow.isEnabled = enabled
+        binding.externalDropPositionRow.alpha = if (enabled) 1f else 0.5f
+        val sidebarEnabled = enabled && (externalDropPosition == EXTERNAL_DROP_POSITION_LEFT ||
+            externalDropPosition == EXTERNAL_DROP_POSITION_RIGHT)
+        listOf(
+            binding.externalDropSidebarMaxColumnsRow,
+            binding.externalDropSidebarMaxHeightRow,
+            binding.externalDropSidebarFillPriorityRow
+        ).forEach { row ->
+            row.isEnabled = sidebarEnabled
+            row.alpha = if (sidebarEnabled) 1f else 0.5f
+        }
+    }
+
+    private fun updateExternalDropPositionText(value: String) {
+        externalDropPosition = when (value) {
+            EXTERNAL_DROP_POSITION_LEFT, EXTERNAL_DROP_POSITION_RIGHT -> value
+            else -> EXTERNAL_DROP_POSITION_BOTTOM
+        }
+        updateExternalDropSettingsEnabled()
+        binding.selectedExternalDropPositionText.text = getString(
+            when (value) {
+                EXTERNAL_DROP_POSITION_LEFT -> R.string.inspire_settings_external_drop_position_left
+                EXTERNAL_DROP_POSITION_RIGHT -> R.string.inspire_settings_external_drop_position_right
+                else -> R.string.inspire_settings_external_drop_position_bottom
+            }
+        )
+    }
+
+    private fun showExternalDropPositionDialog() {
+        val options = arrayOf(
+            getString(R.string.inspire_settings_external_drop_position_bottom),
+            getString(R.string.inspire_settings_external_drop_position_left),
+            getString(R.string.inspire_settings_external_drop_position_right)
+        )
+        lifecycleScope.launch {
+            val current = settingsStore.readKey(KEY_EXTERNAL_DROP_POSITION, EXTERNAL_DROP_POSITION_BOTTOM)
+            val checkedItem = when (current) {
+                EXTERNAL_DROP_POSITION_LEFT -> 1
+                EXTERNAL_DROP_POSITION_RIGHT -> 2
+                else -> 0
+            }
+            MaterialAlertDialogBuilder(this@InspireSettingsActivity)
+                .setTitle(R.string.inspire_settings_external_drop_position)
+                .setSingleChoiceItems(options, checkedItem) { dialog, which ->
+                    val value = when (which) {
+                        1 -> EXTERNAL_DROP_POSITION_LEFT
+                        2 -> EXTERNAL_DROP_POSITION_RIGHT
+                        else -> EXTERNAL_DROP_POSITION_BOTTOM
+                    }
+                    lifecycleScope.launch {
+                        settingsStore.saveKey(KEY_EXTERNAL_DROP_POSITION, value)
+                        updateExternalDropPositionText(value)
+                    }
+                    dialog.dismiss()
+                }
+                .show()
+        }
+    }
+
+    private fun updateExternalDropSidebarMaxColumnsText(value: Int) {
+        binding.selectedExternalDropSidebarMaxColumnsText.text = value.coerceIn(1, 3).toString()
+    }
+
+    private fun showExternalDropSidebarMaxColumnsDialog() {
+        val values = listOf(1, 2, 3)
+        lifecycleScope.launch {
+            val current = settingsStore.readKey(KEY_EXTERNAL_DROP_SIDEBAR_MAX_COLUMNS, 2).coerceIn(1, 3)
+            MaterialAlertDialogBuilder(this@InspireSettingsActivity)
+                .setTitle(R.string.inspire_settings_external_drop_sidebar_max_columns)
+                .setSingleChoiceItems(values.map { it.toString() }.toTypedArray(), values.indexOf(current)) { dialog, which ->
+                    val value = values[which]
+                    lifecycleScope.launch {
+                        settingsStore.saveKey(KEY_EXTERNAL_DROP_SIDEBAR_MAX_COLUMNS, value)
+                        updateExternalDropSidebarMaxColumnsText(value)
+                    }
+                    dialog.dismiss()
+                }
+                .show()
+        }
+    }
+
+    private fun updateExternalDropSidebarMaxHeightText(value: Int) {
+        binding.selectedExternalDropSidebarMaxHeightText.text = getString(
+            R.string.inspire_settings_external_drop_sidebar_height_percent, value.coerceIn(30, 80)
+        )
+    }
+
+    private fun showExternalDropSidebarMaxHeightDialog() {
+        val values = listOf(30, 40, 50, 60, 70, 80)
+        val options = values.map {
+            getString(R.string.inspire_settings_external_drop_sidebar_height_percent, it)
+        }.toTypedArray()
+        lifecycleScope.launch {
+            val current = settingsStore.readKey(KEY_EXTERNAL_DROP_SIDEBAR_MAX_HEIGHT_PERCENT, 50).coerceIn(30, 80)
+            MaterialAlertDialogBuilder(this@InspireSettingsActivity)
+                .setTitle(R.string.inspire_settings_external_drop_sidebar_max_height)
+                .setSingleChoiceItems(options, values.indexOf(current)) { dialog, which ->
+                    val value = values[which]
+                    lifecycleScope.launch {
+                        settingsStore.saveKey(KEY_EXTERNAL_DROP_SIDEBAR_MAX_HEIGHT_PERCENT, value)
+                        updateExternalDropSidebarMaxHeightText(value)
+                    }
+                    dialog.dismiss()
+                }
+                .show()
+        }
+    }
+
+    private fun updateExternalDropSidebarFillPriorityText(value: String) {
+        binding.selectedExternalDropSidebarFillPriorityText.setText(
+            if (value == EXTERNAL_DROP_FILL_COLUMNS) R.string.inspire_settings_external_drop_fill_columns
+            else R.string.inspire_settings_external_drop_fill_height
+        )
+    }
+
+    private fun showExternalDropSidebarFillPriorityDialog() {
+        val options = arrayOf(
+            getString(R.string.inspire_settings_external_drop_fill_height),
+            getString(R.string.inspire_settings_external_drop_fill_columns)
+        )
+        lifecycleScope.launch {
+            val current = settingsStore.readKey(KEY_EXTERNAL_DROP_SIDEBAR_FILL_PRIORITY, EXTERNAL_DROP_FILL_HEIGHT)
+            val checkedItem = if (current == EXTERNAL_DROP_FILL_COLUMNS) 1 else 0
+            MaterialAlertDialogBuilder(this@InspireSettingsActivity)
+                .setTitle(R.string.inspire_settings_external_drop_sidebar_fill_priority)
+                .setSingleChoiceItems(options, checkedItem) { dialog, which ->
+                    val value = if (which == 1) EXTERNAL_DROP_FILL_COLUMNS else EXTERNAL_DROP_FILL_HEIGHT
+                    lifecycleScope.launch {
+                        settingsStore.saveKey(KEY_EXTERNAL_DROP_SIDEBAR_FILL_PRIORITY, value)
+                        updateExternalDropSidebarFillPriorityText(value)
+                    }
+                    dialog.dismiss()
+                }
+                .show()
         }
     }
 

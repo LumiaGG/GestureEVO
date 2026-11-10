@@ -264,8 +264,7 @@ class SearchEngineManager(
                 )
             }
 
-            // Dual-mode engines switch to the image share flow only when images are
-            // explicitly attached; otherwise they behave like pure text engines.
+            // Pass both content types so the executor can apply this engine's preference.
             engine.supportsImageShare() && attachedImages.isNotEmpty() -> {
                 executeSearchEngine(
                     engine = engine,

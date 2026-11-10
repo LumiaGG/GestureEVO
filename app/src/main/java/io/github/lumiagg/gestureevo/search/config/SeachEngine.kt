@@ -19,6 +19,12 @@ enum class EngineType {
 
 }
 
+enum class SearchContentMode {
+    TEXT,
+    IMAGE,
+    ASK
+}
+
 @JsonClass(generateAdapter = true)
 class SearchEngine {
     var tag: String = buildTag()
@@ -40,6 +46,14 @@ class SearchEngine {
     var imageShareEnabled: Boolean = false
     var imageTargetPackage: String? = null
     var imageTargetActivity: String? = null
+    var mixedContentMode: SearchContentMode = SearchContentMode.TEXT
+
+    fun resolveContentMode(hasText: Boolean, hasImage: Boolean): SearchContentMode = when {
+        engineType == EngineType.SHARE_IMAGE_TO_APP -> SearchContentMode.IMAGE
+        !imageShareEnabled || !hasImage -> SearchContentMode.TEXT
+        !hasText -> SearchContentMode.IMAGE
+        else -> mixedContentMode
+    }
 
     /**
      * True for pure image engines and for text engines with image share enabled.
@@ -107,7 +121,8 @@ class SearchEngine {
             autoInputEnter = autoInputEnter,
             imageShareEnabled = imageShareEnabled,
             imageTargetPackage = imageTargetPackage,
-            imageTargetActivity = imageTargetActivity
+            imageTargetActivity = imageTargetActivity,
+            mixedContentMode = mixedContentMode
         )
     }
 
@@ -126,7 +141,8 @@ class SearchEngine {
         val autoInputEnter: Boolean,
         val imageShareEnabled: Boolean = false,
         val imageTargetPackage: String? = null,
-        val imageTargetActivity: String? = null
+        val imageTargetActivity: String? = null,
+        val mixedContentMode: SearchContentMode = SearchContentMode.TEXT
     )
 }
 

@@ -1,18 +1,19 @@
 package io.github.lumiagg.gestureevo.search
 
 import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.gesture.EventBusManager.produceSearchEvent
 import io.github.lumiagg.gestureevo.gesture.SearchEvent
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionType
 import io.github.lumiagg.gestureevo.inspire.InspireDataHolder
 import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
 import io.github.lumiagg.gestureevo.share.ImageShareLauncher
-import io.github.lumiagg.gestureevo.search.SearchHistoryManager
+import io.github.lumiagg.gestureevo.search.config.SearchContentMode
 import io.github.lumiagg.gestureevo.search.config.EngineType
 import io.github.lumiagg.gestureevo.search.config.SearchEngine
 import io.github.lumiagg.gestureevo.utils.ActionProxy
@@ -21,7 +22,9 @@ import io.github.lumiagg.gestureevo.utils.app.isActivityExported
 import io.github.lumiagg.gestureevo.utils.uriBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 
 
 class SearchEngineExecutor(
@@ -37,7 +40,8 @@ class SearchEngineExecutor(
     fun execute(
         query: String = "",
         bitmapHandle: ManagedBitmap? = null,
-        imageUris: List<Uri> = emptyList()
+        imageUris: List<Uri> = emptyList(),
+        onSearchStarting: () -> Boolean = { true }
     ) =
         activity.lifecycleScope.launch(uiDispatcher) {
             val triggerSide = if (activity is QuickSearchActivity) {
@@ -45,14 +49,19 @@ class SearchEngineExecutor(
             } else {
                 InspireDataHolder.triggerSide
             }
-            // Pure image engines always run the image share flow (missing images are
-            // handled inside executeShareImageSearch); dual-mode engines only switch to
-            // the image flow when the search actually carries image content.
-            val imageMode = engine.engineType == EngineType.SHARE_IMAGE_TO_APP ||
-                (engine.imageShareEnabled && (bitmapHandle != null || imageUris.isNotEmpty()))
+            val resolvedMode = engine.resolveContentMode(
+                hasText = query.isNotBlank(),
+                hasImage = bitmapHandle?.bitmapOrNull != null || imageUris.isNotEmpty()
+            )
+            val mode = if (resolvedMode == SearchContentMode.ASK) {
+                chooseContentMode() ?: return@launch
+            } else {
+                resolvedMode
+            }
+            if (!onSearchStarting()) return@launch
             when {
-                imageMode -> {
-                    if (!executeShareImageSearch(bitmapHandle, imageUris, query, triggerSide)) {
+                mode == SearchContentMode.IMAGE -> {
+                    if (!executeShareImageSearch(bitmapHandle, imageUris, triggerSide)) {
                         return@launch
                     }
                 }
@@ -180,10 +189,28 @@ class SearchEngineExecutor(
             executedAfterSearch(query)
         }
 
+    private suspend fun chooseContentMode(): SearchContentMode? = suspendCancellableCoroutine { continuation ->
+        val modes = arrayOf(SearchContentMode.TEXT, SearchContentMode.IMAGE)
+        val labels = arrayOf(
+            activity.getString(R.string.search_content_mode_text),
+            activity.getString(R.string.search_content_mode_image)
+        )
+        val dialog = MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.search_content_mode_title)
+            .setItems(labels) { _, which ->
+                if (continuation.isActive) continuation.resume(modes[which])
+            }
+            .setOnDismissListener {
+                if (continuation.isActive) continuation.resume(null)
+            }
+            .create()
+        continuation.invokeOnCancellation { dialog.dismiss() }
+        if (continuation.isActive) dialog.show()
+    }
+
     private suspend fun executeShareImageSearch(
         bitmapHandle: ManagedBitmap?,
         imageUris: List<Uri>,
-        query: String,
         triggerSide: String? = null
     ): Boolean {
         val pkg = engine.imageShareTargetPackage() ?: return false
@@ -222,12 +249,8 @@ class SearchEngineExecutor(
         }
 
         return when (result) {
-            ImageShareLauncher.LaunchResult.SUCCESS -> {
-                if (!freeFrom) {
-                    executedAfterSearch(query)
-                }
-                true
-            }
+            ImageShareLauncher.LaunchResult.SUCCESS -> true
+            ImageShareLauncher.LaunchResult.UNFREEZE_FAILED -> false
 
             ImageShareLauncher.LaunchResult.TARGET_NOT_FOUND -> {
                 ToastHelper.showInUIThread(

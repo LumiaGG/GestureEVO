@@ -6,10 +6,13 @@ import android.content.Intent
 import android.content.ActivityNotFoundException
 import android.graphics.Bitmap
 import android.net.Uri
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.utils.ActionProxy
+import io.github.lumiagg.gestureevo.utils.app.AShizuku.ensureAppEnabledIfFrozen
+import kotlinx.coroutines.CancellationException
 import io.github.lumiagg.gestureevo.utils.Rom.RomFreeFormCode
 import io.github.lumiagg.gestureevo.utils.Rom.getFreeFormCode
 import java.io.File
@@ -21,6 +24,7 @@ class ImageShareLauncher(
     enum class LaunchResult {
         SUCCESS,
         TARGET_NOT_FOUND,
+        UNFREEZE_FAILED,
         LAUNCH_FAILED
     }
 
@@ -196,8 +200,10 @@ class ImageShareLauncher(
                 )
             }
             true
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.w("ImageShareLauncher", "Unable to launch image search in freeform", e)
             false
         }
     }
@@ -210,39 +216,16 @@ class ImageShareLauncher(
         freeform: Boolean,
         triggerSide: String? = null
     ): LaunchResult {
-        if (!freeform) {
-            return if (
-                shareImage(
-                    bitmap = bitmap,
-                    targetPackage = targetPackage,
-                    targetActivity = targetActivity,
-                    forceChooser = false
-                )
-            ) {
-                LaunchResult.SUCCESS
-            } else {
-                LaunchResult.LAUNCH_FAILED
-            }
-        }
-
-        val payload = buildPayload(
-            bitmap = bitmap,
+        val payload = buildPayload(bitmap = bitmap, targetPackage = null)
+            ?: return LaunchResult.LAUNCH_FAILED
+        return launchForSearchEngine(
+            activity = activity,
+            imageUris = payload.contentUris,
             targetPackage = targetPackage,
-            targetActivity = targetActivity
-        ) ?: return LaunchResult.TARGET_NOT_FOUND
-
-        val launched = if (getFreeFormCode(context) == RomFreeFormCode.VIVO.code) {
-            launchViaChooser(payload)
-        } else {
-            launchInFreeform(
-                activity = activity,
-                payload = payload,
-                targetPackage = targetPackage,
-                triggerSide = triggerSide
-            )
-        }
-
-        return if (launched) LaunchResult.SUCCESS else LaunchResult.LAUNCH_FAILED
+            targetActivity = targetActivity,
+            freeform = freeform,
+            triggerSide = triggerSide
+        )
     }
 
     suspend fun launchForSearchEngine(
@@ -253,39 +236,39 @@ class ImageShareLauncher(
         freeform: Boolean,
         triggerSide: String? = null
     ): LaunchResult {
-        val payload = buildPayload(
-            uris = imageUris,
-            targetPackage = targetPackage,
-            targetActivity = targetActivity
-        ) ?: return LaunchResult.TARGET_NOT_FOUND
+        return try {
+            // Frozen packages cannot resolve share activities or receive URI grants.
+            if (!ensureAppEnabledIfFrozen(targetPackage, context)) {
+                return LaunchResult.UNFREEZE_FAILED
+            }
+            val payload = buildPayload(
+                uris = imageUris,
+                targetPackage = targetPackage,
+                targetActivity = targetActivity
+            ) ?: return LaunchResult.TARGET_NOT_FOUND
 
-        if (!freeform) {
-            return if (
-                startActivityWithFallback(
+            val launched = when {
+                !freeform -> startActivityWithFallback(
                     activity = activity,
                     payload = payload,
                     targetPackage = targetPackage,
                     chooserTitle = context.getString(R.string.inspire_share_image_title)
                 )
-            ) {
-                LaunchResult.SUCCESS
-            } else {
-                LaunchResult.LAUNCH_FAILED
+                getFreeFormCode(context) == RomFreeFormCode.VIVO.code -> launchViaChooser(payload)
+                else -> launchInFreeform(
+                    activity = activity,
+                    payload = payload,
+                    targetPackage = targetPackage,
+                    triggerSide = triggerSide
+                )
             }
+            if (launched) LaunchResult.SUCCESS else LaunchResult.LAUNCH_FAILED
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("ImageShareLauncher", "Unable to launch image search for $targetPackage", e)
+            LaunchResult.LAUNCH_FAILED
         }
-
-        val launched = if (getFreeFormCode(context) == RomFreeFormCode.VIVO.code) {
-            launchViaChooser(payload)
-        } else {
-            launchInFreeform(
-                activity = activity,
-                payload = payload,
-                targetPackage = targetPackage,
-                triggerSide = triggerSide
-            )
-        }
-
-        return if (launched) LaunchResult.SUCCESS else LaunchResult.LAUNCH_FAILED
     }
 
     private fun buildClipData(uris: List<Uri>): ClipData? {

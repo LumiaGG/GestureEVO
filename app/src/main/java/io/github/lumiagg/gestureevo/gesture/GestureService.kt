@@ -19,6 +19,8 @@ import android.view.accessibility.AccessibilityEvent
 import io.github.lumiagg.gestureevo.drop.ExternalDropFloating
 import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_ENABLED
+import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_POSITION
+import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_POSITION_BOTTOM
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SHOW_ENGINES
 import io.github.lumiagg.gestureevo.utils.CurrentPackageProvider
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
@@ -100,14 +102,17 @@ class GestureService : AccessibilityService(), CoroutineScope {
         externalDropSettingsJob?.cancel()
         externalDropSettingsJob = launch(Dispatchers.Main) {
             settingsStore.data.map { preferences ->
-                preferences.readKey(KEY_EXTERNAL_DROP_ENABLED, true) to
-                    preferences.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true)
+                Triple(
+                    preferences.readKey(KEY_EXTERNAL_DROP_ENABLED, true),
+                    preferences.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true),
+                    preferences.readKey(KEY_EXTERNAL_DROP_POSITION, EXTERNAL_DROP_POSITION_BOTTOM),
+                )
             }.distinctUntilChanged().combine(DynamicColorUtils.themeRevision) { settings, _ ->
                 settings
-            }.collect { (enabled, _) ->
+            }.collect { (showTools, showEngines, position) ->
                 externalDropFloating?.destroy()
-                externalDropFloating = if (enabled) {
-                    ExternalDropFloating(this@GestureService).also { it.start() }
+                externalDropFloating = if (showTools || showEngines) {
+                    ExternalDropFloating(this@GestureService, position, showTools).also { it.start() }
                 } else null
             }
         }
@@ -165,10 +170,13 @@ class GestureService : AccessibilityService(), CoroutineScope {
         val nightMode = newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
         if (nightMode != lastNightMode) {
             lastNightMode = nightMode
-            DynamicColorUtils.refreshSurfaceColors(createConfigurationContext(newConfig))
+            // Day/night flips are theme revisions too: overlays built on stale themed
+            // contexts (e.g. the external drop panel) must be recreated.
+            DynamicColorUtils.notifySystemThemeChanged(createConfigurationContext(newConfig))
         }
         super.onConfigurationChanged(newConfig)
         gestureManager?.onConfigurationChanged(newConfig)
+        externalDropFloating?.onConfigurationChanged()
     }
 
     private val takeCaptureService: ExecutorService =

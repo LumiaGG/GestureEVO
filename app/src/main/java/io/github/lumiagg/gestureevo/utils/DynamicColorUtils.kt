@@ -510,6 +510,14 @@ object DynamicColorUtils {
         }
     }
 
+    /** Refreshes the published palette after a system-initiated day/night flip and
+     *  bumps [themeRevision], so overlays whose themes were baked at construction
+     *  (e.g. the external drop panel) get rebuilt against the new uiMode. */
+    fun notifySystemThemeChanged(context: Context) {
+        refreshSurfaceColors(context)
+        revision.value += 1
+    }
+
     fun applyBottomSheetSurface(dialog: com.google.android.material.bottomsheet.BottomSheetDialog) {
         val sheet =
             dialog.findViewById<FrameLayout>(com.google.android.material.R.id.design_bottom_sheet)
