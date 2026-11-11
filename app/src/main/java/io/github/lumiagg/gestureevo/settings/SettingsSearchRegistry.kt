@@ -706,7 +706,7 @@ object SettingsSearchRegistry {
             titleResId = R.string.inspire_settings_external_drop,
             pageTitleResId = R.string.inspire_settings_title,
             targetActivity = InspireSettingsActivity::class.java,
-            targetViewId = R.id.defaultShareBehaviorCard,
+            targetViewId = R.id.externalDropCard,
             keywords = listOf("外部拖放", "拖拽", "工具按钮", "Pin池", "Pin图", "分词", "悬浮窗", "drop", "drag", "tool buttons", "tokenize")
         ),
         entry(
@@ -714,7 +714,7 @@ object SettingsSearchRegistry {
             titleResId = R.string.global_press_title,
             pageTitleResId = R.string.inspire_settings_title,
             targetActivity = InspireSettingsActivity::class.java,
-            targetViewId = R.id.global_press_row,
+            targetViewId = R.id.globalPressCard,
             keywords = listOf("全局长按拖放", "文字", "图片", "Shizuku", "长按时间", "排除应用", "global long press drag drop", "duration", "excluded apps")
         ),
         entry(
@@ -722,7 +722,7 @@ object SettingsSearchRegistry {
             titleResId = R.string.external_drop_conversion_title,
             pageTitleResId = R.string.inspire_settings_title,
             targetActivity = InspireSettingsActivity::class.java,
-            targetViewId = R.id.external_drop_conversion_row,
+            targetViewId = R.id.externalDropCard,
             keywords = listOf("拖拽", "图文转换", "文字转图片", "图片转文字", "OCR", "drag", "convert", "text", "image")
         ),
         entry(
@@ -730,7 +730,7 @@ object SettingsSearchRegistry {
             titleResId = R.string.inspire_settings_external_drop_position,
             pageTitleResId = R.string.inspire_settings_title,
             targetActivity = InspireSettingsActivity::class.java,
-            targetViewId = R.id.defaultShareBehaviorCard,
+            targetViewId = R.id.externalDropCard,
             keywords = listOf("拖放悬浮窗位置", "底部", "左侧", "右侧", "drop", "position", "bottom", "left", "right")
         ),
         entry(
@@ -738,7 +738,7 @@ object SettingsSearchRegistry {
             titleResId = R.string.inspire_settings_external_drop_sidebar_max_columns,
             pageTitleResId = R.string.inspire_settings_title,
             targetActivity = InspireSettingsActivity::class.java,
-            targetViewId = R.id.defaultShareBehaviorCard,
+            targetViewId = R.id.externalDropCard,
             keywords = listOf("拖放", "侧边", "最大列数", "drop", "sidebar", "columns")
         ),
         entry(
@@ -746,7 +746,7 @@ object SettingsSearchRegistry {
             titleResId = R.string.inspire_settings_external_drop_sidebar_max_height,
             pageTitleResId = R.string.inspire_settings_title,
             targetActivity = InspireSettingsActivity::class.java,
-            targetViewId = R.id.defaultShareBehaviorCard,
+            targetViewId = R.id.externalDropCard,
             keywords = listOf("拖放", "侧边", "高度上限", "安全可用高度", "百分比", "drop", "sidebar", "height", "percent")
         ),
         entry(
@@ -754,7 +754,7 @@ object SettingsSearchRegistry {
             titleResId = R.string.inspire_settings_external_drop_sidebar_fill_priority,
             pageTitleResId = R.string.inspire_settings_title,
             targetActivity = InspireSettingsActivity::class.java,
-            targetViewId = R.id.defaultShareBehaviorCard,
+            targetViewId = R.id.externalDropCard,
             keywords = listOf("拖放", "排布优先级", "高度", "展开列", "更窄", "更短", "drop", "sidebar", "layout", "priority", "height", "columns")
         ),
         entry(
@@ -762,7 +762,7 @@ object SettingsSearchRegistry {
             titleResId = R.string.inspire_settings_external_drop_engines,
             pageTitleResId = R.string.inspire_settings_title,
             targetActivity = InspireSettingsActivity::class.java,
-            targetViewId = R.id.defaultShareBehaviorCard,
+            targetViewId = R.id.externalDropCard,
             keywords = listOf("外部拖放", "搜索引擎", "图片搜索", "drop", "search engine")
         ),
         entry(

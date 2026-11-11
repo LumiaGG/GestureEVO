@@ -150,6 +150,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         val defaultShareBehavior = settingsStore.readKey(KEY_DEFAULT_SHARE_BEHAVIOR, "tokenization")
         updateDefaultShareBehaviorText(defaultShareBehavior)
         binding.globalPressSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_ENABLED, false)
+        updateGlobalPressSettingsEnabled()
         binding.selectedGlobalPressTimeoutText.text = getString(
             R.string.global_press_milliseconds, settingsStore.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500)
         )
@@ -323,6 +324,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         }
 
         binding.globalPressSwitch.setOnCheckedChangeListener { _, enabled ->
+            updateGlobalPressSettingsEnabled()
             lifecycleScope.launch {
                 settingsStore.saveKey(KEY_GLOBAL_PRESS_ENABLED, enabled)
                 if (enabled) {
@@ -664,6 +666,17 @@ class InspireSettingsActivity : AppCompatActivity() {
         binding.selectedDefaultShareBehaviorText.text = when (value) {
             "pinpool" -> getString(R.string.inspire_settings_share_to_pinpool)
             else -> getString(R.string.inspire_settings_share_to_tokenization)
+        }
+    }
+
+    private fun updateGlobalPressSettingsEnabled() {
+        val enabled = binding.globalPressSwitch.isChecked
+        listOf(
+            binding.globalPressTimeoutRow,
+            binding.globalPressExcludedRow
+        ).forEach { row ->
+            row.isEnabled = enabled
+            row.alpha = if (enabled) 1f else 0.5f
         }
     }
 

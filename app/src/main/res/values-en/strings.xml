@@ -1071,7 +1071,7 @@
     <string name="appearance_settings_screen_content_card_background_blur">Card background blur</string>
     <string name="appearance_settings_external_drop_title">Drag overlay settings</string>
     <string name="appearance_settings_external_drop_description">Adjust drag overlay background blur and card appearance</string>
-    <string name="appearance_settings_external_drop_background_blur">Background blur (system dependent)</string>
+    <string name="appearance_settings_external_drop_background_blur">Background blur (Android 12+)</string>
     <string name="appearance_settings_external_drop_system_drag_blur">System drag background blur</string>
     <string name="appearance_settings_external_drop_system_drag_blur_summary">Also show the background blur for drags started by other apps</string>
     <string name="appearance_settings_external_drop_card_background_blur">Card background blur</string>
@@ -1087,7 +1087,9 @@
     <string name="gesture_type_batch_apply">Apply to selection</string>
     <string name="gesture_type_batch_selected_count">Selected gestures: %1$d; stages: %2$d</string>
     <string name="inspire_settings_screen_content_description">Manage screen text recognition, copying and screenshots</string>
-    <string name="inspire_settings_share_settings_description">Configure default sharing and external drag and drop</string>
+    <string name="inspire_settings_share_settings_description">Configure the default sharing behavior</string>
+    <string name="inspire_settings_external_drop_settings_title">External Drop Settings</string>
+    <string name="inspire_settings_external_drop_settings_description">Configure tool buttons, overlay position and sidebar layout for external drops</string>
     <string name="inspire_settings_external_drop">Show Tool Buttons when Dragging</string>
     <string name="inspire_settings_external_drop_desc">Show the Pin Pool, Pin, and Tokenize tool buttons when dragging text or images from other apps</string>
     <string name="inspire_settings_external_drop_position">Drag and Drop Overlay Position</string>
@@ -1331,6 +1333,8 @@
     <string name="action_minutes_summary">%1$s min</string>
     <string name="action_seconds_summary">%1$s sec</string>
     <string name="action_placeholder_single">Add a transparent placeholder</string>
+    <string name="global_press_settings_title">Global Long-press Drag Settings</string>
+    <string name="global_press_settings_description">Configure the hold duration and excluded apps for global long-press drag</string>
     <string name="global_press_title">Global long-press drag and drop</string>
     <string name="global_press_description">Hold text or a visible image in another app. A light vibration signals that the hold duration has elapsed and content is ready (when vibration is enabled). Move to show the preview and EVO panel, then drag to the panel to drop. Holding alone shows no overlay. Off by default; requires accessibility and Shizuku. System drag and drop remains available.</string>
     <string name="global_press_timeout">Hold duration before moving</string>
