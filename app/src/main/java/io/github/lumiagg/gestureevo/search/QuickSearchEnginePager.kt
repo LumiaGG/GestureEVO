@@ -168,6 +168,35 @@ class QuickSearchEnginePager @JvmOverloads constructor(
         onExternalHoverChanged = onHoverChanged
     }
 
+    /** Coordinates are local to this pager; shares highlighting, dwell and page timing with system drags. */
+    fun updateContentDrag(x: Float, y: Float) {
+        externalDragActive = true
+        highlightExternalTarget(findEnginePositionUnder(x, y))
+        val direction = when {
+            !externalEdgePagingEnabled || y < 0 || y >= height -> 0
+            x >= 0 && x < edgeFlipSize && currentPage > 0 -> -1
+            x > width - edgeFlipSize && x < width && currentPage < pageCount - 1 -> 1
+            else -> 0
+        }
+        if (direction != externalEdgeDirection) {
+            handler.removeCallbacks(externalEdgeFlip)
+            externalEdgeDirection = direction
+            if (direction != 0) handler.postDelayed(externalEdgeFlip, edgeFlipDelay)
+        }
+    }
+
+    fun contentDragTarget(x: Float, y: Float): Pair<SearchEngine, Boolean>? {
+        val position = findEnginePositionUnder(x, y)
+        return engines.getOrNull(position)?.let { it to externalHover.isLongPressDrop(position) }
+    }
+
+    fun endContentDrag() {
+        externalDragActive = false
+        externalEdgeDirection = 0
+        handler.removeCallbacks(externalEdgeFlip)
+        highlightExternalTarget(NO_POSITION)
+    }
+
     override fun onDragEvent(event: DragEvent): Boolean {
         val accepts = acceptsExternalDrag ?: return super.onDragEvent(event)
         return when (event.action) {

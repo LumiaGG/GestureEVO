@@ -115,6 +115,13 @@ class ExternalDropFloating(
     private var prepareJob: Job? = null
     private var destroyed = false
     private var dragActive = false
+    private var internalContent: ClipData? = null
+    private val contentPreview = DragContentPreview(service)
+    private val contentSession = ContentDragSession()
+    private var contentX = 0f
+    private var contentY = 0f
+    var onSystemDragStarted: (() -> Unit)? = null
+    var onSystemDragEnded: (() -> Unit)? = null
     private var dropped = false
     private var sidebarEngines: List<SearchEngine> = emptyList()
     private var sidebarRows = 1
@@ -189,9 +196,16 @@ class ExternalDropFloating(
         }
         observer.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         observer.setOnDragListener { _, event ->
+            if (destroyed) return@setOnDragListener false
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> {
-                    if (!accepts(event)) false else {
+                    DropDiagnostics.event("drop_system_started", "system", dragGeneration,
+                        reason = if (accepts(event)) "accepted" else "rejected", flags = targetParams.flags)
+                    onSystemDragStarted?.invoke()
+                    cancelContentDrag()
+                    // Observe the end of EVO-origin drags too, without opening targets for them.
+                    if (!accepts(event)) true else {
+                        targetParams.flags = targetParams.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
                         dragActive = true
                         dropped = false
                         val generation = ++dragGeneration
@@ -219,6 +233,9 @@ class ExternalDropFloating(
                     }
                 }
                 DragEvent.ACTION_DRAG_ENDED -> {
+                    DropDiagnostics.event("drop_system_ended", "system", dragGeneration,
+                        reason = if (dropped) "dropped" else "no_drop", flags = targetParams.flags)
+                    onSystemDragEnded?.invoke()
                     dragActive = false
                     dragGeneration++
                     prepareJob?.cancel()
@@ -265,16 +282,149 @@ class ExternalDropFloating(
     }
 
     fun start() {
+        DropDiagnostics.event("drop_panel_created", "panel", dragGeneration, reason = position)
         if (!destroyed) attachViewSafely(observer, observerParams)
     }
 
     fun destroy() {
+        DropDiagnostics.event("drop_panel_destroyed", if (internalContent != null) "internal" else "system_or_idle", dragGeneration)
         destroyed = true
+        contentSession.cancel()
+        internalContent = null
+        contentPreview.clear()
         dragActive = false
         dragGeneration++
         prepareJob?.cancel()
         hideTargets()
         detachViewSafely(observer)
+        onSystemDragEnded?.invoke()
+    }
+
+    fun beginContentDrag(clip: ClipData, x: Float, y: Float, stillCurrent: () -> Boolean,
+        onReady: () -> Unit, onFailed: (String) -> Unit): Boolean {
+        if (destroyed || dragActive || clip.itemCount == 0 || !stillCurrent()) {
+            DropDiagnostics.event("drop_internal_rejected", "internal", dragGeneration,
+                reason = if (destroyed) "destroyed" else if (dragActive) "already_active" else "source_or_content_unavailable")
+            Log.i("EVO-Press", "panel_rejected destroyed=$destroyed active=$dragActive items=${clip.itemCount}")
+            return false
+        }
+        contentX = x
+        contentY = y
+        internalContent = ClipData(clip)
+        targetParams.flags = targetParams.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        dragActive = true
+        dropped = false
+        val generation = ++dragGeneration
+        val session = contentSession.begin()
+        fun current() = generation == dragGeneration && contentSession.isCurrent(session) &&
+            internalContent != null && !destroyed && stillCurrent()
+        fun fail(reason: String) {
+            if (!contentSession.isCurrent(session)) return
+            DropDiagnostics.event("drop_internal_failed", "internal", generation, reason)
+            Log.i("EVO-Press", "panel_failed reason=$reason generation=$generation")
+            cancelContentDrag()
+            onFailed(reason)
+        }
+        DropDiagnostics.event("drop_internal_preparing", "internal", generation)
+        Log.i("EVO-Press", "panel_preparing generation=$generation")
+        prepareJob = service.launch(Dispatchers.Main) {
+            try {
+                configureEngines(clip.description)
+                if (!current()) { fail("source_expired"); return@launch }
+                // Cold overlays have no dimensions until their first traversal. Keep both windows hidden until ready.
+                targets.alpha = 0f
+                if (!showTargets()) { fail("panel_attach"); return@launch }
+                val laidOut = kotlinx.coroutines.withTimeoutOrNull(1500) { awaitContentLayout() } == true
+                if (!current()) { fail("source_expired"); return@launch }
+                if (!contentSession.confirm(session, stillCurrent(), laidOut)) { fail("panel_layout"); return@launch }
+                if (!contentPreview.show(clip, contentX, contentY, sidebarBounds())) { fail("preview_attach"); return@launch }
+                targets.alpha = 1f
+                DropDiagnostics.event("drop_internal_ready", "internal", generation, width = targets.width,
+                    height = targets.height, flags = targetParams.flags)
+                Log.i("EVO-Press", "panel_ready generation=$generation width=${targets.width} height=${targets.height}")
+                onReady()
+                updateContentDrag(contentX, contentY)
+            } catch (cancelled: CancellationException) {
+                if (contentSession.isCurrent(session)) { cancelContentDrag(); onFailed("prepare_cancelled") }
+                throw cancelled
+            } catch (error: Exception) {
+                Log.w("EVO-Press", "panel_prepare_error generation=$generation type=${error.javaClass.simpleName}")
+                fail("prepare_error")
+            }
+        }
+        return true
+    }
+
+    private suspend fun awaitContentLayout(): Boolean = kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+        val observer = targets.viewTreeObserver
+        val listener = object : android.view.ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (!targets.isAttachedToWindow || targets.width <= 0 || targets.height <= 0 || targets.isLayoutRequested) return true
+                if (observer.isAlive) observer.removeOnPreDrawListener(this)
+                if (continuation.isActive) continuation.resume(true) { _, _, _ -> }
+                return true
+            }
+        }
+        observer.addOnPreDrawListener(listener)
+        continuation.invokeOnCancellation { if (observer.isAlive) observer.removeOnPreDrawListener(listener) }
+        targets.requestLayout()
+    }
+
+    private fun updateContentPreview() = contentPreview.move(contentX, contentY, sidebarBounds())
+
+    fun cancelContentDrag() {
+        contentSession.cancel()
+        contentPreview.clear()
+        if (internalContent == null) return
+        DropDiagnostics.event("drop_internal_ended", "internal", dragGeneration, reason = if (dropped) "dropped" else "cancelled")
+        internalContent = null
+        dragActive = false
+        dragGeneration++
+        prepareJob?.cancel()
+        enginePager.endContentDrag()
+        hideTargets()
+    }
+
+    private fun localPoint(view: View, x: Float, y: Float): Pair<Float, Float> {
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        return (x - location[0]) to (y - location[1])
+    }
+
+    fun updateContentDrag(x: Float, y: Float, release: Boolean = false) {
+        val content = internalContent ?: return
+        contentX = x
+        contentY = y
+        updateContentPreview()
+        if (!contentSession.ready || !targets.isAttachedToWindow || destroyed || dropped) {
+            if (release) cancelContentDrag()
+            return
+        }
+        var tool: Action? = null
+        listOf(R.id.externalDropPool to Action.POOL, R.id.externalDropPin to Action.PIN,
+            R.id.externalDropTokenize to Action.TOKENIZE).forEach { (id, action) ->
+            val card = targets.findViewById<MaterialCardView>(id)
+            val (lx, ly) = localPoint(card, x, y)
+            val active = card.isShown && lx >= 0 && ly >= 0 && lx < card.width && ly < card.height
+            setHighlighted(card, active)
+            if (active) tool = action
+        }
+        val (px, py) = localPoint(enginePager, x, y)
+        val overEngines = enginePager.isShown && px >= 0 && py >= 0 && px < enginePager.width && py < enginePager.height
+        enginePager.updateContentDrag(if (overEngines) px else -1000f, if (overEngines) py else -1000f)
+        if (tool != null) showPreview(tool) else if (!overEngines) hidePreview()
+        if (sidebar) {
+            val (tx, ty) = localPoint(targets, x, y)
+            pageHoverX = tx
+            pageHoverY = ty
+            updatePageHover()
+        }
+        if (release) {
+            val engine = if (overEngines) enginePager.contentDragTarget(px, py) else null
+            if (tool != null) receiveContent(content, checkNotNull(tool))
+            else if (engine != null) receiveContent(content, Action.SEARCH, engine.first, engine.second)
+            cancelContentDrag()
+        }
     }
 
     private fun accepts(event: DragEvent): Boolean {
@@ -563,8 +713,8 @@ class ExternalDropFloating(
         }
     }
 
-    private fun showTargets() {
-        if (!showTools && !enginesVisible) return
+    private fun showTargets(): Boolean {
+        if (!showTools && !enginesVisible) return false
         applyGlassStyle()
         listOf(R.id.externalDropPool, R.id.externalDropPin, R.id.externalDropTokenize).forEach {
             setHighlighted(targets.findViewById(it), false)
@@ -587,11 +737,18 @@ class ExternalDropFloating(
                 },
             )
         }
-        attachViewSafely(targets, targetParams, shouldRetry = { dragActive && !destroyed })
+        val accepted = attachViewSafely(targets, targetParams, shouldRetry = { dragActive && !destroyed })
         attachViewSafely(previewIcon, previewParams, shouldRetry = { dragActive && !destroyed })
+        DropDiagnostics.event("drop_targets_shown", if (internalContent != null) "internal" else "system", dragGeneration,
+            reason = if (backgroundBlurEnabled) "blur_enabled" else "blur_disabled", width = targets.width,
+            height = targets.height, flags = targetParams.flags)
+        return accepted
     }
 
     private fun hideTargets() {
+        DropDiagnostics.event("drop_targets_hidden", if (internalContent != null) "internal" else "system_or_idle", dragGeneration)
+        targets.alpha = 1f
+        contentPreview.clear()
         stopPageHover()
         clearBackgroundBlur()
         enginePager.animate().cancel()
@@ -757,7 +914,17 @@ class ExternalDropFloating(
         val clip = event.clipData ?: return false
         if (clip.itemCount == 0) return false
         val permissions = DropUriPermissions.take(event)
-        val content = ClipData(clip)
+        return receiveContent(ClipData(clip), action, engine, freeform) { runCatching { permissions?.release() } }
+    }
+
+    private fun receiveContent(
+        content: ClipData,
+        action: Action,
+        engine: SearchEngine? = null,
+        freeform: Boolean = false,
+        release: () -> Unit = {},
+    ): Boolean {
+        if (destroyed || dropped) { release(); return false }
         dropped = true
         service.launch(Dispatchers.Main, start = CoroutineStart.UNDISPATCHED) {
             try {
@@ -769,7 +936,7 @@ class ExternalDropFloating(
                 Log.w("ExternalDrop", "Cannot process dropped content", error)
                 toast(R.string.external_drop_failed)
             } finally {
-                runCatching { permissions?.release() }
+                release()
             }
         }
         return true

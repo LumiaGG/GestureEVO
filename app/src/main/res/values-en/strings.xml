@@ -1329,4 +1329,15 @@
     <string name="action_minutes_summary">%1$s min</string>
     <string name="action_seconds_summary">%1$s sec</string>
     <string name="action_placeholder_single">Add a transparent placeholder</string>
+    <string name="global_press_title">Global long-press drag and drop</string>
+    <string name="global_press_description">Hold text or a visible image in another app, then drag to the EVO panel. Off by default; requires accessibility and Shizuku. System drag and drop remains available.</string>
+    <string name="global_press_timeout">Long-press duration</string>
+    <string name="global_press_excluded">Apps excluded from long-press drag</string>
+    <string name="global_press_milliseconds">%1$d ms</string>
+    <string name="global_press_excluded_none">No apps excluded</string>
+    <plurals name="global_press_excluded_count">
+        <item quantity="one">%1$d app excluded</item>
+        <item quantity="other">%1$d apps excluded</item>
+    </plurals>
+    <string name="global_press_permission_required">Global long-press drag requires EVO accessibility, a running and authorized Shizuku service, and shell access to touchscreen input. Check permission settings. Images use the visible screen region. If touch cancellation is denied, the source app also responds to holding and moving.</string>
 </resources>

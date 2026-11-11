@@ -62,13 +62,16 @@ class GestureService : AccessibilityService(), CoroutineScope {
     private var lastNightMode = Configuration.UI_MODE_NIGHT_UNDEFINED
     private var externalDropFloating: ExternalDropFloating? = null
     private var externalDropSettingsJob: Job? = null
+    private var globalPressDragSource: io.github.lumiagg.gestureevo.drop.GlobalPressDragSource? = null
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         CurrentPackageProvider.onAccessibilityEvent(event)
         gestureManager?.onWindowStateChanged(event)
+        globalPressDragSource?.onWindowEvent(event)
     }
 
     override fun onInterrupt() {
+        globalPressDragSource?.cancel("accessibility_interrupted")
         AppLogger.event(
             LogModule.SERVICE, "accessibility_interrupted",
             LogLevel.WARN)
@@ -83,6 +86,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
         launch(Dispatchers.Main) {
             delay(1000)
             gestureManager = GestureManager(this@GestureService, this)
+            globalPressDragSource = io.github.lumiagg.gestureevo.drop.GlobalPressDragSource(this@GestureService) { externalDropFloating }.also { it.start() }
             observeExternalDropSettings()
             DynamicColorUtils.themeRevision.collect {
                 gestureManager?.refreshOverlayThemes()
@@ -101,6 +105,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
     private fun observeExternalDropSettings() {
         externalDropSettingsJob?.cancel()
         externalDropSettingsJob = launch(Dispatchers.Main) {
+            var previousSettings: Triple<Boolean, Boolean, String>? = null
             settingsStore.data.map { preferences ->
                 Triple(
                     preferences.readKey(KEY_EXTERNAL_DROP_ENABLED, true),
@@ -110,9 +115,20 @@ class GestureService : AccessibilityService(), CoroutineScope {
             }.distinctUntilChanged().combine(DynamicColorUtils.themeRevision) { settings, _ ->
                 settings
             }.collect { (showTools, showEngines, position) ->
+                val settings = Triple(showTools, showEngines, position)
+                // Cold dynamic-color publication must not replace the panel mid-press.
+                if (previousSettings == settings) {
+                    while (globalPressDragSource?.isGestureActive == true) delay(50)
+                }
+                previousSettings = settings
+                globalPressDragSource?.cancel("panel_settings_rebuild")
                 externalDropFloating?.destroy()
                 externalDropFloating = if (showTools || showEngines) {
-                    ExternalDropFloating(this@GestureService, position, showTools).also { it.start() }
+                    ExternalDropFloating(this@GestureService, position, showTools).also {
+                        it.onSystemDragStarted = { globalPressDragSource?.onSystemDragStarted() }
+                        it.onSystemDragEnded = { globalPressDragSource?.onSystemDragEnded() }
+                        it.start()
+                    }
                 } else null
             }
         }
@@ -147,6 +163,8 @@ class GestureService : AccessibilityService(), CoroutineScope {
         AppLogger.event(
             LogModule.SERVICE, "accessibility_destroyed",
             LogLevel.WARN)
+        globalPressDragSource?.close()
+        globalPressDragSource = null
         externalDropSettingsJob?.cancel()
         externalDropSettingsJob = null
         externalDropFloating?.destroy()
@@ -167,6 +185,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
+        globalPressDragSource?.cancel("configuration_changed")
         val nightMode = newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
         if (nightMode != lastNightMode) {
             lastNightMode = nightMode
@@ -384,6 +403,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
         var isReceiverRegistered = false
         override fun onReceive(context: Context, intent: Intent) {
             Log.d(TAG, "onReceive: ${intent.action}")
+            globalPressDragSource?.onScreenChanged()
             when (intent.action) {
 
                 Intent.ACTION_USER_PRESENT -> {

@@ -43,6 +43,15 @@
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_external_drop" app:settingsRowSummary="@string/inspire_settings_external_drop_desc">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/externalDropSwitch" android:checked="true" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/global_press_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/global_press_title" app:settingsRowSummary="@string/global_press_description">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/globalPressSwitch" android:checked="false" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/global_press_timeout_row" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsRowTitle="@string/global_press_timeout">
+                        <TextView android:id="@+id/selected_global_press_timeout_text" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/global_press_excluded_row" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsRowTitle="@string/global_press_excluded">
+                        <TextView android:id="@+id/selected_global_press_excluded_text" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/external_drop_position_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_external_drop_position">
                         <TextView android:id="@+id/selected_external_drop_position_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/inspire_settings_external_drop_position_bottom" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>

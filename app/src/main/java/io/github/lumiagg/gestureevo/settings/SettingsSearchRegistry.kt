@@ -702,6 +702,14 @@ object SettingsSearchRegistry {
             keywords = listOf("外部拖放", "拖拽", "工具按钮", "Pin池", "Pin图", "分词", "悬浮窗", "drop", "drag", "tool buttons", "tokenize")
         ),
         entry(
+            id = "global_press_drag",
+            titleResId = R.string.global_press_title,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.global_press_row,
+            keywords = listOf("全局长按拖放", "文字", "图片", "Shizuku", "长按时间", "排除应用", "global long press drag drop", "duration", "excluded apps")
+        ),
+        entry(
             id = "inspire_external_drop_position",
             titleResId = R.string.inspire_settings_external_drop_position,
             pageTitleResId = R.string.inspire_settings_title,

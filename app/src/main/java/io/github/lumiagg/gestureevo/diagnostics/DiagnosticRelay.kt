@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class DiagnosticRelay(
     command: List<String>, private val output: OutputStream,
     durationMs: Long = 60_000, private val byteLimit: Int = 2 * 1024 * 1024,
+    private val stdinLease: Boolean = false, private val receiverClosed: (() -> Boolean)? = null,
 ) : Closeable {
     private val closed = AtomicBoolean()
     private val process = ProcessBuilder(command).redirectErrorStream(true).start()
@@ -18,8 +19,11 @@ class DiagnosticRelay(
     private val reader = Thread({ pump() }, "log-stream-relay").apply { isDaemon = true }
 
     init {
-        process.outputStream.close()
+        if (!stdinLease) process.outputStream.close()
         watchdog.schedule({ close() }, durationMs, TimeUnit.MILLISECONDS)
+        if (receiverClosed != null) watchdog.scheduleWithFixedDelay({
+            if (runCatching { receiverClosed?.invoke() == true }.getOrDefault(true)) close()
+        }, 250, 250, TimeUnit.MILLISECONDS)
         reader.start()
     }
 
@@ -37,7 +41,7 @@ class DiagnosticRelay(
             }
             if (!closed.get()) {
                 val limited = copied >= byteLimit
-                if (limited) process.destroy()
+                if (limited && !stdinLease) process.destroy()
                 val code = if (limited) 0 else process.waitFor()
                 val reason = if (limited) "output_limit" else if (code == 0) "stream_closed" else "command_failed"
                 output.write("\nGEVO_END $reason $code\n".toByteArray(Charsets.UTF_8))
@@ -48,12 +52,44 @@ class DiagnosticRelay(
         } finally { close() }
     }
 
+    internal fun isProcessAlive(): Boolean = try {
+        process.exitValue()
+        false
+    } catch (_: IllegalThreadStateException) { true }
+
+    private fun awaitExit(timeoutMs: Long): Boolean {
+        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
+        while (isProcessAlive()) {
+            if (System.nanoTime() >= deadline) return false
+            Thread.sleep(10)
+        }
+        return true
+    }
+
+    private fun forceStop() {
+        if (android.os.Build.VERSION.SDK_INT >= 26) process.destroyForcibly() else process.destroy()
+    }
+
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
         // Close the outgoing pipe before process cleanup, so a blocked downstream read gets EOF.
         runCatching { output.close() }
-        runCatching { process.destroy() }
-        watchdog.shutdownNow()
+        runCatching { process.outputStream.close() }
+        try {
+            if (stdinLease) {
+                // EOF stops and reaps the child. Never kill the independent timeout before its worker group.
+                awaitExit(1000)
+            } else {
+                process.destroy()
+                if (!awaitExit(500)) {
+                    forceStop()
+                    awaitExit(500)
+                }
+            }
+        } catch (_: InterruptedException) {
+            if (!stdinLease) forceStop()
+            Thread.currentThread().interrupt()
+        } finally { watchdog.shutdownNow() }
     }
 
     companion object {

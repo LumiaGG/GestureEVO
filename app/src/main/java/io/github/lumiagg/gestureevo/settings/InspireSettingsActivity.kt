@@ -82,6 +82,9 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val PIN_POOL_DISPLAY_MODE_FOLLOW_TRIGGER = "follow_trigger"
         const val PIN_POOL_DISPLAY_MODE_LEGACY_SIDEBAR = "sidebar"
         const val KEY_DEFAULT_SHARE_BEHAVIOR = "key_default_share_behavior"
+        const val KEY_GLOBAL_PRESS_ENABLED = "key_global_press_enabled"
+        const val KEY_GLOBAL_PRESS_TIMEOUT = "key_global_press_timeout"
+        const val KEY_GLOBAL_PRESS_EXCLUDED = "key_global_press_excluded"
         const val KEY_EXTERNAL_DROP_ENABLED = "key_external_drop_enabled"
         const val KEY_EXTERNAL_DROP_POSITION = "key_external_drop_position"
         const val EXTERNAL_DROP_POSITION_BOTTOM = "bottom"
@@ -145,6 +148,11 @@ class InspireSettingsActivity : AppCompatActivity() {
         // Default share behavior
         val defaultShareBehavior = settingsStore.readKey(KEY_DEFAULT_SHARE_BEHAVIOR, "tokenization")
         updateDefaultShareBehaviorText(defaultShareBehavior)
+        binding.globalPressSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_ENABLED, false)
+        binding.selectedGlobalPressTimeoutText.text = getString(
+            R.string.global_press_milliseconds, settingsStore.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500)
+        )
+        updateGlobalPressExcludedText(settingsStore.readKey(KEY_GLOBAL_PRESS_EXCLUDED, "").split('|'))
         binding.externalDropSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_ENABLED, true)
         binding.externalDropEnginesSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true)
         updateExternalDropPositionText(
@@ -312,6 +320,47 @@ class InspireSettingsActivity : AppCompatActivity() {
             showDefaultShareBehaviorDialog()
         }
 
+        binding.globalPressSwitch.setOnCheckedChangeListener { _, enabled ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_GLOBAL_PRESS_ENABLED, enabled)
+                if (enabled) {
+                    MaterialAlertDialogBuilder(this@InspireSettingsActivity)
+                        .setMessage(R.string.global_press_permission_required)
+                        .setPositiveButton(android.R.string.ok, null).show()
+                }
+            }
+        }
+        binding.globalPressTimeoutRow.setOnClickListener {
+            lifecycleScope.launch {
+                val values = intArrayOf(300, 500, 700, 1000, 1500, 2000)
+                val current = settingsStore.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500)
+                MaterialAlertDialogBuilder(this@InspireSettingsActivity)
+                    .setTitle(R.string.global_press_timeout)
+                    .setSingleChoiceItems(values.map { getString(R.string.global_press_milliseconds, it) }.toTypedArray(), values.indexOf(current)) { dialog, which ->
+                        lifecycleScope.launch {
+                            settingsStore.saveKey(KEY_GLOBAL_PRESS_TIMEOUT, values[which])
+                            binding.selectedGlobalPressTimeoutText.text = getString(R.string.global_press_milliseconds, values[which])
+                        }
+                        dialog.dismiss()
+                    }.show()
+            }
+        }
+        binding.globalPressExcludedRow.setOnClickListener {
+            lifecycleScope.launch {
+                val packages = settingsStore.readKey(KEY_GLOBAL_PRESS_EXCLUDED, "").split('|').filter(String::isNotBlank).toMutableList()
+                io.github.lumiagg.gestureevo.settings.ui.BlackListWithNoDBSelectAPPBottomSheet(
+                    this@InspireSettingsActivity, lifecycleScope,
+                    object : io.github.lumiagg.gestureevo.settings.ui.BlackListWithNoDBSelectAPPBottomSheet.BlackListSelectAPPCallBack {
+                        override fun selectCompleted(blackList: List<String>) {
+                            lifecycleScope.launch {
+                                settingsStore.saveKey(KEY_GLOBAL_PRESS_EXCLUDED, blackList.joinToString("|"))
+                                updateGlobalPressExcludedText(blackList)
+                            }
+                        }
+                    }, packages,
+                ).show()
+            }
+        }
         binding.externalDropSwitch.setOnCheckedChangeListener { _, isChecked ->
             updateExternalDropSettingsEnabled()
             lifecycleScope.launch { settingsStore.saveKey(KEY_EXTERNAL_DROP_ENABLED, isChecked) }
@@ -595,6 +644,15 @@ class InspireSettingsActivity : AppCompatActivity() {
 
     private fun updateSelectedAppText(textView: TextView, value: String) {
         textView.text = value
+    }
+
+    private fun updateGlobalPressExcludedText(packages: List<String>) {
+        val count = packages.filter(String::isNotBlank).distinct().size
+        binding.selectedGlobalPressExcludedText.text = if (count == 0) {
+            getString(R.string.global_press_excluded_none)
+        } else {
+            resources.getQuantityString(R.plurals.global_press_excluded_count, count, count)
+        }
     }
 
     private fun updateDefaultShareBehaviorText(value: String) {
