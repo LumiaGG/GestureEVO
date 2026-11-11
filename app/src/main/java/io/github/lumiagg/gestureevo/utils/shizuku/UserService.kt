@@ -18,9 +18,6 @@ class UserService : IUserService.Stub {
     private var touchOwner: android.os.IBinder? = null
     private var touchDeath: android.os.IBinder.DeathRecipient? = null
     private val cancelledTouchStreams = LinkedHashSet<String>()
-    private var cancellationUnavailable = false
-    private var inputMonitor: Any? = null
-    private var inputMonitorToken: android.os.IBinder? = null
     constructor() : super()
 
     @Keep
@@ -30,7 +27,7 @@ class UserService : IUserService.Stub {
 
     override fun destroy() {
         synchronized(diagnosticStreams) { diagnosticStreams.values.forEach { it.close() }; diagnosticStreams.clear() }
-        synchronized(this) { closeTouchStream(touchToken.orEmpty()); releaseSourceTouch() }
+        synchronized(this) { closeTouchStream(touchToken.orEmpty()) }
         Log.i(TAG, "destroy")
         exitProcess(0)
     }
@@ -129,52 +126,6 @@ class UserService : IUserService.Stub {
         touchDeath?.let { death -> runCatching { touchOwner?.unlinkToDeath(death, 0) } }
         touchDeath = null
         touchOwner = null
-        releaseSourceTouch()
-    }
-
-    /** MMGG BackgroundTouchBlocker adaptation: permission failure is cached per shell process. */
-    @Synchronized
-    override fun cancelSourceTouch(): Boolean {
-        if (cancellationUnavailable) return false
-        return try {
-            // InputManager.getInstance() can kill a standalone shell app_process on some ROMs.
-            val binder = Class.forName("android.os.ServiceManager")
-                .getMethod("getService", String::class.java).invoke(null, "input")
-            val manager = checkNotNull(Class.forName("android.hardware.input.IInputManager\$Stub")
-                .getMethod("asInterface", android.os.IBinder::class.java).invoke(null, binder))
-            val type = Class.forName("android.hardware.input.IInputManager")
-            try {
-                type.getMethod("cancelCurrentTouch").invoke(manager)
-            } catch (_: Exception) {
-                val token = android.os.Binder()
-                val monitorMethod = try {
-                    type.getMethod("monitorGestureInput", android.os.IBinder::class.java,
-                        String::class.java, Int::class.javaPrimitiveType)
-                } catch (_: NoSuchMethodException) {
-                    type.getMethod("monitorGestureInput", String::class.java, Int::class.javaPrimitiveType)
-                }
-                val monitor = checkNotNull(if (monitorMethod.parameterCount == 3) {
-                    monitorMethod.invoke(manager, token, "GestureEVO source drag", 0)
-                } else {
-                    monitorMethod.invoke(manager, "GestureEVO source drag", 0)
-                })
-                inputMonitorToken = token
-                inputMonitor = monitor
-                monitor.javaClass.getMethod("pilferPointers").invoke(monitor)
-            }
-            true
-        } catch (_: Exception) {
-            cancellationUnavailable = true
-            releaseSourceTouch()
-            false
-        }
-    }
-
-    @Synchronized
-    override fun releaseSourceTouch() {
-        inputMonitor?.let { monitor -> runCatching { monitor.javaClass.getMethod("dispose").invoke(monitor) } }
-        inputMonitor = null
-        inputMonitorToken = null
     }
 
     companion object {

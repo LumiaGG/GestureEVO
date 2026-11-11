@@ -32,7 +32,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
     private data class Settings(val enabled: Boolean, val timeout: Int, val excluded: Set<String>, val vibrate: Boolean)
     private val main = Handler(Looper.getMainLooper())
     private val detector = PressTriggerDetector(ViewConfiguration.get(service).scaledTouchSlop.toFloat())
-    private val blocker = BackgroundTouchBlocker()
+    private val blocker = BackgroundTouchBlocker(service)
     private val capture = PressContentCapture(service)
     private val captureGate = Mutex()
     private var settings = Settings(false, 500, emptySet(), true)
@@ -168,13 +168,12 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
                     shown = true
                     cached = null
                     android.util.Log.i("EVO-Press", "source_ready generation=$request sourceWindow=${source?.windowId}")
-                    // Cancellation is optional; observing continues when MONITOR_INPUT is denied.
-                    blocker.startAsync { generation == request }
                 }
             },
             onFailed = { reason -> if (generation == request) cancel("panel_$reason") },
         ) == true
         if (!accepted) cancel("panel_begin_failed")
+        else blocker.start { generation == request && allowed() }
     }
 
     fun onWindowEvent(event: AccessibilityEvent) {
@@ -240,7 +239,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
         windowCheck = null
         ownOverlayIds.clear()
         panel()?.cancelContentDrag()
-        blocker.stopAsync()
+        blocker.stop()
     }
     fun close() {
         settingsJob?.cancel()

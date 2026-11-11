@@ -14,6 +14,4 @@ interface IUserService {
     void closeDiagnosticStream(String token) = 5;
     ParcelFileDescriptor openTouchStream(String token, IBinder owner) = 6;
     void closeTouchStream(String token) = 7;
-    boolean cancelSourceTouch() = 8;
-    void releaseSourceTouch() = 9;
 }
