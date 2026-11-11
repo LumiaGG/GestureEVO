@@ -21,6 +21,7 @@ import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.R
@@ -778,7 +779,7 @@ class ExternalDropFloating(
                 Action.POOL -> R.drawable.pinboard_24px
                 Action.PIN -> R.drawable.baseline_push_pin_24
                 Action.TOKENIZE -> R.drawable.outline_center_focus_weak_24
-                else -> if (pageDirection < 0) R.drawable.baseline_arrow_upward_24 else R.drawable.baseline_arrow_downward_24
+                else -> if (pageDirection < 0) R.drawable.ic_chevron_up_24 else R.drawable.ic_chevron_down_24
             }
             previewIcon.setImageWithBackplate(icon)
         }
@@ -818,43 +819,42 @@ class ExternalDropFloating(
     }
 
     private fun setHighlighted(card: MaterialCardView, active: Boolean) {
-        card.strokeWidth = if (active) 2.dp2px.toInt() else 0
-        card.strokeColor = if (active) DynamicColorUtils.primaryColor else DynamicColorUtils.outlineColor
+        card.strokeWidth = (if (active) 2 else 1).dp2px.toInt().coerceAtLeast(1)
+        card.strokeColor = if (active) DynamicColorUtils.primaryColor
+            else ColorUtils.setAlphaComponent(DynamicColorUtils.onSurfaceColor, 28)
         card.setCardBackgroundColor(
-            when {
-                active -> DynamicColorUtils.secondaryContainerColor
-                cardBlurEnabled -> Color.TRANSPARENT
-                else -> DynamicColorUtils.surfaceContainerHighColor
-            }
+            if (active) DynamicColorUtils.secondaryContainerColor else targetSurfaceColor()
         )
     }
+
+    private fun targetSurfaceColor(): Int = ColorUtils.setAlphaComponent(
+        DynamicColorUtils.surfaceContainerHighColor, if (cardBlurEnabled) 199 else 255,
+    )
 
     /** Applies the panel glass style from the current blur settings before each show. */
     private fun applyGlassStyle() {
         val panel = targets.findViewById<MaterialCardView>(R.id.externalDropPanel)
         val enginesCard = targets.findViewById<MaterialCardView>(R.id.externalDropEnginesCard)
+        GlassEffectUtils.applyCardStyle(
+            card = panel,
+            color = DynamicColorUtils.surfaceContainerColor,
+            glassEnabled = cardBlurEnabled,
+            blurRegion = GlassEffectUtils.usesCardRegionBlur(backgroundBlurEnabled, cardBlurEnabled),
+            backgroundBlurEnabled = backgroundBlurEnabled,
+            overlayOnContent = true,
+        )
         if (cardBlurEnabled) {
-            GlassEffectUtils.applyCardStyle(
-                card = panel,
-                color = DynamicColorUtils.surfaceContainerColor,
-                glassEnabled = true,
-                blurRegion = GlassEffectUtils.usesCardRegionBlur(backgroundBlurEnabled, cardBlurEnabled),
-                backgroundBlurEnabled = backgroundBlurEnabled,
-            )
-            // Like screen content cards, keep glass within the rounded card bounds.
-            panel.strokeWidth = 0
-            enginesCard.setCardBackgroundColor(Color.TRANSPARENT)
+            // Keep busy content behind the overlay from washing out its labels and icons.
+            val color = panel.cardBackgroundColor.defaultColor
+            panel.setCardBackgroundColor(ColorUtils.setAlphaComponent(color, maxOf(Color.alpha(color), 209)))
         } else {
-            GlassEffectUtils.applyCardStyle(
-                card = panel,
-                color = DynamicColorUtils.surfaceContainerColor,
-                glassEnabled = false,
-                blurRegion = false,
-            )
-            panel.strokeWidth = 0
             panel.cardElevation = PANEL_ELEVATION_DP.dp2px
-            enginesCard.setCardBackgroundColor(DynamicColorUtils.surfaceContainerHighColor)
         }
+        panel.strokeWidth = 1.dp2px.toInt().coerceAtLeast(1)
+        panel.strokeColor = ColorUtils.setAlphaComponent(DynamicColorUtils.onSurfaceColor, 48)
+        enginesCard.setCardBackgroundColor(targetSurfaceColor())
+        enginesCard.strokeWidth = 1.dp2px.toInt().coerceAtLeast(1)
+        enginesCard.strokeColor = ColorUtils.setAlphaComponent(DynamicColorUtils.onSurfaceColor, 28)
     }
 
     private fun startBackgroundBlur() {

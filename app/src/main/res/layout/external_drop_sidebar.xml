@@ -29,7 +29,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
                 app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-                app:cardCornerRadius="16dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="0dp"
                 app:strokeWidth="0dp">
 
@@ -44,14 +44,13 @@
                         android:layout_height="32dp"
                         android:contentDescription="@string/external_drop_previous_page">
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:gravity="center"
+                        <androidx.appcompat.widget.AppCompatImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_gravity="center"
                             android:importantForAccessibility="no"
-                            android:text="@string/external_drop_page_up_arrow"
-                            android:textColor="?attr/colorOnSurface"
-                            android:textSize="20sp" />
+                            app:srcCompat="@drawable/ic_chevron_up_24"
+                            app:tint="?attr/colorOnSurface" />
 
                         <View
                             android:id="@+id/externalDropPreviousProgress"
@@ -75,14 +74,13 @@
                         android:layout_height="32dp"
                         android:contentDescription="@string/external_drop_next_page">
 
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:gravity="center"
+                        <androidx.appcompat.widget.AppCompatImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_gravity="center"
                             android:importantForAccessibility="no"
-                            android:text="@string/external_drop_page_down_arrow"
-                            android:textColor="?attr/colorOnSurface"
-                            android:textSize="20sp" />
+                            app:srcCompat="@drawable/ic_chevron_down_24"
+                            app:tint="?attr/colorOnSurface" />
 
                         <View
                             android:id="@+id/externalDropNextProgress"
@@ -108,7 +106,7 @@
                     android:layout_height="wrap_content"
                     android:contentDescription="@string/external_drop_pool"
                     app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-                    app:cardCornerRadius="14dp"
+                    app:cardCornerRadius="18dp"
                     app:cardElevation="0dp"
                     app:strokeWidth="0dp">
 
@@ -128,7 +126,7 @@
                     android:layout_height="wrap_content"
                     android:contentDescription="@string/external_drop_pin"
                     app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-                    app:cardCornerRadius="14dp"
+                    app:cardCornerRadius="18dp"
                     app:cardElevation="0dp"
                     app:strokeWidth="0dp">
 
@@ -149,7 +147,7 @@
                     android:layout_marginTop="4dp"
                     android:contentDescription="@string/external_drop_tokenize"
                     app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
-                    app:cardCornerRadius="14dp"
+                    app:cardCornerRadius="18dp"
                     app:cardElevation="0dp"
                     app:strokeWidth="0dp">
 

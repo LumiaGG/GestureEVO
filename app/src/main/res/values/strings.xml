@@ -1,7 +1,5 @@
 <resources>
     <string name="external_drop_pool">加入 Pin 池</string>
-    <string name="external_drop_page_up_arrow" translatable="false">˄</string>
-    <string name="external_drop_page_down_arrow" translatable="false">˅</string>
     <string name="external_drop_previous_page">悬停翻到上一页</string>
     <string name="external_drop_next_page">悬停翻到下一页</string>
     <string name="external_drop_pin">Pin 图</string>

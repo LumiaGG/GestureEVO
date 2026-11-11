@@ -7,6 +7,7 @@ import android.graphics.Rect
 import android.os.Build
 import android.text.TextUtils
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.ImageView
@@ -16,6 +17,7 @@ import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
 import io.github.lumiagg.gestureevo.gesture.GestureService
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_SELECTION_VIBRATE
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
+import io.github.lumiagg.gestureevo.utils.GlassEffectUtils
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
 import io.github.lumiagg.gestureevo.utils.readKey
@@ -30,12 +32,14 @@ import kotlinx.coroutines.withContext
 internal class DragContentPreview(private val service: GestureService) : BaseFloatingWindow(service, service, "EVO-PressPreview") {
     private val theme = DynamicColorUtils.dynamicThemedContext(service)
     private val card = MaterialCardView(theme).apply {
-        radius = 10.dp2px
-        cardElevation = 2.dp2px
-        alpha = 0.86f
-        preventCornerOverlap = true
+        radius = 12.dp2px
+        cardElevation = 4.dp2px
+        preventCornerOverlap = false
+        minimumWidth = 0
+        minimumHeight = 0
         clipToOutline = true
         setCardBackgroundColor(DynamicColorUtils.surfaceContainerHighColor)
+        GlassEffectUtils.applyGlassEdge(this)
         importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
     }
     private val image = ImageView(theme).apply { scaleType = ImageView.ScaleType.FIT_CENTER }
@@ -62,21 +66,29 @@ internal class DragContentPreview(private val service: GestureService) : BaseFlo
         active = true
         val request = generation
         val margin = 16.dp2px.toInt()
-        params.width = minOf((if (text != null) 156 else 64).dp2px.toInt(), (screen.width() - margin).coerceAtLeast(1))
-        params.height = minOf(64.dp2px.toInt(), (screen.height() - margin).coerceAtLeast(1))
+        val maxWidth = minOf(200.dp2px.toInt(), (screen.width() - margin).coerceAtLeast(1))
+        val maxHeight = (screen.height() - margin).coerceAtLeast(1)
         card.removeAllViews()
         if (text != null) {
             card.addView(TextView(theme).apply {
                 this.text = DragContentPreviewPolicy.summary(text)
                 setTextColor(DynamicColorUtils.onSurfaceColor)
-                textSize = 12f
+                textSize = 13f
                 includeFontPadding = false
                 maxLines = 3
                 ellipsize = TextUtils.TruncateAt.END
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(12.dp2px.toInt(), 8.dp2px.toInt(), 12.dp2px.toInt(), 8.dp2px.toInt())
-            }, ViewGroup.LayoutParams(-1, -1))
+            }, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            card.measure(
+                View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
+                View.MeasureSpec.makeMeasureSpec(maxHeight, View.MeasureSpec.AT_MOST),
+            )
+            params.width = card.measuredWidth.coerceIn(1, maxWidth)
+            params.height = card.measuredHeight.coerceIn(1, maxHeight)
         } else {
+            params.width = minOf(64.dp2px.toInt(), maxWidth)
+            params.height = minOf(64.dp2px.toInt(), maxHeight)
             image.setImageResource(io.github.lumiagg.gestureevo.R.drawable.baseline_image_24)
             card.addView(image, ViewGroup.LayoutParams(-1, -1))
         }
