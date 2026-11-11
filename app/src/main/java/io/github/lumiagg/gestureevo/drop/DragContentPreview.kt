@@ -11,6 +11,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
@@ -51,30 +53,44 @@ internal class DragContentPreview(private val service: GestureService) : BaseFlo
     private var job: Job? = null
     private var bitmap: Bitmap? = null
 
-    suspend fun show(content: ClipData, x: Float, y: Float, screen: Rect): Boolean {
-        clear()
-        if (content.itemCount == 0 || screen.isEmpty) return false
+    suspend fun show(content: ClipData, x: Float, y: Float, screen: Rect, status: String? = null): Boolean {
+        resetContent()
+        if (content.itemCount == 0 || screen.isEmpty) { clear(); return false }
         val item = content.getItemAt(0)
-        val text = item.text?.takeIf { it.isNotBlank() }
+        val text = status ?: item.text?.takeIf { it.isNotBlank() }
         val uri = item.uri
-        if (text == null && uri == null) return false
+        if (text == null && uri == null) { clear(); return false }
         active = true
         val request = generation
         val margin = 16.dp2px.toInt()
         val maxWidth = minOf(200.dp2px.toInt(), (screen.width() - margin).coerceAtLeast(1))
         val maxHeight = (screen.height() - margin).coerceAtLeast(1)
         card.removeAllViews()
+        card.importantForAccessibility = if (status != null) View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            else View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
         if (text != null) {
-            card.addView(TextView(theme).apply {
+            val label = TextView(theme).apply {
                 this.text = DragContentPreviewPolicy.summary(text)
                 setTextColor(DynamicColorUtils.onSurfaceColor)
                 textSize = 13f
                 includeFontPadding = false
+                if (status != null) accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
                 maxLines = 3
                 ellipsize = TextUtils.TruncateAt.END
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(12.dp2px.toInt(), 8.dp2px.toInt(), 12.dp2px.toInt(), 8.dp2px.toInt())
-            }, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            }
+            val contentView = if (status == null) label else LinearLayout(theme).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(12.dp2px.toInt(), 0, 0, 0)
+                addView(ProgressBar(theme, null, android.R.attr.progressBarStyleSmall).apply {
+                    isIndeterminate = true
+                    indeterminateTintList = android.content.res.ColorStateList.valueOf(DynamicColorUtils.primaryColor)
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }, LinearLayout.LayoutParams(20.dp2px.toInt(), 20.dp2px.toInt()))
+                addView(label, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            }
+            card.addView(contentView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             card.measure(
                 View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
                 View.MeasureSpec.makeMeasureSpec(maxHeight, View.MeasureSpec.AT_MOST),
@@ -89,7 +105,12 @@ internal class DragContentPreview(private val service: GestureService) : BaseFlo
         }
         move(x, y, screen)
         val attached = kotlinx.coroutines.CompletableDeferred<Unit>()
-        if (!attachViewSafely(card, params, shouldRetry = { false }, onAttached = { attached.complete(Unit) })) {
+        // Keep the window identity stable while replacing text, progress, and image content.
+        val accepted = if (card.isAttachedToWindow) {
+            attached.complete(Unit)
+            true
+        } else attachViewSafely(card, params, shouldRetry = { false }, onAttached = { attached.complete(Unit) })
+        if (!accepted) {
             clear()
             return false
         }
@@ -143,11 +164,15 @@ internal class DragContentPreview(private val service: GestureService) : BaseFlo
     }
 
     fun clear() {
+        resetContent()
+        detachViewSafely(card)
+    }
+
+    private fun resetContent() {
         generation++
         active = false
         job?.cancel()
         job = null
-        detachViewSafely(card)
         image.setImageDrawable(null)
         card.removeAllViews()
         bitmap?.recycle()

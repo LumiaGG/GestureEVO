@@ -710,6 +710,14 @@ object SettingsSearchRegistry {
             keywords = listOf("全局长按拖放", "文字", "图片", "Shizuku", "长按时间", "排除应用", "global long press drag drop", "duration", "excluded apps")
         ),
         entry(
+            id = "inspire_external_drop_conversion",
+            titleResId = R.string.external_drop_conversion_title,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.external_drop_conversion_row,
+            keywords = listOf("拖拽", "图文转换", "文字转图片", "图片转文字", "OCR", "drag", "convert", "text", "image")
+        ),
+        entry(
             id = "inspire_external_drop_position",
             titleResId = R.string.inspire_settings_external_drop_position,
             pageTitleResId = R.string.inspire_settings_title,

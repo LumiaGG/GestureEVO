@@ -139,9 +139,11 @@ class QuickSearchEnginePager @JvmOverloads constructor(
         get() = engines.toList()
 
     fun configure(config: Config) {
+        if (this.config == config) return
         highlightExternalTarget(NO_POSITION)
+        val rebind = config.showLabel != this.config.showLabel || config.showImageBadge != this.config.showImageBadge
         this.config = config
-        rebuildChildren()
+        if (rebind) rebuildChildren()
         requestLayout()
     }
 

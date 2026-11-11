@@ -42,6 +42,7 @@ import io.github.lumiagg.gestureevo.search.setEngineIcon
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_EXTERNAL_DROP_BACKGROUND_BLUR
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR
+import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_CONVERSION
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SHOW_ENGINES
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_POSITION_BOTTOM
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_POSITION_LEFT
@@ -66,6 +67,8 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -75,7 +78,13 @@ class ExternalDropFloating(
     private val position: String = EXTERNAL_DROP_POSITION_BOTTOM,
     private val showTools: Boolean = true,
 ) : BaseFloatingWindow(service, service, "ExternalDrop") {
-    private enum class Action { POOL, PIN, TOKENIZE, SEARCH }
+    private enum class Action { POOL, PIN, TOKENIZE, CONVERT, SEARCH }
+
+    private val toolActions = listOf(R.id.externalDropPool to Action.POOL, R.id.externalDropPin to Action.PIN,
+        R.id.externalDropTokenize to Action.TOKENIZE, R.id.externalDropConvert to Action.CONVERT)
+    private val conversion = DragConversionState<ClipData>()
+    private var conversionJob: Job? = null
+    private var conversionHoverJob: Job? = null
 
     private val sidebar = position == EXTERNAL_DROP_POSITION_LEFT || position == EXTERNAL_DROP_POSITION_RIGHT
     private val themeContext = DynamicColorUtils.dynamicThemedContext(service)
@@ -246,9 +255,7 @@ class ExternalDropFloating(
                 else -> false
             }
         }
-        bindTarget(R.id.externalDropPool, Action.POOL)
-        bindTarget(R.id.externalDropPin, Action.PIN)
-        bindTarget(R.id.externalDropTokenize, Action.TOKENIZE)
+        toolActions.forEach { (id, action) -> bindTarget(id, action) }
         enginePager.setExternalDropCallbacks(
             accepts = { !destroyed && accepts(it) },
             onDrop = { engine, event, freeform -> receive(event, Action.SEARCH, engine, freeform) },
@@ -288,6 +295,7 @@ class ExternalDropFloating(
     }
 
     fun destroy() {
+        cancelContentDrag()
         DropDiagnostics.event("drop_panel_destroyed", if (internalContent != null) "internal" else "system_or_idle", dragGeneration)
         destroyed = true
         contentSession.cancel()
@@ -312,6 +320,7 @@ class ExternalDropFloating(
         contentX = x
         contentY = y
         internalContent = ClipData(clip)
+        conversion.retain(checkNotNull(internalContent))
         targetParams.flags = targetParams.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         dragActive = true
         dropped = false
@@ -375,6 +384,11 @@ class ExternalDropFloating(
 
     fun cancelContentDrag() {
         contentSession.cancel()
+        conversionHoverJob?.cancel()
+        conversionHoverJob = null
+        conversionJob?.cancel()
+        conversionJob = null
+        conversion.clear()
         contentPreview.clear()
         if (internalContent == null) return
         DropDiagnostics.event("drop_internal_ended", "internal", dragGeneration, reason = if (dropped) "dropped" else "cancelled")
@@ -402,8 +416,7 @@ class ExternalDropFloating(
             return
         }
         var tool: Action? = null
-        listOf(R.id.externalDropPool to Action.POOL, R.id.externalDropPin to Action.PIN,
-            R.id.externalDropTokenize to Action.TOKENIZE).forEach { (id, action) ->
+        toolActions.forEach { (id, action) ->
             val card = targets.findViewById<MaterialCardView>(id)
             val (lx, ly) = localPoint(card, x, y)
             val active = card.isShown && lx >= 0 && ly >= 0 && lx < card.width && ly < card.height
@@ -413,6 +426,7 @@ class ExternalDropFloating(
         val (px, py) = localPoint(enginePager, x, y)
         val overEngines = enginePager.isShown && px >= 0 && py >= 0 && px < enginePager.width && py < enginePager.height
         enginePager.updateContentDrag(if (overEngines) px else -1000f, if (overEngines) py else -1000f)
+        updateConversionHover(tool == Action.CONVERT && !release)
         if (tool != null) showPreview(tool) else if (!overEngines) hidePreview()
         if (sidebar) {
             val (tx, ty) = localPoint(targets, x, y)
@@ -422,8 +436,10 @@ class ExternalDropFloating(
         }
         if (release) {
             val engine = if (overEngines) enginePager.contentDragTarget(px, py) else null
-            if (tool != null) receiveContent(content, checkNotNull(tool))
-            else if (engine != null) receiveContent(content, Action.SEARCH, engine.first, engine.second)
+            if (!conversion.busy) {
+                if (tool != null && tool != Action.CONVERT) receiveContent(content, checkNotNull(tool))
+                else if (engine != null) receiveContent(content, Action.SEARCH, engine.first, engine.second)
+            }
             cancelContentDrag()
         }
     }
@@ -463,6 +479,12 @@ class ExternalDropFloating(
         val content = ExternalDropPolicy.content(
             (0 until description.mimeTypeCount).map(description::getMimeType)
         )
+        val convert = targets.findViewById<View>(R.id.externalDropConvert)
+        convert.visibility = if (showTools && internalContent != null &&
+            content != ExternalDropPolicy.Content.URI &&
+            store.readKey(KEY_EXTERNAL_DROP_CONVERSION, false))
+            View.VISIBLE else View.GONE
+        updateConversionLabel(description)
         val engines = if (store.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true)) {
             SearchEngineDataManager.readSearchEngineList(service).filter {
                 it.showInSearchEngineList && ExternalDropPolicy.showsEngine(content, it)
@@ -510,21 +532,20 @@ class ExternalDropFloating(
             applySidebarColumns(columns)
             enginePager.configure(config.copy(rowCount = 1, columnCount = columns))
             setPagingVisible(false)
-            measureSidebar()
+            var panelHeight = measureSidebar()
             val rowHeight = (enginePager.measuredHeight - enginePager.paddingTop - enginePager.paddingBottom).coerceAtLeast(1)
             var rows = ExternalDropSidebarPolicy.rowCount(
-                maxHeight, targets.measuredHeight - rowHeight, rowHeight, sidebarEngines.size, columns,
+                maxHeight, panelHeight - rowHeight, rowHeight, sidebarEngines.size, columns,
             )
             if (enginesVisible && sidebarEngines.size > rows * columns) {
                 setPagingVisible(true)
-                measureSidebar()
+                panelHeight = measureSidebar()
                 rows = ExternalDropSidebarPolicy.rowCount(
-                    maxHeight, targets.measuredHeight - rowHeight, rowHeight, sidebarEngines.size, columns,
+                    maxHeight, panelHeight - rowHeight, rowHeight, sidebarEngines.size, columns,
                 )
             }
             enginePager.configure(config.copy(rowCount = rows, columnCount = columns))
-            measureSidebar()
-            ExternalDropSidebarPolicy.Layout(columns, rows, targets.measuredHeight)
+            ExternalDropSidebarPolicy.Layout(columns, rows, measureSidebar())
         }
         val layout = ExternalDropSidebarPolicy.choose(layouts, sidebarEngines.size, maxHeight, sidebarPreferColumns)
         sidebarColumns = layout.columns
@@ -542,16 +563,16 @@ class ExternalDropFloating(
         }
         val tools = targets.findViewById<GridLayout>(R.id.externalDropTools)
         // Clear specs before reducing columnCount; GridLayout validates old specs immediately.
-        val cards = listOf(R.id.externalDropPool, R.id.externalDropPin, R.id.externalDropTokenize)
-            .map { targets.findViewById<MaterialCardView>(it) }
+        val cards = toolActions.filter { it.second != Action.CONVERT }
+            .map { targets.findViewById<MaterialCardView>(it.first) }
         cards.forEach { it.layoutParams = GridLayout.LayoutParams() }
         tools.columnCount = columns
         val gap = 4.dp2px.toInt()
         val contentWidth = (columns * SIDEBAR_COLUMN_WIDTH_DP + 4).dp2px.toInt()
         cards.forEachIndexed { index, card ->
-            val row = if (columns == 1) index else if (columns == 2 && index == 2) 1 else 0
-            val column = if (columns == 1 || (columns == 2 && index == 2)) 0 else index
-            val span = if (columns == 2 && index == 2) 2 else 1
+            val row = index / columns
+            val column = index % columns
+            val span = if (index == cards.lastIndex) columns - column else 1
             card.layoutParams = GridLayout.LayoutParams(
                 GridLayout.spec(row), GridLayout.spec(column, span),
             ).apply {
@@ -568,11 +589,14 @@ class ExternalDropFloating(
         }
     }
 
-    private fun measureSidebar() {
+    private fun measureSidebar(): Int {
         targets.measure(
             View.MeasureSpec.makeMeasureSpec(targetParams.width, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
         )
+        // The detached conversion card must not consume the main panel's row/column budget.
+        return targets.findViewById<View>(R.id.externalDropPanel).measuredHeight +
+            targets.paddingTop + targets.paddingBottom
     }
 
     private fun sidebarBounds(): Rect {
@@ -598,11 +622,13 @@ class ExternalDropFloating(
     @SuppressLint("RtlHardcoded")
     private fun positionSidebar() {
         val bounds = sidebarBounds()
-        measureSidebar()
+        val panelHeight = measureSidebar()
         targetParams.x = if (position == EXTERNAL_DROP_POSITION_LEFT) bounds.left
             else (bounds.right - targetParams.width).coerceAtLeast(bounds.left)
         targetParams.height = targets.measuredHeight.coerceAtMost(bounds.height())
-        targetParams.y = bounds.top + ((bounds.height() - targetParams.height) / 2).coerceAtLeast(0)
+        targetParams.y = bounds.top + ExternalDropSidebarPolicy.topOffset(
+            bounds.height(), panelHeight, targetParams.height,
+        )
     }
 
     @SuppressLint("RtlHardcoded")
@@ -717,9 +743,7 @@ class ExternalDropFloating(
     private fun showTargets(): Boolean {
         if (!showTools && !enginesVisible) return false
         applyGlassStyle()
-        listOf(R.id.externalDropPool, R.id.externalDropPin, R.id.externalDropTokenize).forEach {
-            setHighlighted(targets.findViewById(it), false)
-        }
+        toolActions.forEach { (id, _) -> setHighlighted(targets.findViewById(id), false) }
         if (sidebar) {
             targets.scrollTo(0, 0)
             positionSidebar()
@@ -779,6 +803,7 @@ class ExternalDropFloating(
                 Action.POOL -> R.drawable.pinboard_24px
                 Action.PIN -> R.drawable.baseline_push_pin_24
                 Action.TOKENIZE -> R.drawable.outline_center_focus_weak_24
+                Action.CONVERT -> R.drawable.ic_text_image_convert_24
                 else -> if (pageDirection < 0) R.drawable.ic_chevron_up_24 else R.drawable.ic_chevron_down_24
             }
             previewIcon.setImageWithBackplate(icon)
@@ -910,7 +935,7 @@ class ExternalDropFloating(
         freeform: Boolean = false,
     ): Boolean {
         hidePreview()
-        if (destroyed || dropped) return false
+        if (destroyed || dropped || action == Action.CONVERT) return false
         val clip = event.clipData ?: return false
         if (clip.itemCount == 0) return false
         val permissions = DropUriPermissions.take(event)
@@ -924,7 +949,7 @@ class ExternalDropFloating(
         freeform: Boolean = false,
         release: () -> Unit = {},
     ): Boolean {
-        if (destroyed || dropped) { release(); return false }
+        if (destroyed || dropped || action == Action.CONVERT) { release(); return false }
         dropped = true
         service.launch(Dispatchers.Main, start = CoroutineStart.UNDISPATCHED) {
             try {
@@ -940,6 +965,102 @@ class ExternalDropFloating(
             }
         }
         return true
+    }
+
+    private fun updateConversionLabel(description: ClipDescription) {
+        val image = description.hasMimeType("image/*")
+        val label = if (conversion.busy && image) R.string.external_drop_recognizing
+            else if (conversion.busy) R.string.external_drop_converting
+            else if (image) R.string.external_drop_to_text else R.string.external_drop_to_image
+        val convert = targets.findViewById<MaterialCardView>(R.id.externalDropConvert)
+        convert.contentDescription = service.getString(label)
+        convert.alpha = if (conversion.busy) 0.5f else 1f
+    }
+
+    private fun updateConversionHover(active: Boolean) {
+        if (!conversion.hover(active)) return
+        conversionHoverJob?.cancel()
+        conversionHoverJob = null
+        if (!active) return
+        conversionHoverJob = service.launch(Dispatchers.Main) {
+            delay(500)
+            convertDraggedContent()
+        }
+    }
+
+    private fun convertDraggedContent() {
+        val original = internalContent ?: return
+        val request = conversion.begin() ?: return
+        val generation = dragGeneration
+        conversionJob = service.launch(Dispatchers.Main) {
+            try {
+                updateConversionLabel(original.description)
+                if (conversion.alternate == null) {
+                    val hint = if (original.description.hasMimeType("image/*")) R.string.external_drop_recognizing_hint
+                        else R.string.external_drop_converting_hint
+                    contentPreview.show(original, contentX, contentY, sidebarBounds(), service.getString(hint))
+                }
+                val converted = conversion.alternate ?: convertContent(original)
+                if (generation != dragGeneration || internalContent == null || destroyed) return@launch
+                if (converted == null) {
+                    conversion.fail(request)
+                    toast(R.string.external_drop_conversion_empty)
+                    return@launch
+                }
+                configureEngines(converted.description)
+                if (generation != dragGeneration || !conversion.complete(request, converted)) return@launch
+                internalContent = converted
+                if (sidebar) {
+                    positionSidebar()
+                    updateViewLayoutSafely(targets, targetParams)
+                }
+                io.github.lumiagg.gestureevo.utils.VibratorUtils.vibrator(service, false)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                conversion.fail(request)
+                Log.w("ExternalDrop", "Cannot convert dragged content", error)
+                toast(if (error is IllegalArgumentException) R.string.external_drop_conversion_too_long
+                    else R.string.external_drop_failed)
+            } finally {
+                if (generation == dragGeneration && !destroyed && currentCoroutineContext().isActive) {
+                    internalContent?.let {
+                        updateConversionLabel(it.description)
+                        contentPreview.show(it, contentX, contentY, sidebarBounds())
+                    }
+                    updateContentDrag(contentX, contentY)
+                }
+            }
+        }
+    }
+
+    private suspend fun convertContent(clip: ClipData): ClipData? {
+        val image = clip.description.hasMimeType("image/*")
+        val text = buildList {
+            for (index in 0 until clip.itemCount) {
+                val item = clip.getItemAt(index)
+                if (image) {
+                    val uri = item.uri ?: continue
+                    val bitmap = decodeImage(uri) ?: error("Image cannot be decoded")
+                    bitmap.use {
+                        add(OcrImageTextProcessor(service).process(it.requireBitmap()).rawText)
+                    }
+                } else {
+                    add(withContext(Dispatchers.IO) { item.coerceToText(service)?.toString().orEmpty() })
+                }
+            }
+        }.filter { it.isNotBlank() }.joinToString("\n")
+        if (text.isBlank()) return null
+        if (image) return ClipData.newPlainText("text", text)
+        return withContext(Dispatchers.IO) {
+            val bitmap = DragTextImageRenderer.render(text)
+            try {
+                val payload = checkNotNull(imageShareLauncher.buildPayload(bitmap, null))
+                ClipData.newUri(service.contentResolver, "image", payload.contentUris.first())
+            } finally {
+                bitmap.recycle()
+            }
+        }
     }
 
     private suspend fun isImage(clip: ClipData, uri: Uri?): Boolean =
@@ -997,7 +1118,7 @@ class ExternalDropFloating(
                                     OcrImageTextProcessor(service).process(it.requireBitmap()).rawText
                                 }
                             }
-                            Action.SEARCH -> error("Search is handled separately")
+                            Action.SEARCH, Action.CONVERT -> error("Action is handled separately")
                         }
                     }
                 } else {
@@ -1007,7 +1128,7 @@ class ExternalDropFloating(
                         Action.POOL -> checkNotNull(PinPoolStore.addTextPin(service, text))
                         Action.PIN -> PictureFloating.build(service, text)
                         Action.TOKENIZE -> tokenText += text
-                        Action.SEARCH -> error("Search is handled separately")
+                        Action.SEARCH, Action.CONVERT -> error("Action is handled separately")
                     }
                 }
                 handled++

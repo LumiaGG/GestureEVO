@@ -22,6 +22,14 @@ class ExternalDropSidebarPolicyTest {
         assertEquals(3, ExternalDropSidebarPolicy.choose(candidates, 8, 100, true).columns)
     }
 
+    @Test fun detachedCardKeepsThePanelCenteredUnlessTheScreenEdgeRequiresAShift() {
+        assertEquals(300, ExternalDropSidebarPolicy.topOffset(1000, 400, 400))
+        assertEquals(300, ExternalDropSidebarPolicy.topOffset(1000, 400, 460))
+        assertEquals(40, ExternalDropSidebarPolicy.topOffset(500, 400, 460))
+        assertEquals(0, ExternalDropSidebarPolicy.topOffset(400, 400, 460))
+        assertEquals(0, ExternalDropSidebarPolicy.topOffset(300, 400, 460))
+    }
+
     @Test fun pagingRequiresActualEntryAndRetainsOnlySmallPointerWobble() {
         val next = ExternalDropSidebarPolicy.HoverBounds(8, 180, 112, 212)
         assertEquals(0, ExternalDropSidebarPolicy.hoverDirection(60f, 176f, null, next, 0, 6))

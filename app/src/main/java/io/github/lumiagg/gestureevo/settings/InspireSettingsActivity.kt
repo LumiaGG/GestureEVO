@@ -86,6 +86,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val KEY_GLOBAL_PRESS_TIMEOUT = "key_global_press_timeout"
         const val KEY_GLOBAL_PRESS_EXCLUDED = "key_global_press_excluded"
         const val KEY_EXTERNAL_DROP_ENABLED = "key_external_drop_enabled"
+        const val KEY_EXTERNAL_DROP_CONVERSION = "key_external_drop_conversion"
         const val KEY_EXTERNAL_DROP_POSITION = "key_external_drop_position"
         const val EXTERNAL_DROP_POSITION_BOTTOM = "bottom"
         const val EXTERNAL_DROP_POSITION_LEFT = "left"
@@ -154,6 +155,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         )
         updateGlobalPressExcludedText(settingsStore.readKey(KEY_GLOBAL_PRESS_EXCLUDED, "").split('|'))
         binding.externalDropSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_ENABLED, true)
+        binding.externalDropConversionSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_CONVERSION, false)
         binding.externalDropEnginesSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true)
         updateExternalDropPositionText(
             settingsStore.readKey(KEY_EXTERNAL_DROP_POSITION, EXTERNAL_DROP_POSITION_BOTTOM)
@@ -364,6 +366,9 @@ class InspireSettingsActivity : AppCompatActivity() {
         binding.externalDropSwitch.setOnCheckedChangeListener { _, isChecked ->
             updateExternalDropSettingsEnabled()
             lifecycleScope.launch { settingsStore.saveKey(KEY_EXTERNAL_DROP_ENABLED, isChecked) }
+        }
+        binding.externalDropConversionSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch { settingsStore.saveKey(KEY_EXTERNAL_DROP_CONVERSION, isChecked) }
         }
         binding.externalDropPositionRow.setOnClickListener {
             showExternalDropPositionDialog()
@@ -663,6 +668,9 @@ class InspireSettingsActivity : AppCompatActivity() {
     }
 
     private fun updateExternalDropSettingsEnabled() {
+        binding.externalDropConversionRow.isEnabled = binding.externalDropSwitch.isChecked
+        binding.externalDropConversionSwitch.isEnabled = binding.externalDropSwitch.isChecked
+        binding.externalDropConversionRow.alpha = if (binding.externalDropSwitch.isChecked) 1f else 0.5f
         val enabled = binding.externalDropSwitch.isChecked || binding.externalDropEnginesSwitch.isChecked
         binding.externalDropPositionRow.isEnabled = enabled
         binding.externalDropPositionRow.alpha = if (enabled) 1f else 0.5f

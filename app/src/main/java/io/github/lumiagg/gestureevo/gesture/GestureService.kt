@@ -18,6 +18,7 @@ import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import io.github.lumiagg.gestureevo.drop.ExternalDropFloating
 import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
+import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_CONVERSION
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_ENABLED
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_POSITION
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_POSITION_BOTTOM
@@ -103,19 +104,22 @@ class GestureService : AccessibilityService(), CoroutineScope {
     }
 
     private fun observeExternalDropSettings() {
+        data class DropSettings(val showTools: Boolean, val showEngines: Boolean, val position: String,
+            val conversion: Boolean)
         externalDropSettingsJob?.cancel()
         externalDropSettingsJob = launch(Dispatchers.Main) {
-            var previousSettings: Triple<Boolean, Boolean, String>? = null
+            var previousSettings: DropSettings? = null
             settingsStore.data.map { preferences ->
-                Triple(
+                DropSettings(
                     preferences.readKey(KEY_EXTERNAL_DROP_ENABLED, true),
                     preferences.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true),
                     preferences.readKey(KEY_EXTERNAL_DROP_POSITION, EXTERNAL_DROP_POSITION_BOTTOM),
+                    preferences.readKey(KEY_EXTERNAL_DROP_CONVERSION, false),
                 )
             }.distinctUntilChanged().combine(DynamicColorUtils.themeRevision) { settings, _ ->
                 settings
-            }.collect { (showTools, showEngines, position) ->
-                val settings = Triple(showTools, showEngines, position)
+            }.collect { settings ->
+                val (showTools, showEngines, position) = settings
                 // Cold dynamic-color publication must not replace the panel mid-press.
                 if (previousSettings == settings) {
                     while (globalPressDragSource?.isGestureActive == true) delay(50)

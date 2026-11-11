@@ -1342,4 +1342,14 @@
         <item quantity="other">已排除 %1$d 个应用</item>
     </plurals>
     <string name="global_press_permission_required">全局长按拖放需要开启 EVO 无障碍服务、运行并授权 Shizuku，且 shell 能读取触屏输入。请到权限设置检查。图片仅取屏幕可见区域；系统可能不允许取消原应用触摸，此时原应用也会响应长按和滑动。</string>
+    <string name="external_drop_conversion_title">拖拽图文转换</string>
+    <string name="external_drop_conversion_desc">拖到转换按钮上停留约半秒，将文字生成图片或通过本地 OCR 提取图片文字，保持按住即可继续拖向更新后的搜索引擎或其他工具。移出再拖入可切回原内容。仅支持全局长按拖拽，系统拖拽不显示此按钮。</string>
+    <string name="external_drop_to_image">转图片</string>
+    <string name="external_drop_to_text">转文字</string>
+    <string name="external_drop_converting">正在转换…</string>
+    <string name="external_drop_recognizing">正在识别…</string>
+    <string name="external_drop_recognizing_hint">正在识别图片文字，请保持按住…</string>
+    <string name="external_drop_converting_hint">正在转换，请保持按住…</string>
+    <string name="external_drop_conversion_empty">未识别到文字，已保留原内容</string>
+    <string name="external_drop_conversion_too_long">文字过长，无法生成图片，已保留原内容</string>
 </resources>
