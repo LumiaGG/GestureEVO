@@ -15,13 +15,9 @@ import android.widget.TextView
 import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
 import io.github.lumiagg.gestureevo.gesture.GestureService
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_SELECTION_VIBRATE
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.GlassEffectUtils
-import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
-import io.github.lumiagg.gestureevo.utils.readKey
-import io.github.lumiagg.gestureevo.utils.settingsStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,7 +48,6 @@ internal class DragContentPreview(private val service: GestureService) : BaseFlo
     }
     private var generation = 0
     private var active = false
-    private var notified = false
     private var job: Job? = null
     private var bitmap: Bitmap? = null
 
@@ -111,12 +106,6 @@ internal class DragContentPreview(private val service: GestureService) : BaseFlo
         job = service.launch(Dispatchers.Main) {
             var decoded: Bitmap? = null
             try {
-                if (active && generation == request && !notified && service.settingsStore.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true)) {
-                    if (active && generation == request) {
-                        notified = true
-                        VibratorUtils.vibrator(service, false)
-                    }
-                }
                 if (text == null && uri != null) {
                     withContext(Dispatchers.IO) {
                         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -156,7 +145,6 @@ internal class DragContentPreview(private val service: GestureService) : BaseFlo
     fun clear() {
         generation++
         active = false
-        notified = false
         job?.cancel()
         job = null
         detachViewSafely(card)

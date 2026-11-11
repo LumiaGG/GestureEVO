@@ -1333,8 +1333,8 @@
     <string name="action_seconds_summary">%1$s 秒</string>
     <string name="action_placeholder_single">添加透明占位</string>
     <string name="global_press_title">全局长按拖放</string>
-    <string name="global_press_description">长按其他应用的文字或可见图片，拖向 EVO 面板后投放。默认关闭；需要无障碍和 Shizuku。原系统拖拽仍可使用。</string>
-    <string name="global_press_timeout">长按触发时间</string>
+    <string name="global_press_description">按住其他应用的文字或可见图片，达到设定时长且内容识别成功后会轻振提示（需开启振动），再移动才显示预览和 EVO 面板，拖向面板后投放。仅长按不会弹出。默认关闭；需要无障碍和 Shizuku。原系统拖拽仍可使用。</string>
+    <string name="global_press_timeout">移动前按住时长</string>
     <string name="global_press_excluded">长按拖放排除应用</string>
     <string name="global_press_milliseconds">%1$d 毫秒</string>
     <string name="global_press_excluded_none">未排除应用</string>

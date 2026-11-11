@@ -1330,8 +1330,8 @@
     <string name="action_seconds_summary">%1$s sec</string>
     <string name="action_placeholder_single">Add a transparent placeholder</string>
     <string name="global_press_title">Global long-press drag and drop</string>
-    <string name="global_press_description">Hold text or a visible image in another app, then drag to the EVO panel. Off by default; requires accessibility and Shizuku. System drag and drop remains available.</string>
-    <string name="global_press_timeout">Long-press duration</string>
+    <string name="global_press_description">Hold text or a visible image in another app. A light vibration signals that the hold duration has elapsed and content is ready (when vibration is enabled). Move to show the preview and EVO panel, then drag to the panel to drop. Holding alone shows no overlay. Off by default; requires accessibility and Shizuku. System drag and drop remains available.</string>
+    <string name="global_press_timeout">Hold duration before moving</string>
     <string name="global_press_excluded">Apps excluded from long-press drag</string>
     <string name="global_press_milliseconds">%1$d ms</string>
     <string name="global_press_excluded_none">No apps excluded</string>

@@ -7,11 +7,14 @@ import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityEvent
 import io.github.lumiagg.gestureevo.gesture.GestureService
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_GLOBAL_PRESS_ENABLED
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_GLOBAL_PRESS_EXCLUDED
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_GLOBAL_PRESS_TIMEOUT
+import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_SELECTION_VIBRATE
+import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import kotlinx.coroutines.CancellationException
@@ -26,13 +29,13 @@ import kotlinx.coroutines.withContext
 
 /** MMGG PressCaptureSource timing/generation pipeline; both kinds enter EVO's drop panel. */
 internal class GlobalPressDragSource(private val service: GestureService, private val panel: () -> ExternalDropFloating?) {
-    private data class Settings(val enabled: Boolean, val timeout: Int, val excluded: Set<String>)
+    private data class Settings(val enabled: Boolean, val timeout: Int, val excluded: Set<String>, val vibrate: Boolean)
     private val main = Handler(Looper.getMainLooper())
-    private val detector = PressTriggerDetector()
+    private val detector = PressTriggerDetector(ViewConfiguration.get(service).scaledTouchSlop.toFloat())
     private val blocker = BackgroundTouchBlocker()
     private val capture = PressContentCapture(service)
     private val captureGate = Mutex()
-    private var settings = Settings(false, 500, emptySet())
+    private var settings = Settings(false, 500, emptySet(), true)
     private var settingsJob: Job? = null
     private var lookup: Job? = null
     private var windowCheck: Job? = null
@@ -43,6 +46,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
     private var active = false
     private var shown = false
     private var preparing = false
+    private var readyNotified = false
     val isGestureActive: Boolean get() = active || shown || preparing
     private var systemDrag = false
     private var downX = 0f
@@ -51,9 +55,12 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
     private var latestY = 0f
     private val input = ShizukuTouchSource(service, ::onPointer) { cancel("input_disconnected") }
     private val classify = Runnable { if (detector.takeClassification(SystemClock.uptimeMillis())) lookup() }
-    private val fire = Runnable {
+    private val arm = Runnable {
         if (!allowed()) cancel("confirmation_not_allowed")
-        else if (detector.fire(SystemClock.uptimeMillis())) display()
+        else {
+            detector.arm(SystemClock.uptimeMillis())
+            notifyReady()
+        }
     }
     private val expiry = Runnable { cancel("gesture_timeout") }
 
@@ -61,7 +68,8 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
         settingsJob = service.launch(Dispatchers.Main) {
             service.settingsStore.data.map {
                 Settings(it.readKey(KEY_GLOBAL_PRESS_ENABLED, false), it.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500).coerceIn(200, 2000),
-                    it.readKey(KEY_GLOBAL_PRESS_EXCLUDED, "").split('|').filter(String::isNotBlank).toSet())
+                    it.readKey(KEY_GLOBAL_PRESS_EXCLUDED, "").split('|').filter(String::isNotBlank).toSet(),
+                    it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true))
             }.distinctUntilChanged().collect { updated ->
                 cancel("source_settings_changed")
                 settings = updated
@@ -86,7 +94,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
             downY = y
             detector.start(x, y, time, settings.timeout.toLong())
             main.postAtTime(classify, detector.classificationDeadline())
-            main.postAtTime(fire, detector.deadline())
+            main.postAtTime(arm, detector.deadline())
             main.postDelayed(expiry, 15_000)
             return
         }
@@ -99,6 +107,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
         }
         detector.onPointerEvent(action, x, y, 1)
         if (!detector.isActive) { cancel("pointer_rejected:action=$action"); return }
+        if (detector.isFired) display()
         if (shown || preparing) panel()?.updateContentDrag(x, y)
     }
 
@@ -125,6 +134,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
                     if (SystemClock.uptimeMillis() - detector.downTime() > 2000) { cancel("capture_expired"); return@withContext }
                     if (content == null) { cancel("content_unavailable"); return@withContext }
                     cached = content
+                    notifyReady()
                     if (detector.isFired) display()
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
@@ -137,6 +147,12 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
             delay(1800)
             if (generation == request && cached == null && !shown && !preparing) cancel("capture_timeout")
         }
+    }
+
+    private fun notifyReady() {
+        if (readyNotified || !detector.isReady || cached == null || !allowed()) return
+        readyNotified = true
+        if (settings.vibrate) VibratorUtils.vibrator(service, true)
     }
 
     private fun display() {
@@ -211,11 +227,12 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
         active = false
         shown = false
         preparing = false
+        readyNotified = false
         source = null
         cached = null
         detector.cancel()
         main.removeCallbacks(classify)
-        main.removeCallbacks(fire)
+        main.removeCallbacks(arm)
         main.removeCallbacks(expiry)
         lookup?.cancel()
         lookup = null
