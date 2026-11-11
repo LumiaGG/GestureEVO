@@ -482,6 +482,20 @@
               android:layout_height="wrap_content" />
           </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
           <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+            android:id="@+id/external_drop_system_drag_blur_row"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/appearance_settings_external_drop_system_drag_blur"
+            app:settingsRowSummary="@string/appearance_settings_external_drop_system_drag_blur_summary">
+            <com.google.android.material.materialswitch.MaterialSwitch
+              android:id="@+id/external_drop_system_drag_blur_switch"
+              android:checked="false"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content" />
+          </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"

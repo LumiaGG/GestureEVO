@@ -41,6 +41,7 @@ import io.github.lumiagg.gestureevo.search.config.SearchEngineDataManager
 import io.github.lumiagg.gestureevo.search.setEngineIcon
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_EXTERNAL_DROP_BACKGROUND_BLUR
+import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_CONVERSION
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SHOW_ENGINES
@@ -116,9 +117,13 @@ class ExternalDropFloating(
     private var previewPageDirection = 0
     private var showImageBadge = true
     private var backgroundBlurEnabled = false
+    private var systemDragBlurEnabled = true
     private var cardBlurEnabled = false
     private var backgroundBlurRadius = 0
     private var backgroundBlurAnimator: ValueAnimator? = null
+    /** Whether the full-screen blur may run for the drag in progress. */
+    private val backgroundBlurActive: Boolean
+        get() = backgroundBlurEnabled && (internalContent != null || systemDragBlurEnabled)
     private val originOsSurfaceBlur = Rom.isOriginOS()
     private val imageShareLauncher = ImageShareLauncher(service.applicationContext)
     private var dragGeneration = 0
@@ -464,6 +469,7 @@ class ExternalDropFloating(
         showImageBadge = store.readKey(SearchEngineSettingsActivity.KEY_SHOW_IMAGE_BADGE, true)
         backgroundBlurEnabled = store.readKey(KEY_EXTERNAL_DROP_BACKGROUND_BLUR, false) &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        systemDragBlurEnabled = store.readKey(KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR, true)
         cardBlurEnabled = store.readKey(KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR, false)
         val config = QuickSearchEnginePager.Config(
             rowCount = if (sidebar) 1 else store.readKey(SearchEngineSettingsActivity.KEY_ROW_COUNT, 1)
@@ -749,7 +755,7 @@ class ExternalDropFloating(
             positionSidebar()
         }
         positionPreview()
-        if (backgroundBlurEnabled) {
+        if (backgroundBlurActive) {
             attachViewSafely(
                 blurBackground,
                 blurParams,
@@ -765,7 +771,7 @@ class ExternalDropFloating(
         val accepted = attachViewSafely(targets, targetParams, shouldRetry = { dragActive && !destroyed })
         attachViewSafely(previewIcon, previewParams, shouldRetry = { dragActive && !destroyed })
         DropDiagnostics.event("drop_targets_shown", if (internalContent != null) "internal" else "system", dragGeneration,
-            reason = if (backgroundBlurEnabled) "blur_enabled" else "blur_disabled", width = targets.width,
+            reason = if (backgroundBlurActive) "blur_enabled" else "blur_disabled", width = targets.width,
             height = targets.height, flags = targetParams.flags)
         return accepted
     }
@@ -860,12 +866,13 @@ class ExternalDropFloating(
     private fun applyGlassStyle() {
         val panel = targets.findViewById<MaterialCardView>(R.id.externalDropPanel)
         val enginesCard = targets.findViewById<MaterialCardView>(R.id.externalDropEnginesCard)
+        // The effective state keeps the glass consistent when a system drag suppresses the full-screen blur.
         GlassEffectUtils.applyCardStyle(
             card = panel,
             color = DynamicColorUtils.surfaceContainerColor,
             glassEnabled = cardBlurEnabled,
-            blurRegion = GlassEffectUtils.usesCardRegionBlur(backgroundBlurEnabled, cardBlurEnabled),
-            backgroundBlurEnabled = backgroundBlurEnabled,
+            blurRegion = GlassEffectUtils.usesCardRegionBlur(backgroundBlurActive, cardBlurEnabled),
+            backgroundBlurEnabled = backgroundBlurActive,
             overlayOnContent = true,
         )
         if (cardBlurEnabled) {

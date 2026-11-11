@@ -53,6 +53,7 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         const val KEY_SCREEN_CONTENT_BACKGROUND_BLUR = "key_screen_content_background_blur"
         const val KEY_SCREEN_CONTENT_CARD_BACKGROUND_BLUR = "key_screen_content_card_background_blur"
         const val KEY_EXTERNAL_DROP_BACKGROUND_BLUR = "key_external_drop_background_blur"
+        const val KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR = "key_external_drop_system_drag_blur"
         const val KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR = "key_external_drop_card_background_blur"
         const val KEY_DYNAMIC_COLOR_SCHEME = "key_dynamic_color_scheme"
         const val KEY_POINTER_COLOR = "key_pointer_color"
@@ -130,6 +131,10 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         val externalDropBackgroundBlurEnabled =
             settingsStore.readKey(KEY_EXTERNAL_DROP_BACKGROUND_BLUR, false)
         binding.externalDropBackgroundBlurSwitch.isChecked = externalDropBackgroundBlurEnabled
+        binding.externalDropSystemDragBlurRow.visibility =
+            if (externalDropBackgroundBlurEnabled) View.VISIBLE else View.GONE
+        binding.externalDropSystemDragBlurSwitch.isChecked =
+            settingsStore.readKey(KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR, true)
         binding.externalDropCardBackgroundBlurSwitch.isChecked =
             settingsStore.readKey(KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR, false)
         setupIconPackDropdown()
@@ -329,8 +334,16 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         }
 
         binding.externalDropBackgroundBlurSwitch.setOnCheckedChangeListener { _, isCheck ->
+            binding.externalDropSystemDragBlurRow.visibility =
+                if (isCheck) View.VISIBLE else View.GONE
             lifecycleScope.launch {
                 settingsStore.saveKey(KEY_EXTERNAL_DROP_BACKGROUND_BLUR, isCheck)
+            }
+        }
+
+        binding.externalDropSystemDragBlurSwitch.setOnCheckedChangeListener { _, isCheck ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR, isCheck)
             }
         }
 

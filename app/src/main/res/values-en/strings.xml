@@ -1072,6 +1072,8 @@
     <string name="appearance_settings_external_drop_title">Drag overlay settings</string>
     <string name="appearance_settings_external_drop_description">Adjust drag overlay background blur and card appearance</string>
     <string name="appearance_settings_external_drop_background_blur">Background blur (system dependent)</string>
+    <string name="appearance_settings_external_drop_system_drag_blur">System drag background blur</string>
+    <string name="appearance_settings_external_drop_system_drag_blur_summary">Also show the background blur for drags started by other apps</string>
     <string name="appearance_settings_external_drop_card_background_blur">Card background blur</string>
     <string name="search_engine_settings_display_description">Adjust the search layout density and icon display</string>
     <string name="search_engine_settings_column_count_title">Search engine columns</string>

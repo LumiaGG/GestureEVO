@@ -296,6 +296,14 @@ object SettingsSearchRegistry {
             keywords = listOf("拖放悬浮窗背景模糊", "拖放背景模糊", "drag blur")
         ),
         entry(
+            id = "appearance_external_drop_system_drag_blur",
+            titleResId = R.string.appearance_settings_external_drop_system_drag_blur,
+            pageTitleResId = R.string.appearance_settings_title,
+            targetActivity = AppearanceSettingsActivity::class.java,
+            targetViewId = R.id.externalDropAppearanceCard,
+            keywords = listOf("系统拖拽背景模糊", "拖放系统拖拽模糊", "system drag blur")
+        ),
+        entry(
             id = "appearance_external_drop_card_blur",
             titleResId = R.string.appearance_settings_external_drop_card_background_blur,
             pageTitleResId = R.string.appearance_settings_title,
