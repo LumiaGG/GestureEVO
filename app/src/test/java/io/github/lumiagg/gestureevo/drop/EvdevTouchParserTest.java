@@ -56,35 +56,60 @@ public final class EvdevTouchParserTest {
     }
 
     @Test
-    public void secondPointerCancelsInsteadOfFinishingShare() {
+    public void secondPointerDuringGestureIsIgnoredAndPrimaryKeepsTracking() {
         List<Frame> frames = new ArrayList<>();
-        EvdevTouchParser parser = new EvdevTouchParser((action, x, y, major, minor, widthMajor) ->
-                frames.add(new Frame(action, x, y, major, minor)));
+        EvdevTouchParser parser = new EvdevTouchParser((a, x, y, major, minor, width) ->
+                frames.add(new Frame(a, x, y, major, minor)));
 
-        pointerDown(parser, 0, 42, 10, 20, 18, 9);
-        pointerDown(parser, 1, 43, 30, 40, 60, 42);
-
-        assertEquals(Arrays.asList(
-                MotionEvent.ACTION_DOWN,
-                MotionEvent.ACTION_CANCEL), actions(frames));
-        assertEquals(new Frame(MotionEvent.ACTION_CANCEL, 10, 20, 18, 9), frames.get(1));
-    }
-
-    @Test
-    public void multiTouchStaysCancelledUntilEverySlotEndsThenNextPressStartsFresh() {
-        List<Frame> frames = new ArrayList<>();
-        EvdevTouchParser parser = new EvdevTouchParser((a, x, y, major, minor, width) -> frames.add(new Frame(a, x, y, major, minor)));
-        pointerDown(parser, 0, 1, 10, 20);
-        pointerDown(parser, 1, 2, 30, 40);
-        pointerUp(parser, 0);
+        pointerDown(parser, 0, 42, 10, 20);
+        pointerDown(parser, 1, 43, 30, 40);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_SLOT, 0);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_POSITION_X, 12);
+        parser.consume(EvdevTouchParser.EV_SYN, EvdevTouchParser.SYN_REPORT, 0);
         parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_SLOT, 1);
         parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_POSITION_X, 80);
         parser.consume(EvdevTouchParser.EV_SYN, EvdevTouchParser.SYN_REPORT, 0);
+        pointerUp(parser, 0);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_SLOT, 1);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_POSITION_X, 90);
+        parser.consume(EvdevTouchParser.EV_SYN, EvdevTouchParser.SYN_REPORT, 0);
+        pointerUp(parser, 1);
+        pointerDown(parser, 2, 44, 50, 60);
+
+        assertEquals(Arrays.asList(
+                MotionEvent.ACTION_DOWN,
+                MotionEvent.ACTION_MOVE,
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_DOWN), actions(frames));
+        assertEquals(12f, frames.get(1).x, 0f);
+        assertEquals(50f, frames.get(3).x, 0f);
+    }
+
+    @Test
+    public void gestureStartingWithTwoPointersIsIgnoredUntilEverySlotEnds() {
+        List<Frame> frames = new ArrayList<>();
+        EvdevTouchParser parser = new EvdevTouchParser((a, x, y, major, minor, width) ->
+                frames.add(new Frame(a, x, y, major, minor)));
+
+        // Both contacts reported before the first SYN: a gesture that starts multi-touch stays ignored.
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_SLOT, 0);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_TRACKING_ID, 1);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_POSITION_X, 10);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_POSITION_Y, 20);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_SLOT, 1);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_TRACKING_ID, 2);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_POSITION_X, 30);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_POSITION_Y, 40);
+        parser.consume(EvdevTouchParser.EV_SYN, EvdevTouchParser.SYN_REPORT, 0);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_SLOT, 0);
+        parser.consume(EvdevTouchParser.EV_ABS, EvdevTouchParser.ABS_MT_POSITION_X, 15);
+        parser.consume(EvdevTouchParser.EV_SYN, EvdevTouchParser.SYN_REPORT, 0);
+        pointerUp(parser, 0);
         pointerUp(parser, 1);
         pointerDown(parser, 2, 3, 50, 60);
-        pointerUp(parser, 2);
-        assertEquals(Arrays.asList(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP), actions(frames));
-        assertEquals(50f, frames.get(2).x, 0f);
+
+        assertEquals(Arrays.asList(MotionEvent.ACTION_DOWN), actions(frames));
+        assertEquals(50f, frames.get(0).x, 0f);
     }
 
     @Test

@@ -5,7 +5,8 @@ import android.view.MotionEvent;
 
 import java.util.Arrays;
 
-/** Converts multi-touch evdev frames into one stable primary pointer stream. */
+/** Converts multi-touch evdev frames into one stable primary pointer stream. Pointers appearing
+ * after the gesture started are ignored so the primary finger keeps tracking. */
 final class EvdevTouchParser {
     interface Listener {
         void onFrame(
@@ -54,7 +55,6 @@ final class EvdevTouchParser {
     private boolean buttonDownEdge;
     private boolean sawTrackingStart;
     private boolean primaryLifted;
-    private boolean multiTouchDetected;
     private boolean frameChanged;
     private boolean ignoreUntilAllPointersUp;
     private float lastX = Float.NaN;
@@ -112,9 +112,6 @@ final class EvdevTouchParser {
                 trackingId[currentSlot] = -1;
                 updatedAxes[currentSlot] = 0;
             } else {
-                if (gestureActive && currentSlot != primarySlot) {
-                    multiTouchDetected = true;
-                }
                 trackingId[currentSlot] = value;
                 // Drivers can report the new contact's axes before its tracking/button edge.
                 // Retain only values explicitly updated in this frame, never a prior contact.
@@ -191,11 +188,8 @@ final class EvdevTouchParser {
             return;
         }
 
-        if (trackedCount > 1 || multiTouchDetected) {
-            emitCancelAndIgnore();
-            finishFrame();
-            return;
-        }
+        // A contact added mid-gesture must not cancel the drag: the shield absorbs its
+        // system-side twin, so raw tracking ignores it and keeps following the primary slot.
 
         boolean primaryTracked = primarySlot >= 0 && trackingId[primarySlot] >= 0;
         boolean buttonReleased = buttonTouchSeen && !buttonTouchDown;
@@ -249,20 +243,6 @@ final class EvdevTouchParser {
         resetGesture();
     }
 
-    private void emitCancelAndIgnore() {
-        if (gestureActive && Float.isFinite(lastX) && Float.isFinite(lastY)) {
-            listener.onFrame(
-                    MotionEvent.ACTION_CANCEL,
-                    lastX,
-                    lastY,
-                    lastTouchMajor,
-                    lastTouchMinor,
-                    lastWidthMajor);
-        }
-        resetGesture();
-        ignoreUntilAllPointersUp = true;
-    }
-
     private void setLast(int slot) {
         lastX = slotX[slot];
         lastY = slotY[slot];
@@ -308,7 +288,6 @@ final class EvdevTouchParser {
         Arrays.fill(updatedAxes, 0);
         frameChanged = false;
         primaryLifted = false;
-        multiTouchDetected = false;
         buttonDownEdge = false;
         // Some drivers split a new contact's X/Y across reports; keep its edge until coordinates arrive.
         if (!gestureActive && !ignoreUntilAllPointersUp && trackedPointerCount() == 0) {
@@ -320,7 +299,6 @@ final class EvdevTouchParser {
         sawTrackingStart = false;
         buttonDownEdge = false;
         primaryLifted = false;
-        multiTouchDetected = false;
     }
 
     private void resetGesture() {
