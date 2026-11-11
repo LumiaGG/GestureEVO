@@ -1069,6 +1069,10 @@
     <string name="appearance_settings_screen_content_description">Adjust screen content background blur and card appearance</string>
     <string name="appearance_settings_screen_content_background_blur">Background blur (system dependent)</string>
     <string name="appearance_settings_screen_content_card_background_blur">Card background blur</string>
+    <string name="appearance_settings_external_drop_title">Drag overlay settings</string>
+    <string name="appearance_settings_external_drop_description">Adjust drag overlay background blur and card appearance</string>
+    <string name="appearance_settings_external_drop_background_blur">Background blur (system dependent)</string>
+    <string name="appearance_settings_external_drop_card_background_blur">Card background blur</string>
     <string name="search_engine_settings_display_description">Adjust the search layout density and icon display</string>
     <string name="search_engine_settings_column_count_title">Search engine columns</string>
     <string name="search_engine_settings_column_count_description">Set the number of icon columns on each page</string>

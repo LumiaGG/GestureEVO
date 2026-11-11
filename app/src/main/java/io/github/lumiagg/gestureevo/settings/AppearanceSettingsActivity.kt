@@ -52,6 +52,8 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         const val KEY_PIN_POOL_CARD_BACKGROUND_BLUR = "key_pin_pool_card_background_blur"
         const val KEY_SCREEN_CONTENT_BACKGROUND_BLUR = "key_screen_content_background_blur"
         const val KEY_SCREEN_CONTENT_CARD_BACKGROUND_BLUR = "key_screen_content_card_background_blur"
+        const val KEY_EXTERNAL_DROP_BACKGROUND_BLUR = "key_external_drop_background_blur"
+        const val KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR = "key_external_drop_card_background_blur"
         const val KEY_DYNAMIC_COLOR_SCHEME = "key_dynamic_color_scheme"
         const val KEY_POINTER_COLOR = "key_pointer_color"
         const val KEY_POINTER_SHAPE = "key_pointer_shape"
@@ -125,6 +127,11 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         binding.screenContentBackgroundBlurSwitch.isChecked = screenContentBackgroundBlurEnabled
         binding.screenContentCardBackgroundBlurSwitch.isChecked =
             settingsStore.readKey(KEY_SCREEN_CONTENT_CARD_BACKGROUND_BLUR, false)
+        val externalDropBackgroundBlurEnabled =
+            settingsStore.readKey(KEY_EXTERNAL_DROP_BACKGROUND_BLUR, false)
+        binding.externalDropBackgroundBlurSwitch.isChecked = externalDropBackgroundBlurEnabled
+        binding.externalDropCardBackgroundBlurSwitch.isChecked =
+            settingsStore.readKey(KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR, false)
         setupIconPackDropdown()
         setupLanguageDropdown()
         setupFluidFeedbackViews()
@@ -318,6 +325,18 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         binding.screenContentCardBackgroundBlurSwitch.setOnCheckedChangeListener { _, isCheck ->
             lifecycleScope.launch {
                 settingsStore.saveKey(KEY_SCREEN_CONTENT_CARD_BACKGROUND_BLUR, isCheck)
+            }
+        }
+
+        binding.externalDropBackgroundBlurSwitch.setOnCheckedChangeListener { _, isCheck ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_EXTERNAL_DROP_BACKGROUND_BLUR, isCheck)
+            }
+        }
+
+        binding.externalDropCardBackgroundBlurSwitch.setOnCheckedChangeListener { _, isCheck ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR, isCheck)
             }
         }
 

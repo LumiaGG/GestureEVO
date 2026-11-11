@@ -455,6 +455,47 @@
         </LinearLayout>
       </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
       <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
+        android:id="@+id/externalDropAppearanceCard"
+        android:layout_width="match_parent"
+        android:layout_marginTop="@dimen/settings_card_spacing"
+        app:settingsCardTitle="@string/appearance_settings_external_drop_title"
+        app:settingsCardSummary="@string/appearance_settings_external_drop_description"
+        app:settingsCardExpanded="false"
+        android:layout_height="wrap_content">
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:orientation="vertical"
+          android:paddingHorizontal="12dp"
+          android:paddingTop="4dp"
+          android:paddingBottom="12dp">
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/appearance_settings_external_drop_background_blur"
+            app:settingsRowSummary="@string/appearance_settings_background_blur_summary">
+            <com.google.android.material.materialswitch.MaterialSwitch
+              android:id="@+id/external_drop_background_blur_switch"
+              android:checked="false"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content" />
+          </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/appearance_settings_external_drop_card_background_blur"
+            app:settingsRowSummary="@string/appearance_settings_card_background_blur_summary">
+            <com.google.android.material.materialswitch.MaterialSwitch
+              android:id="@+id/external_drop_card_background_blur_switch"
+              android:checked="false"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content" />
+          </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+        </LinearLayout>
+      </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+      <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
         android:id="@+id/fluidFeedbackAppearanceCard"
         android:layout_width="match_parent"
         android:layout_marginTop="@dimen/settings_card_spacing"
