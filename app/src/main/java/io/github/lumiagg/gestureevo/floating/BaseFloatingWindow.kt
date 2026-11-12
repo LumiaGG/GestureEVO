@@ -14,7 +14,6 @@ import io.github.lumiagg.gestureevo.utils.postOnMain
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import java.util.Collections
 import java.util.IdentityHashMap
 
 abstract class BaseFloatingWindow(
@@ -26,8 +25,9 @@ abstract class BaseFloatingWindow(
         context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     }
 
-    private val attachRequests = Collections.newSetFromMap(IdentityHashMap<View, Boolean>())
+    private val attachments = WindowAttachmentRegistry<View>()
     private val attachRetryJobs = IdentityHashMap<View, Job>()
+    private val attachListeners = IdentityHashMap<View, View.OnAttachStateChangeListener>()
 
     protected fun WindowManager.LayoutParams.configureAccessibilityOverlay(
         flags: Int,
@@ -55,6 +55,7 @@ abstract class BaseFloatingWindow(
         }
     }
 
+    /** Returns WM request acceptance; onAttached runs only after actual View attachment. */
     protected fun attachViewSafely(
         view: View,
         layoutParams: WindowManager.LayoutParams,
@@ -63,28 +64,36 @@ abstract class BaseFloatingWindow(
         onAttached: () -> Unit = {},
         onFailure: (Throwable) -> Unit = {},
     ): Boolean {
-        attachRequests.add(view)
         attachRetryJobs.remove(view)?.cancel()
-        if (view.isAttachedToWindow) {
+        removeAttachListener(view)
+        val request = attachments.request(view) {
+            removeAttachListener(view)
             onAttached()
-            return true
         }
-
+        val listener = object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) { attachments.attached(view, request) }
+            override fun onViewDetachedFromWindow(v: View) = Unit
+        }
+        attachListeners[view] = listener
+        view.addOnAttachStateChangeListener(listener)
         return runCatching {
-            windowManager.addView(view, layoutParams)
-            onAttached()
+            submitAttach(view, layoutParams, request)
         }.onFailure { err ->
             AppLogger.event(
                 LogModule.OVERLAY, "overlay_attach_failed",
                 LogLevel.WARN, fields = mapOf("source" to logTag), error = err)
             Log.d(logTag, "addView failed: $err")
             onFailure(err)
-            attachRetryJobs[view] = coroutineScope.postOnMain {
-                delay(retryDelayMillis)
-                attachRetryJobs.remove(view)
-                retryAttachView(view, layoutParams, shouldRetry, onAttached)
+            if (attachments.isCurrent(view, request)) {
+                attachRetryJobs[view] = coroutineScope.postOnMain {
+                    delay(retryDelayMillis)
+                    if (!attachments.isCurrent(view, request)) return@postOnMain
+                    attachRetryJobs.remove(view)
+                    if (shouldRetry()) runCatching { submitAttach(view, layoutParams, request) }
+                        .onFailure { Log.d(logTag, "addView retry failed: $it") }
+                }
             }
-        }.isSuccess
+        }.getOrDefault(false)
     }
 
     protected fun addViewSafely(
@@ -98,19 +107,13 @@ abstract class BaseFloatingWindow(
         immediate: Boolean = true,
         onDetached: () -> Unit = {},
     ): Boolean {
-        attachRequests.remove(view)
         attachRetryJobs.remove(view)?.cancel()
-        if (!view.isAttachedToWindow) {
-            onDetached()
-            return true
-        }
-
+        removeAttachListener(view)
         return runCatching {
-            if (immediate) {
-                windowManager.removeViewImmediate(view)
-            } else {
-                windowManager.removeView(view)
+            attachments.detach(view, { view.isAttachedToWindow }) {
+                if (immediate) windowManager.removeViewImmediate(view) else windowManager.removeView(view)
             }
+            io.github.lumiagg.gestureevo.drop.SourceTouchRegions.detached(view)
             onDetached()
         }.onFailure { err ->
             Log.d(logTag, "removeView failed: $err")
@@ -135,31 +138,25 @@ abstract class BaseFloatingWindow(
         }.isSuccess
     }
 
-    protected fun isAttachRequested(view: View): Boolean = attachRequests.contains(view)
+    protected fun isAttachRequested(view: View): Boolean = attachments.isRequested(view)
 
     protected fun clearAttachRequest(view: View) {
-        attachRequests.remove(view)
+        attachments.cancelRequest(view)
         attachRetryJobs.remove(view)?.cancel()
+        removeAttachListener(view)
     }
 
-    private fun retryAttachView(
-        view: View,
-        layoutParams: WindowManager.LayoutParams,
-        shouldRetry: () -> Boolean,
-        onAttached: () -> Unit,
-    ) {
-        if (view.isAttachedToWindow) {
-            onAttached()
-            return
-        }
-        if (!shouldRetry()) return
+    private fun removeAttachListener(view: View) {
+        attachListeners.remove(view)?.let(view::removeOnAttachStateChangeListener)
+    }
 
-        runCatching {
+    private fun submitAttach(view: View, layoutParams: WindowManager.LayoutParams,
+        request: WindowAttachmentRegistry.Request): Boolean {
+        val accepted = attachments.submit(view, request, { view.isAttachedToWindow }) {
             windowManager.addView(view, layoutParams)
-            onAttached()
-        }.onFailure { retryErr ->
-            Log.d(logTag, "addView retry failed: $retryErr")
         }
+        if (accepted) io.github.lumiagg.gestureevo.drop.SourceTouchRegions.attached(view)
+        return accepted
     }
 
     private companion object {

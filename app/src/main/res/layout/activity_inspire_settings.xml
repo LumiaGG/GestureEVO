@@ -40,8 +40,15 @@
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/default_share_behavior_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_default_share_behavior_title" app:settingsRowSummary="@string/inspire_settings_default_share_behavior_desc">
                         <TextView android:id="@+id/selected_default_share_behavior_text" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+                </LinearLayout>
+            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/externalDropCard" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsCardTitle="@string/inspire_settings_external_drop_settings_title" app:settingsCardSummary="@string/inspire_settings_external_drop_settings_description" app:settingsCardExpanded="false" android:layout_marginTop="@dimen/settings_card_spacing">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_external_drop" app:settingsRowSummary="@string/inspire_settings_external_drop_desc">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/externalDropSwitch" android:checked="true" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/external_drop_conversion_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/external_drop_conversion_title" app:settingsRowSummary="@string/external_drop_conversion_desc">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/externalDropConversionSwitch" android:checked="false" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/external_drop_position_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_external_drop_position">
                         <TextView android:id="@+id/selected_external_drop_position_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/inspire_settings_external_drop_position_bottom" />
@@ -57,6 +64,26 @@
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/external_drop_sidebar_fill_priority_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_external_drop_sidebar_fill_priority" app:settingsRowSummary="@string/inspire_settings_external_drop_sidebar_fill_priority_desc">
                         <TextView android:id="@+id/selected_external_drop_sidebar_fill_priority_text" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+                </LinearLayout>
+            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/globalPressCard" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsCardTitle="@string/global_press_settings_title" app:settingsCardSummary="@string/global_press_settings_description" app:settingsCardExpanded="false" android:layout_marginTop="@dimen/settings_card_spacing">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/global_press_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/global_press_title" app:settingsRowSummary="@string/global_press_description">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/globalPressSwitch" android:checked="false" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/global_press_mode_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/global_press_mode" app:settingsRowSummary="@string/global_press_mode_description">
+                        <TextView android:id="@+id/selected_global_press_mode_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:accessibilityLiveRegion="polite" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+                    <TextView android:id="@+id/global_press_status_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginHorizontal="14dp" android:layout_marginTop="6dp" android:text="@string/global_press_status_stopped" android:textAppearance="?attr/textAppearanceBodySmall" android:textColor="?attr/colorOnSurfaceVariant" android:maxLines="1" android:ellipsize="end" android:accessibilityLiveRegion="polite" />
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/global_press_protect_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:visibility="gone" app:settingsRowTitle="@string/global_press_protect" app:settingsRowSummary="@string/global_press_protect_description">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/globalPressProtectSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/global_press_timeout_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/global_press_timeout">
+                        <TextView android:id="@+id/selected_global_press_timeout_text" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/global_press_excluded_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/global_press_excluded">
+                        <TextView android:id="@+id/selected_global_press_excluded_text" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
                 </LinearLayout>
             </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>

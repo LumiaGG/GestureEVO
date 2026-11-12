@@ -88,7 +88,7 @@ class GestureFeedbackFloating(private val gestureService: GestureService) :
     }
 
     private fun showRippleView() {
-        if (isViewAdded) return
+        if (isViewAdded || rippleView?.let(::isAttachRequested) == true) return
 
         rippleView = FluidRippleView(gestureService).apply {
             applyAppearance(GestureFluidAppearance.current)
@@ -107,7 +107,7 @@ class GestureFeedbackFloating(private val gestureService: GestureService) :
     }
 
     private fun hideRippleView() {
-        if (!isViewAdded) return
+        if (rippleView == null) return
 
         gestureService.postOnMain {
             delay(200)
@@ -128,7 +128,7 @@ class GestureFeedbackFloating(private val gestureService: GestureService) :
         lastPredictedTags = emptyList()
         lastPredictedGesture = null
         gestureService.postOnMain {
-            if (!isViewAdded) return@postOnMain
+            if (rippleView == null) return@postOnMain
             try {
                 rippleView?.let {
                     it.clearRoundImageContent()
@@ -144,7 +144,7 @@ class GestureFeedbackFloating(private val gestureService: GestureService) :
     }
 
     fun destroy() {
-        if (isViewAdded) {
+        if (rippleView != null) {
             try {
                 rippleView?.let { detachViewSafely(it, immediate = false) }
             } catch (e: Exception) {

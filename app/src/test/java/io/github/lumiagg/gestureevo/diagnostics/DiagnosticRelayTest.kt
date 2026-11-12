@@ -60,6 +60,29 @@ class DiagnosticRelayTest {
         }
     }
 
+    @Test(timeout = 10000) fun leasedIdleProcessExitsAndIsReapedWhenClosed() {
+        val sink = Sink()
+        val relay = DiagnosticRelay(command("lease"), sink, stdinLease = true)
+        assertFalse(sink.closed.await(100, TimeUnit.MILLISECONDS))
+        relay.close()
+        assertTrue(sink.closed.await(1, TimeUnit.SECONDS))
+        assertFalse(relay.isProcessAlive())
+        relay.close()
+    }
+
+    @Test(timeout = 10000) fun receiverDisconnectClosesIdleLeaseWithoutWaitingForOutput() {
+        val sink = Sink()
+        val disconnected = java.util.concurrent.atomic.AtomicBoolean()
+        val relay = DiagnosticRelay(command("lease"), sink, durationMs = null, byteLimit = null,
+            stdinLease = true, leaseHeartbeatMs = 20, receiverClosed = disconnected::get)
+        disconnected.set(true)
+        assertTrue(sink.closed.await(3, TimeUnit.SECONDS))
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3)
+        while (relay.isProcessAlive() && System.nanoTime() < deadline) Thread.sleep(20)
+        assertFalse(relay.isProcessAlive())
+        relay.close()
+    }
+
     @Test fun oversizedMessagesAreDrainedWithoutLosingFollowingEvents() {
         var discarded = 0
         val actual = ArrayList<String>()

@@ -190,7 +190,7 @@ object ShizukuServiceHelper {
         .daemon(false)
         .processNameSuffix("service")
         .debuggable(BuildConfig.DEBUG)
-        .version(BuildConfig.VERSION_CODE + 2) // Diagnostic stream protocol changed; replace a previously bound user service.
+        .version(BuildConfig.VERSION_CODE + 6) // Replace workers using the fixed five-minute touch lease.
 
     fun bindUserService(onBound: (() -> Unit)?) {
         if (isServiceBound) {
