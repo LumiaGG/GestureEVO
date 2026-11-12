@@ -99,8 +99,8 @@ class UserService : IUserService.Stub {
             output.write("EVO_TOUCH ${device.minX} ${device.maxX} ${device.minY} ${device.maxY}\n".toByteArray())
             touchStream = io.github.lumiagg.gestureevo.diagnostics.DiagnosticRelay(
                 io.github.lumiagg.gestureevo.drop.TouchStreamProcess.arguments(device.path), output,
-                durationMs = io.github.lumiagg.gestureevo.drop.TouchStreamProcess.DURATION_MS,
-                byteLimit = 32 * 1024 * 1024, stdinLease = true,
+                durationMs = null, byteLimit = null, stdinLease = true,
+                leaseHeartbeatMs = io.github.lumiagg.gestureevo.drop.TouchStreamProcess.HEARTBEAT_MS,
                 receiverClosed = {
                     val descriptor = android.system.StructPollfd().apply { fd = pipe[1].fileDescriptor; events = 0 }
                     android.system.Os.poll(arrayOf(descriptor), 0)

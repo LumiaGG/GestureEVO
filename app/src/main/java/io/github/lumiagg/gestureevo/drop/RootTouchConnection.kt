@@ -25,8 +25,8 @@ internal class RootTouchConnection : Closeable {
             try {
                 relay = DiagnosticRelay(TouchStreamProcess.rootArguments(device),
                     ParcelFileDescriptor.AutoCloseOutputStream(pipe[1]),
-                    durationMs = TouchStreamProcess.DURATION_MS + 10_000,
-                    byteLimit = 32 * 1024 * 1024, stdinLease = true)
+                    durationMs = null, byteLimit = null, stdinLease = true,
+                    leaseHeartbeatMs = TouchStreamProcess.HEARTBEAT_MS)
                 descriptor = pipe[0]
                 pipe[0]
             } catch (error: Exception) {

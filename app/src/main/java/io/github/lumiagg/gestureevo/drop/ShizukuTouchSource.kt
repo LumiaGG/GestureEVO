@@ -64,7 +64,6 @@ internal class ShizukuTouchSource(private val service: GestureService,
                     run.remote = shell
                     run.token = id
                     val root = if (run.useRoot) RootTouchConnection().also { run.root = it } else null
-                    val connectedAt = SystemClock.elapsedRealtime()
                     val ready = java.util.concurrent.atomic.AtomicBoolean()
                     val death = IBinder.DeathRecipient { runCatching { run.descriptor?.close() } }
                     shell?.asBinder()?.linkToDeath(death, 0)
@@ -134,9 +133,7 @@ internal class ShizukuTouchSource(private val service: GestureService,
                                 true
                             }
                         }
-                        if (!run.cancelled && SystemClock.elapsedRealtime() - connectedAt < 290_000) {
-                            throw IllegalStateException("Touch stream ended before its lease expired")
-                        }
+                        if (!run.cancelled) throw IllegalStateException("Touch stream ended unexpectedly")
                     } finally {
                         deadline.cancel()
                         runCatching { shell?.asBinder()?.unlinkToDeath(death, 0) }

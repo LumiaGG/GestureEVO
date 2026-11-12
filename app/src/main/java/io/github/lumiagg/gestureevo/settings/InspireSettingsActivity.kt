@@ -160,7 +160,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         val defaultShareBehavior = settingsStore.readKey(KEY_DEFAULT_SHARE_BEHAVIOR, "tokenization")
         updateDefaultShareBehaviorText(defaultShareBehavior)
         binding.globalPressSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_ENABLED, false)
-        binding.globalPressProtectSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_PROTECT, true)
+        binding.globalPressProtectSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_PROTECT, false)
         updateGlobalPressModeText(settingsStore.readKey(KEY_GLOBAL_PRESS_ROOT, false))
         updateGlobalPressSettingsEnabled()
         binding.selectedGlobalPressTimeoutText.text = getString(

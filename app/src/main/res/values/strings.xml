@@ -1343,7 +1343,7 @@
     <string name="global_press_mode_root">Root 增强模式</string>
     <string name="global_press_mode_description">标准：通过 Shizuku 监听触摸。\nRoot：直接监听，可防长按打断、阻止背景滑动。</string>
     <string name="global_press_protect">防止原应用长按打断</string>
-    <string name="global_press_protect_description">提前接管稳定按压，减少大阈值下的拖拽中断。\n可能影响原应用长按和按住后的滑动。</string>
+    <string name="global_press_protect_description">提前取消原应用触摸，防止长按打断全局拖拽。\n可能中断系统拖拽、文字选择、长按菜单及按住后的滑动；仅在遇到打断时开启。</string>
     <string name="global_press_root_fallback">Root 触摸不可用，正在尝试标准模式；请检查 Root 或 Shizuku 授权。</string>
     <string name="global_press_status_stopped">未运行：功能关闭、锁屏或无障碍未启动</string>
     <string name="global_press_status_root_connecting">Root 连接中，请留意授权请求</string>

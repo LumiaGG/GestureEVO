@@ -10,8 +10,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 /** Continuous bounded transport. Raw messages are streamed through a pipe and never saved to disk. */
 class DiagnosticRelay(
     command: List<String>, private val output: OutputStream,
-    durationMs: Long = 60_000, private val byteLimit: Int = 2 * 1024 * 1024,
+    durationMs: Long? = 60_000, private val byteLimit: Int? = 2 * 1024 * 1024,
     private val stdinLease: Boolean = false, private val receiverClosed: (() -> Boolean)? = null,
+    leaseHeartbeatMs: Long? = null,
 ) : Closeable {
     private val closed = AtomicBoolean()
     private val process = ProcessBuilder(command).redirectErrorStream(true).start()
@@ -20,10 +21,18 @@ class DiagnosticRelay(
 
     init {
         if (!stdinLease) process.outputStream.close()
-        watchdog.schedule({ close() }, durationMs, TimeUnit.MILLISECONDS)
+        if (durationMs != null) watchdog.schedule({ close() }, durationMs, TimeUnit.MILLISECONDS)
         if (receiverClosed != null) watchdog.scheduleWithFixedDelay({
             if (runCatching { receiverClosed?.invoke() == true }.getOrDefault(true)) close()
         }, 250, 250, TimeUnit.MILLISECONDS)
+        if (leaseHeartbeatMs != null) watchdog.scheduleWithFixedDelay({
+            if (!closed.get()) {
+                try {
+                    process.outputStream.write('\n'.code)
+                    process.outputStream.flush()
+                } catch (_: Exception) { close() }
+            }
+        }, 0, leaseHeartbeatMs, TimeUnit.MILLISECONDS)
         reader.start()
     }
 
@@ -32,15 +41,15 @@ class DiagnosticRelay(
             val buffer = ByteArray(4096)
             var copied = 0
             process.inputStream.use { input ->
-                while (!closed.get() && copied < byteLimit) {
-                    val size = input.read(buffer, 0, minOf(buffer.size, byteLimit - copied))
+                while (!closed.get() && (byteLimit == null || copied < byteLimit)) {
+                    val size = input.read(buffer, 0, if (byteLimit == null) buffer.size else minOf(buffer.size, byteLimit - copied))
                     if (size < 0) break
                     output.write(buffer, 0, size)
-                    copied += size
+                    if (byteLimit != null) copied += size
                 }
             }
             if (!closed.get()) {
-                val limited = copied >= byteLimit
+                val limited = byteLimit != null && copied >= byteLimit
                 if (limited && !stdinLease) process.destroy()
                 val code = if (limited) 0 else process.waitFor()
                 val reason = if (limited) "output_limit" else if (code == 0) "stream_closed" else "command_failed"
@@ -77,7 +86,7 @@ class DiagnosticRelay(
         runCatching { process.outputStream.close() }
         try {
             if (stdinLease) {
-                // EOF stops and reaps the child. Never kill the independent timeout before its worker group.
+                // Let the shell reap its worker; missing heartbeats also bound a stalled su client.
                 awaitExit(1000)
             } else {
                 process.destroy()

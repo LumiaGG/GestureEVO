@@ -1340,7 +1340,7 @@
     <string name="global_press_mode_root">Root enhanced mode</string>
     <string name="global_press_mode_description">Standard: touch monitoring via Shizuku.\nRoot: direct input, with long-press protection and background scroll blocking.</string>
     <string name="global_press_protect">Prevent native long-press interruptions</string>
-    <string name="global_press_protect_description">Take over a steady hold early to support longer drag thresholds.\nMay affect native long presses and scrolling after a hold.</string>
+    <string name="global_press_protect_description">Cancel the source app’s touch early to prevent long presses from interrupting global drag.\nMay interrupt system drag and drop, text selection, long-press menus, and scrolling after a hold. Enable only if interruptions occur.</string>
     <string name="global_press_root_fallback">Root touch input is unavailable. Trying standard mode; check Root or Shizuku authorization.</string>
     <string name="global_press_status_stopped">Stopped: disabled, locked, or accessibility inactive</string>
     <string name="global_press_status_root_connecting">Connecting to Root; check authorization</string>

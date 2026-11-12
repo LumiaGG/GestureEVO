@@ -190,7 +190,7 @@ object ShizukuServiceHelper {
         .daemon(false)
         .processNameSuffix("service")
         .debuggable(BuildConfig.DEBUG)
-        .version(BuildConfig.VERSION_CODE + 5) // Touch workers now have an EOF lease and an independent native deadline.
+        .version(BuildConfig.VERSION_CODE + 6) // Replace workers using the fixed five-minute touch lease.
 
     fun bindUserService(onBound: (() -> Unit)?) {
         if (isServiceBound) {

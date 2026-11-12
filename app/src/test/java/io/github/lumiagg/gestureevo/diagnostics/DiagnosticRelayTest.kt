@@ -73,7 +73,8 @@ class DiagnosticRelayTest {
     @Test(timeout = 10000) fun receiverDisconnectClosesIdleLeaseWithoutWaitingForOutput() {
         val sink = Sink()
         val disconnected = java.util.concurrent.atomic.AtomicBoolean()
-        val relay = DiagnosticRelay(command("lease"), sink, stdinLease = true, receiverClosed = disconnected::get)
+        val relay = DiagnosticRelay(command("lease"), sink, durationMs = null, byteLimit = null,
+            stdinLease = true, leaseHeartbeatMs = 20, receiverClosed = disconnected::get)
         disconnected.set(true)
         assertTrue(sink.closed.await(3, TimeUnit.SECONDS))
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3)

@@ -32,7 +32,7 @@ import kotlinx.coroutines.withContext
 /** MMGG PressCaptureSource timing/generation pipeline; both kinds enter EVO's drop panel. */
 internal class GlobalPressDragSource(private val service: GestureService, private val panel: () -> ExternalDropFloating?) {
     private data class Settings(val enabled: Boolean, val timeout: Int, val excluded: Set<String>, val vibrate: Boolean,
-        val root: Boolean = false, val protect: Boolean = true)
+        val root: Boolean = false, val protect: Boolean = false)
     private val main = Handler(Looper.getMainLooper())
     private val detector = PressTriggerDetector(ViewConfiguration.get(service).scaledTouchSlop.toFloat())
     private val blocker = BackgroundTouchBlocker(service)
@@ -75,7 +75,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
                 Settings(it.readKey(KEY_GLOBAL_PRESS_ENABLED, false), it.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500).coerceIn(200, 2000),
                     it.readKey(KEY_GLOBAL_PRESS_EXCLUDED, "").split('|').filter(String::isNotBlank).toSet(),
                     it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true), it.readKey(KEY_GLOBAL_PRESS_ROOT, false),
-                    it.readKey(KEY_GLOBAL_PRESS_PROTECT, true))
+                    it.readKey(KEY_GLOBAL_PRESS_PROTECT, false))
             }.distinctUntilChanged().collect { updated ->
                 cancel("source_settings_changed")
                 if (settings.root != updated.root) input.stop()
