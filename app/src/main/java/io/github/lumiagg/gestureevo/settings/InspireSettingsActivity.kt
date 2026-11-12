@@ -8,6 +8,9 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import io.github.lumiagg.gestureevo.drop.PressInputStatus
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.ActivityInspireSettingsBinding
 import io.github.lumiagg.gestureevo.db.APPModel
@@ -83,6 +86,8 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val PIN_POOL_DISPLAY_MODE_LEGACY_SIDEBAR = "sidebar"
         const val KEY_DEFAULT_SHARE_BEHAVIOR = "key_default_share_behavior"
         const val KEY_GLOBAL_PRESS_ENABLED = "key_global_press_enabled"
+        const val KEY_GLOBAL_PRESS_ROOT = "key_global_press_root"
+        const val KEY_GLOBAL_PRESS_PROTECT = "key_global_press_protect"
         const val KEY_GLOBAL_PRESS_TIMEOUT = "key_global_press_timeout"
         const val KEY_GLOBAL_PRESS_EXCLUDED = "key_global_press_excluded"
         const val KEY_EXTERNAL_DROP_ENABLED = "key_external_drop_enabled"
@@ -113,6 +118,11 @@ class InspireSettingsActivity : AppCompatActivity() {
             initializeViews()
             setupListeners()
             SettingsSearchNavigator.focusAnchorIfNeeded(binding.root, intent)
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                PressInputStatus.message.collect { binding.globalPressStatusText.setText(it) }
+            }
         }
     }
 
@@ -150,6 +160,8 @@ class InspireSettingsActivity : AppCompatActivity() {
         val defaultShareBehavior = settingsStore.readKey(KEY_DEFAULT_SHARE_BEHAVIOR, "tokenization")
         updateDefaultShareBehaviorText(defaultShareBehavior)
         binding.globalPressSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_ENABLED, false)
+        binding.globalPressProtectSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_PROTECT, true)
+        updateGlobalPressModeText(settingsStore.readKey(KEY_GLOBAL_PRESS_ROOT, false))
         updateGlobalPressSettingsEnabled()
         binding.selectedGlobalPressTimeoutText.text = getString(
             R.string.global_press_milliseconds, settingsStore.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500)
@@ -332,6 +344,24 @@ class InspireSettingsActivity : AppCompatActivity() {
                         .setMessage(R.string.global_press_permission_required)
                         .setPositiveButton(android.R.string.ok, null).show()
                 }
+            }
+        }
+        binding.globalPressProtectSwitch.setOnCheckedChangeListener { _, enabled ->
+            lifecycleScope.launch { settingsStore.saveKey(KEY_GLOBAL_PRESS_PROTECT, enabled) }
+        }
+        binding.globalPressModeRow.setOnClickListener {
+            lifecycleScope.launch {
+                val root = settingsStore.readKey(KEY_GLOBAL_PRESS_ROOT, false)
+                MaterialAlertDialogBuilder(this@InspireSettingsActivity)
+                    .setTitle(R.string.global_press_mode)
+                    .setSingleChoiceItems(arrayOf(getString(R.string.global_press_mode_standard),
+                        getString(R.string.global_press_mode_root)), if (root) 1 else 0) { dialog, which ->
+                        lifecycleScope.launch {
+                            settingsStore.saveKey(KEY_GLOBAL_PRESS_ROOT, which == 1)
+                            updateGlobalPressModeText(which == 1)
+                        }
+                        dialog.dismiss()
+                    }.setNegativeButton(android.R.string.cancel, null).show()
             }
         }
         binding.globalPressTimeoutRow.setOnClickListener {
@@ -669,9 +699,16 @@ class InspireSettingsActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateGlobalPressModeText(root: Boolean) {
+        binding.selectedGlobalPressModeText.setText(if (root) R.string.global_press_mode_root else R.string.global_press_mode_standard)
+        binding.globalPressProtectRow.visibility = if (root) View.VISIBLE else View.GONE
+    }
+
     private fun updateGlobalPressSettingsEnabled() {
         val enabled = binding.globalPressSwitch.isChecked
+        binding.globalPressProtectSwitch.isEnabled = enabled
         listOf(
+            binding.globalPressProtectRow,
             binding.globalPressTimeoutRow,
             binding.globalPressExcludedRow
         ).forEach { row ->

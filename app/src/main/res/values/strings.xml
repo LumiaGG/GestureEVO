@@ -1337,9 +1337,25 @@
     <string name="action_seconds_summary">%1$s 秒</string>
     <string name="action_placeholder_single">添加透明占位</string>
     <string name="global_press_settings_title">全局长按拖放设置</string>
-    <string name="global_press_settings_description">设置按住拖动的触发时长与排除应用</string>
+    <string name="global_press_settings_description">设置运行模式、按住时长与排除应用</string>
+    <string name="global_press_mode">运行模式</string>
+    <string name="global_press_mode_standard">标准模式</string>
+    <string name="global_press_mode_root">Root 增强模式</string>
+    <string name="global_press_mode_description">标准：通过 Shizuku 监听触摸。\nRoot：直接监听，可防长按打断、阻止背景滑动。</string>
+    <string name="global_press_protect">防止原应用长按打断</string>
+    <string name="global_press_protect_description">提前接管稳定按压，减少大阈值下的拖拽中断。\n可能影响原应用长按和按住后的滑动。</string>
+    <string name="global_press_root_fallback">Root 触摸不可用，正在尝试标准模式；请检查 Root 或 Shizuku 授权。</string>
+    <string name="global_press_status_stopped">未运行：功能关闭、锁屏或无障碍未启动</string>
+    <string name="global_press_status_root_connecting">Root 连接中，请留意授权请求</string>
+    <string name="global_press_status_standard_connecting">Shizuku 连接中</string>
+    <string name="global_press_status_root_ready">Root 已连接</string>
+    <string name="global_press_cancel_failed">背景触摸取消失败，原页面可能继续滑动；请导出日志中的 EVO-TouchBlock 记录</string>
+    <string name="global_press_status_standard_ready">Shizuku 已连接</string>
+    <string name="global_press_status_falling_back">Root 连接失败，正在尝试 Shizuku</string>
+    <string name="global_press_status_fallback_ready">Root 不可用，已回退至 Shizuku</string>
+    <string name="global_press_status_unavailable">连接失败：检查 Shizuku 服务、授权及触屏权限</string>
     <string name="global_press_title">全局长按拖放</string>
-    <string name="global_press_description">按住其他应用的文字或可见图片，达到设定时长且内容识别成功后会轻振提示（需开启振动），再移动才显示预览和 EVO 面板，拖向面板后投放。仅长按不会弹出。默认关闭；需要无障碍和 Shizuku。原系统拖拽仍可使用。</string>
+    <string name="global_press_description">按住文字或可见图片，轻振后移动，再拖向面板投放。\n仅长按不弹出面板；轻振需开启振动。</string>
     <string name="global_press_timeout">移动前按住时长</string>
     <string name="global_press_excluded">长按拖放排除应用</string>
     <string name="global_press_milliseconds">%1$d 毫秒</string>
@@ -1347,7 +1363,7 @@
     <plurals name="global_press_excluded_count">
         <item quantity="other">已排除 %1$d 个应用</item>
     </plurals>
-    <string name="global_press_permission_required">全局长按拖放需要开启 EVO 无障碍服务、运行并授权 Shizuku，且 shell 能读取触屏输入。请到权限设置检查。图片仅取屏幕可见区域；系统可能不允许取消原应用触摸，此时原应用也会响应长按和滑动。</string>
+    <string name="global_press_permission_required">全局长按拖放需要开启 EVO 无障碍服务。标准模式需要运行并授权 Shizuku，Root 模式需要超级用户授权，且所选通道能读取触屏输入。图片仅取屏幕可见区域；Root 模式会尝试取消原应用触摸，系统拒绝时原应用仍会响应长按和滑动。</string>
     <string name="external_drop_conversion_title">拖拽图文转换</string>
     <string name="external_drop_conversion_desc">拖到转换按钮上停留约半秒，将文字生成图片或通过本地 OCR 提取图片文字，保持按住即可继续拖向更新后的搜索引擎或其他工具。移出再拖入可切回原内容。仅支持全局长按拖拽，系统拖拽不显示此按钮。</string>
     <string name="external_drop_to_image">转图片</string>

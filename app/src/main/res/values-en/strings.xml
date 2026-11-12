@@ -1334,9 +1334,25 @@
     <string name="action_seconds_summary">%1$s sec</string>
     <string name="action_placeholder_single">Add a transparent placeholder</string>
     <string name="global_press_settings_title">Global Long-press Drag Settings</string>
-    <string name="global_press_settings_description">Configure the hold duration and excluded apps for global long-press drag</string>
+    <string name="global_press_settings_description">Configure the input mode, hold duration, and excluded apps</string>
+    <string name="global_press_mode">Input mode</string>
+    <string name="global_press_mode_standard">Standard mode</string>
+    <string name="global_press_mode_root">Root enhanced mode</string>
+    <string name="global_press_mode_description">Standard: touch monitoring via Shizuku.\nRoot: direct input, with long-press protection and background scroll blocking.</string>
+    <string name="global_press_protect">Prevent native long-press interruptions</string>
+    <string name="global_press_protect_description">Take over a steady hold early to support longer drag thresholds.\nMay affect native long presses and scrolling after a hold.</string>
+    <string name="global_press_root_fallback">Root touch input is unavailable. Trying standard mode; check Root or Shizuku authorization.</string>
+    <string name="global_press_status_stopped">Stopped: disabled, locked, or accessibility inactive</string>
+    <string name="global_press_status_root_connecting">Connecting to Root; check authorization</string>
+    <string name="global_press_status_standard_connecting">Connecting to Shizuku</string>
+    <string name="global_press_status_root_ready">Root connected</string>
+    <string name="global_press_cancel_failed">Background touch cancellation failed; the source page may still scroll. Export the EVO-TouchBlock logs.</string>
+    <string name="global_press_status_standard_ready">Shizuku connected</string>
+    <string name="global_press_status_falling_back">Root failed; trying Shizuku</string>
+    <string name="global_press_status_fallback_ready">Root unavailable; using Shizuku</string>
+    <string name="global_press_status_unavailable">Failed: check Shizuku, authorization and touch access</string>
     <string name="global_press_title">Global long-press drag and drop</string>
-    <string name="global_press_description">Hold text or a visible image in another app. A light vibration signals that the hold duration has elapsed and content is ready (when vibration is enabled). Move to show the preview and EVO panel, then drag to the panel to drop. Holding alone shows no overlay. Off by default; requires accessibility and Shizuku. System drag and drop remains available.</string>
+    <string name="global_press_description">Hold text or a visible image, move after the light vibration, then drag to the panel to drop.\nHolding alone shows no panel. Haptic feedback requires vibration to be enabled.</string>
     <string name="global_press_timeout">Hold duration before moving</string>
     <string name="global_press_excluded">Apps excluded from long-press drag</string>
     <string name="global_press_milliseconds">%1$d ms</string>
@@ -1345,7 +1361,7 @@
         <item quantity="one">%1$d app excluded</item>
         <item quantity="other">%1$d apps excluded</item>
     </plurals>
-    <string name="global_press_permission_required">Global long-press drag requires EVO accessibility, a running and authorized Shizuku service, and shell access to touchscreen input. Check permission settings. Images use the visible screen region. If touch cancellation is denied, the source app also responds to holding and moving.</string>
+    <string name="global_press_permission_required">Global long-press drag requires EVO accessibility. Standard mode needs a running, authorized Shizuku service; Root mode needs superuser authorization. The selected backend must have touchscreen access. Images use the visible screen region. Root mode attempts to cancel the source touch; if denied, the source app still responds to holding and moving.</string>
     <string name="external_drop_conversion_title">Drag text/image conversion</string>
     <string name="external_drop_conversion_desc">Hover over Convert for about half a second to render text as an image or extract image text with local OCR. Keep holding to drag to the updated search engines or other tools. Leave and re-enter to restore the original content. Available for global long-press drags only; hidden during system drags.</string>
     <string name="external_drop_to_image">To image</string>

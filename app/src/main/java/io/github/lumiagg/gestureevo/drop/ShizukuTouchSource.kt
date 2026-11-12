@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-/** MMGG RootTouchSource lifecycle with a shell getevent pipe instead of a root process. */
+/** One input stream owns a gesture; backend changes always cancel the current gesture first. */
 internal class ShizukuTouchSource(private val service: GestureService,
     private val event: (Int, Float, Float, Long) -> Unit, private val disconnected: () -> Unit) {
     private class Run {
@@ -32,33 +32,52 @@ internal class ShizukuTouchSource(private val service: GestureService,
         @Volatile var token: String? = null
         @Volatile var remote: IUserService? = null
         val owner = Binder()
+        @Volatile var root: RootTouchConnection? = null
+        var useRoot = false
+        var rootFailed = false
     }
     private var current: Run? = null
+    var rootActive = false
+        private set
 
-    fun start() {
+    fun start(rootEnabled: Boolean = false) {
         if (current != null) return
-        val run = Run()
+        val run = Run().apply { useRoot = rootEnabled }
         current = run
+        PressInputStatus.update(if (rootEnabled) R.string.global_press_status_root_connecting else R.string.global_press_status_standard_connecting)
         run.job = service.launch(Dispatchers.IO) {
             var reported = false
             while (isActive && !run.cancelled) {
+                withContext(Dispatchers.Main) {
+                    if (!run.cancelled) PressInputStatus.update(when {
+                        run.useRoot -> R.string.global_press_status_root_connecting
+                        run.rootFailed -> R.string.global_press_status_falling_back
+                        else -> R.string.global_press_status_standard_connecting
+                    })
+                }
                 try {
-                    check(rikka.shizuku.Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED) { "Shizuku permission unavailable" }
-                    val shell = ShizukuServiceHelper.awaitService()
+                    val shell = if (run.useRoot) null else {
+                        check(rikka.shizuku.Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED) { "Shizuku permission unavailable" }
+                        ShizukuServiceHelper.awaitService()
+                    }
                     val id = UUID.randomUUID().toString()
                     run.remote = shell
                     run.token = id
+                    val root = if (run.useRoot) RootTouchConnection().also { run.root = it } else null
                     val connectedAt = SystemClock.elapsedRealtime()
                     val ready = java.util.concurrent.atomic.AtomicBoolean()
                     val death = IBinder.DeathRecipient { runCatching { run.descriptor?.close() } }
-                    shell.asBinder().linkToDeath(death, 0)
+                    shell?.asBinder()?.linkToDeath(death, 0)
                     val deadline = service.launch(Dispatchers.IO) {
                         delay(10_000)
-                        if (!ready.get() && run.token == id) runCatching { shell.closeTouchStream(id) }
+                        if (!ready.get() && run.token == id) {
+                            runCatching { root?.close() }
+                            runCatching { shell?.closeTouchStream(id) }
+                        }
                     }
                     try {
                         if (run.cancelled) break
-                        val pipe = shell.openTouchStream(id, run.owner)
+                        val pipe = root?.open() ?: checkNotNull(shell).openTouchStream(id, run.owner)
                         run.descriptor = pipe
                         if (run.cancelled || !isActive) { pipe.close(); break }
                         val manager = service.getSystemService(WindowManager::class.java)
@@ -88,6 +107,16 @@ internal class ShizukuTouchSource(private val service: GestureService,
                                     check(device!!.maxX > device!!.minX && device!!.maxY > device!!.minY)
                                     ready.set(true)
                                     deadline.cancel()
+                                    service.launch(Dispatchers.Main) {
+                                        if (!run.cancelled && run.token == id) {
+                                            rootActive = run.useRoot
+                                            PressInputStatus.update(when {
+                                                run.useRoot -> R.string.global_press_status_root_ready
+                                                run.rootFailed -> R.string.global_press_status_fallback_ready
+                                                else -> R.string.global_press_status_standard_ready
+                                            })
+                                        }
+                                    }
                                 } else {
                                     if (line.startsWith("GEVO_END")) return@read false
                                     val timestamp = TouchInputProtocol.eventTime(line, SystemClock.uptimeMillis())
@@ -110,21 +139,33 @@ internal class ShizukuTouchSource(private val service: GestureService,
                         }
                     } finally {
                         deadline.cancel()
-                        runCatching { shell.asBinder().unlinkToDeath(death, 0) }
+                        runCatching { shell?.asBinder()?.unlinkToDeath(death, 0) }
                         runCatching { run.descriptor?.close() }
                         run.descriptor = null
-                        runCatching { shell.closeTouchStream(id) }
+                        runCatching { root?.close() }
+                        run.root = null
+                        runCatching { shell?.closeTouchStream(id) }
                         if (run.token == id) run.token = null
                     }
                 } catch (cancelled: CancellationException) { throw cancelled }
                 catch (error: Exception) {
                     android.util.Log.w("EVO-Press", "Touch input unavailable", error)
-                    if (!reported) {
-                        reported = true
-                        withContext(Dispatchers.Main) { if (!run.cancelled) ToastHelper.showInUIThread(service, service.getString(R.string.global_press_permission_required)) }
+                    val rootFailed = run.useRoot
+                    if (rootFailed) { run.useRoot = false; run.rootFailed = true }
+                    withContext(Dispatchers.Main) {
+                        if (!run.cancelled) {
+                            PressInputStatus.update(if (rootFailed) R.string.global_press_status_falling_back else R.string.global_press_status_unavailable)
+                            if (!reported) {
+                                reported = true
+                                ToastHelper.showInUIThread(service, service.getString(if (rootFailed)
+                                    R.string.global_press_root_fallback else R.string.global_press_permission_required))
+                            }
+                        }
                     }
                 } finally {
-                    withContext(Dispatchers.Main) { if (!run.cancelled) disconnected() }
+                    withContext(Dispatchers.Main) {
+                        if (!run.cancelled) { rootActive = false; disconnected() }
+                    }
                 }
                 delay(3000)
             }
@@ -132,6 +173,8 @@ internal class ShizukuTouchSource(private val service: GestureService,
     }
 
     fun stop() {
+        rootActive = false
+        PressInputStatus.update(R.string.global_press_status_stopped)
         val run = current ?: return
         current = null
         run.cancelled = true
@@ -139,10 +182,13 @@ internal class ShizukuTouchSource(private val service: GestureService,
         val pipe = run.descriptor
         run.descriptor = null
         val shell = run.remote
+        val root = run.root
+        run.root = null
         val id = run.token
         run.token = null
         service.launch(NonCancellable + Dispatchers.IO) {
             runCatching { pipe?.close() }
+            runCatching { root?.close() }
             if (id != null) runCatching { shell?.closeTouchStream(id) }
         }
         disconnected()

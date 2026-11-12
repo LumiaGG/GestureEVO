@@ -718,6 +718,22 @@ object SettingsSearchRegistry {
             keywords = listOf("全局长按拖放", "文字", "图片", "Shizuku", "长按时间", "排除应用", "global long press drag drop", "duration", "excluded apps")
         ),
         entry(
+            id = "global_press_mode",
+            titleResId = R.string.global_press_mode,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.global_press_mode_row,
+            keywords = listOf("Root", "标准模式", "增强模式", "Shizuku", "背景滑动", "运行模式", "root input mode")
+        ),
+        entry(
+            id = "global_press_protect",
+            titleResId = R.string.global_press_protect,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.globalPressCard,
+            keywords = listOf("Root", "长按打断", "原生长按", "提前接管", "long press protection")
+        ),
+        entry(
             id = "inspire_external_drop_conversion",
             titleResId = R.string.external_drop_conversion_title,
             pageTitleResId = R.string.inspire_settings_title,
