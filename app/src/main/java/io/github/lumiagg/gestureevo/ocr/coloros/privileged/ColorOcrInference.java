@@ -3,6 +3,7 @@ package io.github.lumiagg.gestureevo.ocr.coloros.privileged;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Process;
+import android.os.SystemClock;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -20,6 +21,7 @@ public final class ColorOcrInference {
     }
 
     public static String run(Context context, ClassLoader loader, Bitmap bitmap, ColorOcrLog log) throws Exception {
+        long clientStarted = SystemClock.elapsedRealtime();
         Class<?> detectorType = loader.loadClass("Y3.a");
         Object detector = detectorType.getConstructor(Context.class, String.class)
                 .newInstance(context, ColorOcrSdk.DETECTOR_NAME);
@@ -37,6 +39,8 @@ public final class ColorOcrInference {
             invoke(client, "add", callback);
             log.log("Capability query", String.valueOf(invoke(client, "checkSupported")) + " (not inference success)");
             Class<?> actionType = loader.loadClass("u3.c$a");
+            log.timing("client_init", clientStarted);
+            final long actionStarted = SystemClock.elapsedRealtime();
             Object action = Proxy.newProxyInstance(loader, new Class<?>[]{actionType}, (proxy, method, args) -> {
                 if (method.getDeclaringClass() == Object.class) return objectMethod(proxy, method.getName(), args);
                 if (method.getName().equals("failure")) {
@@ -44,24 +48,45 @@ public final class ColorOcrInference {
                     return null;
                 }
                 if (!method.getName().equals("run")) throw new IllegalStateException("Unknown SDK action: " + method);
+                log.timing("engine_ready", actionStarted);
                 log.log("Engine", ColorOcrSdk.DETECTOR_NAME + " started; inference not yet confirmed");
+                long transferStarted = SystemClock.elapsedRealtime();
                 Object input = invoke(detector, "createInputSlot");
                 Object output = invoke(detector, "createOutputSlot");
                 Object inputCode = invoke(input, "setTargetBitmap", bitmap);
+                log.timing("bitmap_transfer", transferStarted);
                 log.log("Bitmap transfer", String.valueOf(inputCode));
                 if (!Integer.valueOf(0).equals(inputCode)) throw new IllegalStateException("Bitmap transfer failed");
-                Object result = invoke(detector, "process", input, output);
+                long inferenceStarted = SystemClock.elapsedRealtime();
+                Object result;
+                try {
+                    result = invoke(detector, "process", input, output);
+                } finally {
+                    log.timing("inference", inferenceStarted);
+                }
                 Object resultCode = invoke(result, "d");
                 log.log("Inference status", result + " (" + resultCode + ")");
-                return Integer.valueOf(0).equals(resultCode) ? invoke(output, "getJsonResult") : null;
+                long jsonStarted = SystemClock.elapsedRealtime();
+                try {
+                    return Integer.valueOf(0).equals(resultCode) ? invoke(output, "getJsonResult") : null;
+                } finally {
+                    log.timing("json_extract", jsonStarted);
+                }
             });
-            return (String) invoke(client, "runAction", action);
+            try {
+                return (String) invoke(client, "runAction", action);
+            } finally {
+                log.timing("sdk_action", actionStarted);
+            }
         } finally {
+            long cleanupStarted = SystemClock.elapsedRealtime();
             try {
                 invoke(client, "destroy");
                 log.log("Cleanup", "SDK client destroyed");
             } catch (Exception error) {
                 log.log("Cleanup", "SDK client destroy failed: " + error);
+            } finally {
+                log.timing("client_cleanup", cleanupStarted);
             }
         }
     }

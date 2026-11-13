@@ -14,6 +14,9 @@ import android.view.View.GONE
 import android.view.WindowManager
 import android.widget.Toast
 import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.diagnostics.AppLogger
+import io.github.lumiagg.gestureevo.diagnostics.LogLevel
+import io.github.lumiagg.gestureevo.diagnostics.LogModule
 import io.github.lumiagg.gestureevo.gesture.GestureManager.InteractionMode
 import io.github.lumiagg.gestureevo.gesture.GestureService
 import io.github.lumiagg.gestureevo.gesture.ui.GestureFluidAppearance
@@ -131,9 +134,10 @@ class InspireFloating(private val context: GestureService) :
                     Log.d("onDragUp", "onDragUp: task running")
                     return
                 }
+                val releasedAt = SystemClock.elapsedRealtime()
                 taskJob = context.launch {
                     val targetRect = resolveTargetRect(dragSelectRect) ?: dragSelectRect
-                    processScreenContent(targetRect)
+                    processScreenContent(targetRect, releasedAt)
                 }
             }
 
@@ -574,7 +578,7 @@ class InspireFloating(private val context: GestureService) :
         resetSessionCapture()
     }
 
-    private suspend fun processScreenContent(dragSelectRect: Rect) {
+    private suspend fun processScreenContent(dragSelectRect: Rect, releasedAt: Long) {
         withContext(Dispatchers.Default) {
             withContext(Dispatchers.Main) {
                 inspireView.setInteractionEnabled(false)
@@ -616,6 +620,9 @@ class InspireFloating(private val context: GestureService) :
                 InspireDataHolder.forceImageTextSelection = sessionForceImageTextSelection
                 InspireDataHolder.triggerSide = sessionTriggerSide
 
+                AppLogger.event(LogModule.OCR, "inspire_result_entry", LogLevel.DEBUG,
+                    fields = mapOf("stage" to "selection_to_launch",
+                        "durationMs" to (SystemClock.elapsedRealtime() - releasedAt)))
                 launchInspireContentActivity()
             } catch (e: CancellationException) {
                 throw e

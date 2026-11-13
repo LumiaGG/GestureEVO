@@ -190,7 +190,7 @@ object ShizukuServiceHelper {
         .daemon(false)
         .processNameSuffix("service")
         .debuggable(BuildConfig.DEBUG)
-        .version(BuildConfig.VERSION_CODE + 5) // Replace services without OCR result validation.
+        .version(BuildConfig.VERSION_CODE + 8) // Replace services with older OCR transport implementations.
 
     fun bindUserService(onBound: (() -> Unit)?) {
         if (isServiceBound) {

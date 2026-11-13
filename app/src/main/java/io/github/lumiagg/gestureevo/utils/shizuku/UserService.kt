@@ -3,6 +3,7 @@ package io.github.lumiagg.gestureevo.utils.shizuku
 import io.github.lumiagg.gestureevo.diagnostics.DiagnosticProcess
 import android.content.Context
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import android.util.Log
 import io.github.lumiagg.gestureevo.ocr.coloros.privileged.ColorOcrResultPacket
 import io.github.lumiagg.gestureevo.ocr.coloros.privileged.PrivilegedOcrEntry
@@ -90,6 +91,7 @@ class UserService : IUserService.Stub {
         require(token.matches(Regex("[a-f0-9-]{36}")))
         require(host == io.github.lumiagg.gestureevo.BuildConfig.APPLICATION_ID)
         colorOsOcrProcess?.second?.destroyForcibly()
+        val started = SystemClock.elapsedRealtime()
         val pipe = ParcelFileDescriptor.createPipe()
         val process = try {
             ProcessBuilder(
@@ -101,22 +103,38 @@ class UserService : IUserService.Stub {
             pipe.forEach { it.close() }
             throw error
         }
+        logColorOsStage(token, "process_start", started)
         colorOsOcrProcess = token to process
         val errors = ArrayDeque<String>()
         thread(name = "coloros-shizuku-input", isDaemon = true) {
-            runCatching {
+            val inputStarted = SystemClock.elapsedRealtime()
+            try {
                 ParcelFileDescriptor.AutoCloseInputStream(request).use { input ->
                     process.outputStream.use { input.copyTo(it) }
                 }
+            } catch (error: Exception) {
+                // The helper can reject a request before reading stdin.
+                Log.d(TAG, "ColorOS OCR token=$token input closed: ${error.javaClass.simpleName}")
+            } finally {
+                logColorOsStage(token, "request_forward", inputStarted)
             }
         }
         val logReader = thread(name = "coloros-shizuku-log", isDaemon = true) {
+            var helperReady = false
             runCatching {
                 process.errorStream.bufferedReader().useLines { lines ->
                     lines.forEach { line ->
-                        synchronized(errors) {
-                            if (errors.size == 6) errors.removeFirst()
-                            errors.addLast(line.take(500))
+                        if (line.startsWith("[ColorOS OCR ") && line.contains("] Timing: ")) {
+                            if (!helperReady) {
+                                logColorOsStage(token, "helper_ready", started)
+                                helperReady = true
+                            }
+                            Log.i(TAG, "ColorOS OCR token=$token ${line.take(500)}")
+                        } else {
+                            synchronized(errors) {
+                                if (errors.size == 6) errors.removeFirst()
+                                errors.addLast(line.take(500))
+                            }
                         }
                     }
                 }
@@ -125,6 +143,7 @@ class UserService : IUserService.Stub {
         thread(name = "coloros-shizuku-result", isDaemon = true) {
             try {
                 ParcelFileDescriptor.AutoCloseOutputStream(pipe[1]).use { output ->
+                    val resultStarted = SystemClock.elapsedRealtime()
                     val packet = try {
                         process.inputStream.use { ColorOcrResultPacket.read(it) }
                     } catch (error: Exception) {
@@ -134,7 +153,10 @@ class UserService : IUserService.Stub {
                         ColorOcrResultPacket(ColorOcrResultPacket.STATUS_ENGINE,
                             "系统 OCR 返回结果不完整或无效（${error.javaClass.simpleName}）: $message", null)
                     }
+                    logColorOsStage(token, "result_validate_exit", resultStarted)
+                    val returnStarted = SystemClock.elapsedRealtime()
                     packet.write(output)
+                    logColorOsStage(token, "result_return", returnStarted)
                 }
             } catch (error: Exception) {
                 Log.w(TAG, "ColorOS OCR stream closed", error)
@@ -144,9 +166,14 @@ class UserService : IUserService.Stub {
                 synchronized(this) {
                     if (colorOsOcrProcess?.first == token) colorOsOcrProcess = null
                 }
+                logColorOsStage(token, "service_total", started)
             }
         }
         return pipe[0]
+    }
+
+    private fun logColorOsStage(token: String, stage: String, started: Long) {
+        Log.i(TAG, "ColorOS OCR token=$token stage=$stage durationMs=${SystemClock.elapsedRealtime() - started}")
     }
 
     @Synchronized

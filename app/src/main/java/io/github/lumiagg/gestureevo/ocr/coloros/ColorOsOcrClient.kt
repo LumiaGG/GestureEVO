@@ -22,11 +22,13 @@ import io.github.lumiagg.gestureevo.utils.app.AShizuku
 import io.github.lumiagg.gestureevo.utils.shizuku.ShizukuServiceHelper
 import rikka.shizuku.Shizuku
 import java.io.ByteArrayOutputStream
-import java.io.File
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -79,67 +81,97 @@ object ColorOsOcrClient {
             }
             val context = EvoApplication.application
             val started = SystemClock.elapsedRealtime()
+            val token = UUID.randomUUID().toString()
             AppLogger.event(
-                LogModule.OCR, "coloros_request_started", LogLevel.DEBUG,
+                LogModule.OCR, "coloros_request_started", LogLevel.DEBUG, trace = token,
                 fields = mapOf("width" to bitmap.width, "height" to bitmap.height))
-            if (!Shizuku.pingBinder()) throw ColorOsOcrException("请启动 Shizuku 并授权")
-            if (!AShizuku.checkPermission(context)) throw ColorOsOcrException("Shizuku 未获授权")
-            val png = encodePng(bitmap)
-            val reqFile = File.createTempFile("coloros-ocr-", ".req", context.cacheDir)
             try {
-                reqFile.outputStream().use { output ->
-                    ColorOcrRequestPacket(bitmap.width, bitmap.height, png).write(output)
+                timed(token, "permission") {
+                    if (!Shizuku.pingBinder()) throw ColorOsOcrException("请启动 Shizuku 并授权")
+                    if (!AShizuku.checkPermission(context)) throw ColorOsOcrException("Shizuku 未获授权")
                 }
-                val result = withAiUnitBinding(context) { runWithShizuku(context, reqFile) }
+                val engineStarted = SystemClock.elapsedRealtime()
+                val (result, pngBytes) = coroutineScope {
+                    // Keep encoding a child of this request so cancellation cannot outlive the Bitmap.
+                    val request = async {
+                        val png = timed(token, "png_encode") { encodePng(bitmap) }
+                        ColorOcrRequestPacket(bitmap.width, bitmap.height, png)
+                    }
+                    val packet = withAiUnitBinding(context, token) { runWithShizuku(context, token, request) }
+                    packet to request.await().png.size
+                }
                 if (result.status != ColorOcrResultPacket.STATUS_OK) {
                     throw ColorOsOcrException(describeStatus(result.status) + ": " + result.message)
                 }
-                val lines = ColorOcrLine.parseJson(result.json)
+                val lines = timed(token, "json_parse") { ColorOcrLine.parseJson(result.json) }
                 AppLogger.event(
-                    LogModule.OCR, "coloros_request_completed", LogLevel.DEBUG,
+                    LogModule.OCR, "coloros_request_completed", LogLevel.DEBUG, trace = token,
                     fields = mapOf(
                         "lines" to lines.size,
                         "backend" to "Shizuku",
+                        "pngBytes" to pngBytes,
+                        "engineElapsedMs" to (SystemClock.elapsedRealtime() - engineStarted),
                         "elapsedMs" to (SystemClock.elapsedRealtime() - started)))
                 lines
             } catch (error: CancellationException) {
+                AppLogger.event(LogModule.OCR, "coloros_request_cancelled", LogLevel.DEBUG, trace = token,
+                    fields = mapOf("elapsedMs" to (SystemClock.elapsedRealtime() - started)))
                 throw error
             } catch (error: Exception) {
                 AppLogger.event(
-                    LogModule.OCR, "coloros_request_failed", LogLevel.WARN,
+                    LogModule.OCR, "coloros_request_failed", LogLevel.WARN, trace = token,
                     fields = mapOf("elapsedMs" to (SystemClock.elapsedRealtime() - started)),
                     error = error)
                 throw if (error is ColorOsOcrException) error else ColorOsOcrException(describe(error), error)
-            } finally {
-                reqFile.delete()
             }
         }
 
-    private suspend fun runWithShizuku(context: Context, request: File): ColorOcrResultPacket {
-        val service = ShizukuServiceHelper.awaitService()
-        val token = UUID.randomUUID().toString()
+    private suspend fun runWithShizuku(
+        context: Context, token: String, request: Deferred<ColorOcrRequestPacket>,
+    ): ColorOcrResultPacket = coroutineScope {
+        val service = timed(token, "user_service") { ShizukuServiceHelper.awaitService() }
+        val pipe = ParcelFileDescriptor.createPipe()
         var resultFd: ParcelFileDescriptor? = null
         try {
-            withContext(Dispatchers.IO + NonCancellable) {
-                ParcelFileDescriptor.open(request, ParcelFileDescriptor.MODE_READ_ONLY).use { input ->
-                    resultFd = service.recognizeColorOsOcr(token, input, context.applicationInfo.sourceDir, context.packageName)
+            timed(token, "helper_launch") {
+                withContext(Dispatchers.IO + NonCancellable) {
+                    pipe[0].use { input ->
+                        resultFd = service.recognizeColorOsOcr(token, input, context.applicationInfo.sourceDir, context.packageName)
+                    }
+                }
+            }
+            // The service input reader is already running, so large images cannot block the Binder call.
+            val writer = async(Dispatchers.IO) {
+                runCatching {
+                    val packet = timed(token, "png_wait") { request.await() }
+                    timed(token, "request_write") {
+                        ParcelFileDescriptor.AutoCloseOutputStream(pipe[1]).use { packet.write(it) }
+                    }
                 }
             }
             val reader = CompletableFuture.supplyAsync {
                 ParcelFileDescriptor.AutoCloseInputStream(resultFd!!).use { ColorOcrResultPacket.read(it) }
             }
-            return withTimeoutOrNull(APP_WAIT_SECONDS * 1000) { reader.awaitSuspended() }
-                ?: throw ColorOsOcrException("OCR 等待超时")
+            withTimeoutOrNull(APP_WAIT_SECONDS * 1000) {
+                val result = timed(token, "result_read") { reader.awaitSuspended() }
+                // An early helper failure can close stdin; preserve its diagnostic over a broken pipe.
+                if (result.status == ColorOcrResultPacket.STATUS_OK) writer.await().getOrThrow()
+                result
+            } ?: throw ColorOsOcrException("OCR 等待超时")
         } finally {
-            withContext(Dispatchers.IO + NonCancellable) {
-                runCatching { service.closeColorOsOcr(token) }
-                runCatching { resultFd?.close() }
+            // Close both ends before coroutineScope waits for a backpressured writer to finish.
+            timed(token, "request_cleanup") {
+                withContext(Dispatchers.IO + NonCancellable) {
+                    runCatching { service.closeColorOsOcr(token) }
+                    pipe.forEach { runCatching { it.close() } }
+                    runCatching { resultFd?.close() }
+                }
             }
         }
     }
 
     /** Binds AIUnit for the duration of the request; the privileged helper peeks this live binding. */
-    private suspend fun <T> withAiUnitBinding(context: Context, block: suspend () -> T): T {
+    private suspend fun <T> withAiUnitBinding(context: Context, token: String, block: suspend () -> T): T {
         val ready = CompletableFuture<IBinder>()
         val connection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName, binder: IBinder) {
@@ -160,24 +192,38 @@ object ColorOsOcrClient {
         }
         var bound = false
         try {
-            withContext(Dispatchers.Main + NonCancellable) {
-                bound = runCatching {
-                    context.bindService(ColorOcrAuthorize.aiUnitServiceIntent(), connection, Context.BIND_AUTO_CREATE)
-                }.getOrElse { throw ColorOsOcrException("AIUnit 绑定失败", it) }
-            }
-            if (!bound) throw ColorOsOcrException("AIUnit 绑定失败")
-            val binder = withTimeoutOrNull(BIND_WAIT_MILLIS) { ready.awaitSuspended() }
-                ?: throw ColorOsOcrException("AIUnit 绑定超时")
-            if (binder.interfaceDescriptor != ColorOcrAuthorize.DESCRIPTOR) {
-                throw ColorOsOcrException("AIUnit 接口不匹配: " + binder.interfaceDescriptor)
+            timed(token, "aiunit_bind") {
+                withContext(Dispatchers.Main + NonCancellable) {
+                    bound = runCatching {
+                        context.bindService(ColorOcrAuthorize.aiUnitServiceIntent(), connection, Context.BIND_AUTO_CREATE)
+                    }.getOrElse { throw ColorOsOcrException("AIUnit 绑定失败", it) }
+                }
+                if (!bound) throw ColorOsOcrException("AIUnit 绑定失败")
+                val binder = withTimeoutOrNull(BIND_WAIT_MILLIS) { ready.awaitSuspended() }
+                    ?: throw ColorOsOcrException("AIUnit 绑定超时")
+                if (binder.interfaceDescriptor != ColorOcrAuthorize.DESCRIPTOR) {
+                    throw ColorOsOcrException("AIUnit 接口不匹配: " + binder.interfaceDescriptor)
+                }
             }
             return block()
         } finally {
             if (bound) {
-                withContext(NonCancellable + Dispatchers.Main) {
-                    runCatching { context.unbindService(connection) }
+                timed(token, "aiunit_unbind") {
+                    withContext(NonCancellable + Dispatchers.Main) {
+                        runCatching { context.unbindService(connection) }
+                    }
                 }
             }
+        }
+    }
+
+    private suspend inline fun <T> timed(token: String, stage: String, block: () -> T): T {
+        val started = SystemClock.elapsedRealtime()
+        try {
+            return block()
+        } finally {
+            AppLogger.event(LogModule.OCR, "coloros_stage", LogLevel.DEBUG, trace = token,
+                fields = mapOf("stage" to stage, "durationMs" to (SystemClock.elapsedRealtime() - started)))
         }
     }
 

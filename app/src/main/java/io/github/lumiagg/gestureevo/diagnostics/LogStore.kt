@@ -41,8 +41,8 @@ data class LogPage(val records: List<LogRecord>, val stats: Pair<Int, Long>, val
 
 /** Only explicitly supported metadata reaches disk. Exception messages can contain user data. */
 object LogPrivacy {
-    private val identifiers = setOf("package", "component", "action", "type", "method", "source", "reason", "thread", "versionName")
-    private val numbers = setOf("flags", "durationMs", "count", "width", "height", "dropped", "exitCode", "systemTimeMs", "pid", "versionCode", "httpStatus", "errno")
+    private val identifiers = setOf("package", "component", "action", "type", "method", "source", "reason", "thread", "versionName", "stage", "backend")
+    private val numbers = setOf("flags", "durationMs", "count", "width", "height", "dropped", "exitCode", "systemTimeMs", "pid", "versionCode", "httpStatus", "errno", "elapsedMs", "engineElapsedMs", "pngBytes", "lines")
     private val booleans = setOf("foreground", "overlay", "accessibility", "shizuku", "freeform")
     fun fields(input: Map<String, Any?>): Map<String, String> = input.mapNotNull { (key, value) ->
         val text = value?.toString() ?: return@mapNotNull null

@@ -6,4 +6,8 @@ package io.github.lumiagg.gestureevo.ocr.coloros.privileged;
  */
 public interface ColorOcrLog {
     void log(String stage, String message);
+
+    default void timing(String stage, long started) {
+        log("Timing", "stage=" + stage + " durationMs=" + (android.os.SystemClock.elapsedRealtime() - started));
+    }
 }

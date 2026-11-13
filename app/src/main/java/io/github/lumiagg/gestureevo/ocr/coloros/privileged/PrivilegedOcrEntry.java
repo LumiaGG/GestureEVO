@@ -38,6 +38,8 @@ public final class PrivilegedOcrEntry {
 
     public static void main(String[] args) {
         System.setOut(System.err);
+        PrivilegedOcrEntry entry = new PrivilegedOcrEntry();
+        entry.log.timing("main_enter", entry.started);
         final String host;
         try {
             host = parseHost(args);
@@ -73,7 +75,8 @@ public final class PrivilegedOcrEntry {
             System.exit(1);
             return;
         }
-        new Thread(() -> System.exit(new PrivilegedOcrEntry().run(systemContext, host)), "coloros-ocr-run").start();
+        entry.log.timing("bootstrap", entry.started);
+        new Thread(() -> System.exit(entry.run(systemContext, host)), "coloros-ocr-run").start();
         Looper.loop();
     }
 
@@ -101,6 +104,7 @@ public final class PrivilegedOcrEntry {
         Bitmap bitmap = null;
         RootAiUnitProvider provider = null;
         try {
+            long stageStarted = SystemClock.elapsedRealtime();
             validateCaller(Process.myUid());
             int uid = Process.myUid();
             int pid = Process.myPid();
@@ -113,6 +117,7 @@ public final class PrivilegedOcrEntry {
             log.log("Binder", "descriptor=" + binder.getInterfaceDescriptor());
             ColorOcrAuthorize.AuthorizeResult authorize =
                     ColorOcrAuthorize.authorize(binder, uid, pid, packageName);
+            log.timing("authorize", stageStarted);
             log.log("Authorize", "code=" + authorize.code + ", ocs_switch=" + authorize.ocsSwitch);
             if (authorize.code != 0) {
                 throw new AuthorizationDeniedException("authorize=" + authorize.code
@@ -121,17 +126,25 @@ public final class PrivilegedOcrEntry {
             log.log("Authorize", "initial authorization passed; continuing to image OCR");
 
             Context context = new ColorOcrHeldBinderContext(hostContext, binder, log);
+            stageStarted = SystemClock.elapsedRealtime();
             ClassLoader loader = ColorOcrSdk.load(context, log);
+            log.timing("sdk_load", stageStarted);
+            stageStarted = SystemClock.elapsedRealtime();
             provider = new RootAiUnitProvider(systemContext, log);
             provider.install(context);
+            log.timing("provider_install", stageStarted);
 
+            stageStarted = SystemClock.elapsedRealtime();
             ColorOcrRequestPacket request = ColorOcrRequestPacket.read(System.in);
+            log.timing("request_read", stageStarted);
+            stageStarted = SystemClock.elapsedRealtime();
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inPreferredConfig = Bitmap.Config.ARGB_8888;
             bitmap = BitmapFactory.decodeByteArray(request.png, 0, request.png.length, options);
             if (bitmap == null || bitmap.getWidth() != request.width || bitmap.getHeight() != request.height) {
                 throw new IllegalArgumentException("Request PNG did not decode to the declared dimensions");
             }
+            log.timing("png_decode", stageStarted);
             log.log("Image", "decoded " + bitmap.getWidth() + "x" + bitmap.getHeight()
                     + ", config=" + bitmap.getConfig());
 
@@ -157,14 +170,22 @@ public final class PrivilegedOcrEntry {
             System.out.flush();
             return 1;
         } finally {
+            long cleanupStarted = SystemClock.elapsedRealtime();
             if (provider != null) provider.close();
             if (bitmap != null) bitmap.recycle();
+            log.timing("helper_cleanup", cleanupStarted);
+            log.timing("helper_total", started);
         }
     }
 
     private void writeResult(ColorOcrResultPacket packet) throws Exception {
-        // Keep stdout open until provider/bitmap cleanup and process exit are complete.
-        packet.write(new FileOutputStream(FileDescriptor.out));
+        long resultStarted = SystemClock.elapsedRealtime();
+        try {
+            // Keep stdout open until provider/bitmap cleanup and process exit are complete.
+            packet.write(new FileOutputStream(FileDescriptor.out));
+        } finally {
+            log.timing("result_write", resultStarted);
+        }
     }
 
     private void writeResultQuietly(int status, String message) {

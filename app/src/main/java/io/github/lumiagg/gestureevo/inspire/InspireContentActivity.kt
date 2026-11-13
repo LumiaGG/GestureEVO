@@ -11,6 +11,7 @@ import android.graphics.Matrix
 import android.util.Log
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.View
 import android.view.animation.PathInterpolator
 import androidx.appcompat.app.AppCompatActivity
@@ -25,6 +26,10 @@ import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.diagnostics.AppLogger
+import io.github.lumiagg.gestureevo.diagnostics.LogLevel
+import io.github.lumiagg.gestureevo.diagnostics.LogModule
+import io.github.lumiagg.gestureevo.ocr.OcrSettings
 import io.github.lumiagg.gestureevo.inspire.imageeditor.InspireImageEditorActivity
 import io.github.lumiagg.gestureevo.inspire.ui.BigBangView
 import io.github.lumiagg.gestureevo.inspire.ui.InspireContentView
@@ -42,6 +47,7 @@ import io.github.lumiagg.gestureevo.utils.TransparentActivityLauncher
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -57,6 +63,7 @@ class InspireContentActivity : AppCompatActivity() {
     private var launchingImageEditor = false
     private var strongCopyHandled = false
     private var contentLoadJob: Job? = null
+    private var entryAnimationFinished = CompletableDeferred<Unit>()
     private var imageActionJob: Job? = null
     private var screenshotBitmapHandle: ManagedBitmap? = null
     private var screenContentBackgroundBlurEnabled = false
@@ -97,6 +104,7 @@ class InspireContentActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val createdAt = SystemClock.elapsedRealtime()
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
         applySystemBarsVisibility()
@@ -112,7 +120,7 @@ class InspireContentActivity : AppCompatActivity() {
         setupParticleView()
 
         loadInspireContent()
-        showWithAnimation()
+        showWithAnimation(createdAt)
     }
 
     private fun initViews() {
@@ -272,7 +280,9 @@ class InspireContentActivity : AppCompatActivity() {
     }
 
     override fun onNewIntent(intent: Intent) {
+        val createdAt = SystemClock.elapsedRealtime()
         super.onNewIntent(intent)
+        entryAnimationFinished = CompletableDeferred()
         applySystemBarsVisibility()
 
         // Reset entry state
@@ -281,10 +291,11 @@ class InspireContentActivity : AppCompatActivity() {
 
         loadInspireContent()
 
-        showWithAnimation()
+        showWithAnimation(createdAt)
     }
 
-    private fun showWithAnimation() {
+    private fun showWithAnimation(createdAt: Long) {
+        val animationFinished = entryAnimationFinished
         // Appearance and layout must be ready before the first animated frame.
         inspireContentRoot.alpha = 0f
         inspireContentRoot.translationY =
@@ -292,6 +303,7 @@ class InspireContentActivity : AppCompatActivity() {
 
         inspireContentRoot.doOnPreDraw {
             if (isFinishing || isDestroyed) return@doOnPreDraw
+            logEntryStage("first_pre_draw", createdAt)
             ValueAnimator.ofFloat(0f, 1f).apply {
                 duration = ANIMATION_DURATION_ENTER
                 interpolator = EMPHASIZED_DECELERATE
@@ -305,9 +317,19 @@ class InspireContentActivity : AppCompatActivity() {
                         GlassEffectUtils.applyWindowBlurProgress(window, fraction)
                     }
                 }
+                doOnEnd {
+                    logEntryStage("animation_end", createdAt)
+                    if (isFinishing || isDestroyed) animationFinished.cancel()
+                    else animationFinished.complete(Unit)
+                }
                 start()
             }
         }
+    }
+
+    private fun logEntryStage(stage: String, createdAt: Long) {
+        AppLogger.event(LogModule.OCR, "inspire_result_entry", LogLevel.DEBUG,
+            fields = mapOf("stage" to stage, "durationMs" to (SystemClock.elapsedRealtime() - createdAt)))
     }
 
     private fun loadInspireContent() {
@@ -333,6 +355,8 @@ class InspireContentActivity : AppCompatActivity() {
 
     private suspend fun processOCRData(loadPlan: InspireContentLoadPlan) {
         if (!loadPlan.hasScreenshot) return
+        // Keep ColorOS encoding and helper startup out of the result window's entry animation.
+        if (OcrSettings.isColorOs(applicationContext)) entryAnimationFinished.await()
         val ocrResult = try {
             withContext(Dispatchers.Default) {
                 screenshotBitmapHandle?.bitmapOrNull?.let { originalBitmap ->
