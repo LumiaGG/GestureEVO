@@ -7,7 +7,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * One OCR request file from the app to its root helper: image dimensions plus PNG bytes.
+ * One OCR request from the app to its Shizuku helper: image dimensions plus PNG bytes.
  * Both sides implement the same tiny format (framework-only); tests cover the round trip.
  */
 public final class ColorOcrRequestPacket {

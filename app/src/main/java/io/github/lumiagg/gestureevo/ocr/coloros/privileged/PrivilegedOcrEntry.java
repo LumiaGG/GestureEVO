@@ -7,24 +7,19 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.FileDescriptor;
 
 /**
- * Production root entry: one app_process run serves exactly one OCR request.
+ * One Shizuku-launched app_process serves exactly one OCR request over stdin/stdout.
  *
- * Flow (all steps mirror the on-device verified experiment): UID 0 check → peekService of
+ * Flow: privileged UID check → peekService of
  * the app-held AIUnit binding → handwritten first-round authorize → load the verified
  * scanner SDK → install the external AIUnit provider → decode the request PNG → ocr_ar
  * inference → write the result packet. The vendor SDK is never loaded inside the app
  * process. Uses framework classes only.
  */
 public final class PrivilegedOcrEntry {
-    public static final String REQUEST_DIR = "coloros_ocr";
     private static final int WATCHDOG_SECONDS = 60;
     private static final String[] VENDOR_PERMISSIONS = {
             "com.oppo.permission.safe.AUTHENTICATE", "com.oplus.permission.safe.AUTHENTICATE",
@@ -42,16 +37,12 @@ public final class PrivilegedOcrEntry {
     };
 
     public static void main(String[] args) {
-        if (Process.myUid() != 0) {
-            System.out.println("Root OCR helper refused: actual UID=" + Process.myUid());
-            System.out.flush();
-            System.exit(2);
-            return;
-        }
-        ParsedArgs parsed;
+        System.setOut(System.err);
+        final String host;
         try {
-            parsed = parseArgs(args);
-        } catch (IllegalArgumentException error) {
+            host = parseHost(args);
+            validateCaller(Process.myUid());
+        } catch (IllegalArgumentException | SecurityException error) {
             System.out.println("Invalid OCR helper arguments: " + error.getMessage());
             System.out.flush();
             System.exit(2);
@@ -64,7 +55,7 @@ public final class PrivilegedOcrEntry {
             } catch (InterruptedException ignored) {
                 return;
             }
-            System.out.println("Root OCR helper exceeded " + WATCHDOG_SECONDS
+            System.out.println("Shizuku OCR helper exceeded " + WATCHDOG_SECONDS
                     + "s; terminating itself. Completion is NOT confirmed.");
             System.out.flush();
             System.exit(3);
@@ -77,54 +68,32 @@ public final class PrivilegedOcrEntry {
             Object thread = activityThread.getMethod("systemMain").invoke(null);
             systemContext = (Context) activityThread.getMethod("getSystemContext").invoke(thread);
         } catch (Exception | LinkageError error) {
-            System.out.println("Root context initialization failed: " + error);
+            System.out.println("Shizuku context initialization failed: " + error);
             System.out.flush();
             System.exit(1);
             return;
         }
-        new Thread(() -> System.exit(new PrivilegedOcrEntry().run(systemContext, parsed)), "coloros-ocr-run").start();
+        new Thread(() -> System.exit(new PrivilegedOcrEntry().run(systemContext, host)), "coloros-ocr-run").start();
         Looper.loop();
     }
 
-    static ParsedArgs parseArgs(String[] args) {
-        Map<String, String> values = new HashMap<>();
-        for (int i = 0; i < args.length; i += 2) {
-            if (i + 1 >= args.length) throw new IllegalArgumentException("Missing value for " + args[i]);
-            if (!"--host".equals(args[i]) && !"--req".equals(args[i]) && !"--out".equals(args[i])) {
-                throw new IllegalArgumentException("Unknown argument: " + args[i]);
-            }
-            if (values.put(args[i], args[i + 1]) != null) {
-                throw new IllegalArgumentException("Duplicate argument: " + args[i]);
-            }
+    static String parseHost(String[] args) {
+        if (args.length != 2 || !"--host".equals(args[0]) || args[1].isEmpty()) {
+            throw new IllegalArgumentException("Expected --host <package>");
         }
-        String host = values.get("--host");
-        String req = values.get("--req");
-        String out = values.get("--out");
-        if (host == null || host.isEmpty()) throw new IllegalArgumentException("Missing --host");
-        if (req == null || out == null) throw new IllegalArgumentException("Missing --req/--out");
-        return new ParsedArgs(host, req, out);
+        return args[1];
     }
 
-    /** Structural path validation; both files must be a matching .req/.out pair inside the host's request dir. */
-    static void validateRequestPaths(File hostCacheDir, ParsedArgs args) throws java.io.IOException {
-        File requestDir = new File(hostCacheDir, REQUEST_DIR).getCanonicalFile();
-        File req = new File(args.req).getCanonicalFile();
-        File out = new File(args.out).getCanonicalFile();
-        String reqName = req.getName();
-        String outName = out.getName();
-        if (!req.getPath().startsWith(requestDir.getPath() + File.separator) || !reqName.endsWith(".req")
-                || !out.getPath().startsWith(requestDir.getPath() + File.separator) || !outName.endsWith(".out")
-                || !outName.equals(reqName.substring(0, reqName.length() - ".req".length()) + ".out")) {
-            throw new IllegalArgumentException("OCR request/result paths must be a matching .req/.out pair under "
-                    + requestDir.getPath());
+    static void validateCaller(int uid) {
+        if (uid != 0 && uid != 2000) {
+            throw new SecurityException("OCR helper requires Shizuku Root or shell identity");
         }
     }
 
-    private int run(Context systemContext, ParsedArgs parsed) {
+    private int run(Context systemContext, String host) {
         final Context hostContext;
         try {
-            hostContext = systemContext.createPackageContext(parsed.host, 0);
-            validateRequestPaths(hostContext.getCacheDir(), parsed);
+            hostContext = systemContext.createPackageContext(host, 0);
         } catch (Exception error) {
             log.log("Failure", describe(error));
             return 1;
@@ -132,11 +101,11 @@ public final class PrivilegedOcrEntry {
         Bitmap bitmap = null;
         RootAiUnitProvider provider = null;
         try {
-            if (Process.myUid() != 0) throw new SecurityException("OCR helper requires actual UID 0");
+            validateCaller(Process.myUid());
             int uid = Process.myUid();
             int pid = Process.myPid();
             String packageName = systemContext.getPackageManager().getNameForUid(uid);
-            if (packageName == null || packageName.isEmpty()) packageName = "root";
+            if (packageName == null || packageName.isEmpty()) packageName = uid == 0 ? "root" : "com.android.shell";
             for (String permission : VENDOR_PERMISSIONS) {
                 log.log("Permission", permission + "=" + systemContext.checkPermission(permission, pid, uid));
             }
@@ -156,10 +125,7 @@ public final class PrivilegedOcrEntry {
             provider = new RootAiUnitProvider(systemContext, log);
             provider.install(context);
 
-            ColorOcrRequestPacket request;
-            try (FileInputStream input = new FileInputStream(parsed.req)) {
-                request = ColorOcrRequestPacket.read(input);
-            }
+            ColorOcrRequestPacket request = ColorOcrRequestPacket.read(System.in);
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inPreferredConfig = Bitmap.Config.ARGB_8888;
             bitmap = BitmapFactory.decodeByteArray(request.png, 0, request.png.length, options);
@@ -173,20 +139,20 @@ public final class PrivilegedOcrEntry {
             if (json == null || json.isEmpty()) {
                 throw new IllegalStateException("Engine produced no OCR JSON; inspect helper stdout");
             }
-            writeResult(parsed.out, new ColorOcrResultPacket(ColorOcrResultPacket.STATUS_OK, "", json));
+            writeResult(new ColorOcrResultPacket(ColorOcrResultPacket.STATUS_OK, "", json));
             log.log("Done", "result packet written");
             return 0;
         } catch (IllegalArgumentException | java.io.IOException error) {
-            writeResultQuietly(parsed.out, ColorOcrResultPacket.STATUS_REQUEST, describe(error));
+            writeResultQuietly(ColorOcrResultPacket.STATUS_REQUEST, describe(error));
             return 1;
         } catch (ScannerUnsupportedException error) {
-            writeResultQuietly(parsed.out, ColorOcrResultPacket.STATUS_SCANNER, describe(error));
+            writeResultQuietly(ColorOcrResultPacket.STATUS_SCANNER, describe(error));
             return 1;
         } catch (AuthorizationDeniedException error) {
-            writeResultQuietly(parsed.out, ColorOcrResultPacket.STATUS_AUTHORIZED, describe(error));
+            writeResultQuietly(ColorOcrResultPacket.STATUS_AUTHORIZED, describe(error));
             return 1;
         } catch (Exception | LinkageError error) {
-            writeResultQuietly(parsed.out, ColorOcrResultPacket.STATUS_ENGINE, describe(error));
+            writeResultQuietly(ColorOcrResultPacket.STATUS_ENGINE, describe(error));
             error.printStackTrace(System.out);
             System.out.flush();
             return 1;
@@ -196,15 +162,14 @@ public final class PrivilegedOcrEntry {
         }
     }
 
-    private void writeResult(String path, ColorOcrResultPacket packet) throws Exception {
-        try (OutputStream output = new FileOutputStream(path)) {
-            packet.write(output);
-        }
+    private void writeResult(ColorOcrResultPacket packet) throws Exception {
+        // Keep stdout open until provider/bitmap cleanup and process exit are complete.
+        packet.write(new FileOutputStream(FileDescriptor.out));
     }
 
-    private void writeResultQuietly(String path, int status, String message) {
+    private void writeResultQuietly(int status, String message) {
         try {
-            writeResult(path, new ColorOcrResultPacket(status, message, null));
+            writeResult(new ColorOcrResultPacket(status, message, null));
         } catch (Exception failure) {
             log.log("Result", "writing failure packet failed: " + failure);
         }
@@ -218,18 +183,6 @@ public final class PrivilegedOcrEntry {
             text.append(current.getClass().getSimpleName()).append(": ").append(current.getMessage());
         }
         return text.toString();
-    }
-
-    static final class ParsedArgs {
-        final String host;
-        final String req;
-        final String out;
-
-        ParsedArgs(String host, String req, String out) {
-            this.host = host;
-            this.req = req;
-            this.out = out;
-        }
     }
 
     static final class AuthorizationDeniedException extends RuntimeException {

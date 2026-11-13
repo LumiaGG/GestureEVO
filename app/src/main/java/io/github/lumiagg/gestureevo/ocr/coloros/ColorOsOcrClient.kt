@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.Rect
 import android.os.Build
 import android.os.IBinder
+import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import io.github.lumiagg.gestureevo.EvoApplication
 import io.github.lumiagg.gestureevo.inspire.ScreenContentNode
@@ -15,10 +16,11 @@ import io.github.lumiagg.gestureevo.diagnostics.LogLevel
 import io.github.lumiagg.gestureevo.diagnostics.LogModule
 import io.github.lumiagg.gestureevo.ocr.OcrSettings
 import io.github.lumiagg.gestureevo.ocr.coloros.privileged.ColorOcrAuthorize
-import io.github.lumiagg.gestureevo.ocr.coloros.privileged.ColorOcrCommand
 import io.github.lumiagg.gestureevo.ocr.coloros.privileged.ColorOcrRequestPacket
 import io.github.lumiagg.gestureevo.ocr.coloros.privileged.ColorOcrResultPacket
-import io.github.lumiagg.gestureevo.ocr.coloros.privileged.PrivilegedOcrEntry
+import io.github.lumiagg.gestureevo.utils.app.AShizuku
+import io.github.lumiagg.gestureevo.utils.shizuku.ShizukuServiceHelper
+import rikka.shizuku.Shizuku
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.UUID
@@ -26,22 +28,19 @@ import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resumeWithException
 
 /**
- * App side of the ColorOS OCR path. One request = one root helper process: bind AIUnit,
- * write a request packet, launch the privileged entry via su, read the result packet.
- * The vendor SDK is never loaded in this process. No fallback: failures throw
- * [ColorOsOcrException] so the facade surfaces them like any engine error.
+ * Each request runs in a Shizuku-launched helper using packet streams and an app-held
+ * AIUnit binding. The vendor SDK stays out of the app process; failures are reported
+ * without falling back to the built-in engine.
  */
 object ColorOsOcrClient {
     private const val APP_WAIT_SECONDS = 70L
     private const val BIND_WAIT_MILLIS = 10_000L
-    private const val REQUEST_DIR = PrivilegedOcrEntry.REQUEST_DIR
 
     /** Full-image OCR mapped onto the same nodes the built-in engine returns. */
     suspend fun detectNodes(bitmap: Bitmap): List<ScreenContentNode> {
@@ -83,41 +82,24 @@ object ColorOsOcrClient {
             AppLogger.event(
                 LogModule.OCR, "coloros_request_started", LogLevel.DEBUG,
                 fields = mapOf("width" to bitmap.width, "height" to bitmap.height))
+            if (!Shizuku.pingBinder()) throw ColorOsOcrException("请启动 Shizuku 并授权")
+            if (!AShizuku.checkPermission(context)) throw ColorOsOcrException("Shizuku 未获授权")
             val png = encodePng(bitmap)
-            val dir = File(context.cacheDir, REQUEST_DIR).apply { mkdirs() }
-            val stem = UUID.randomUUID().toString()
-            val reqFile = File(dir, "$stem.req")
-            val outFile = File(dir, "$stem.out")
-            var process: Process? = null
-            var outputTail: List<String> = emptyList()
+            val reqFile = File.createTempFile("coloros-ocr-", ".req", context.cacheDir)
             try {
                 reqFile.outputStream().use { output ->
                     ColorOcrRequestPacket(bitmap.width, bitmap.height, png).write(output)
                 }
-                // Pre-create the result file so it stays owned by the app UID.
-                check(outFile.createNewFile() || outFile.isFile) { "结果文件创建失败" }
-                withAiUnitBinding(context) {
-                    val command = ColorOcrCommand.appProcessCommand(
-                        context.applicationInfo.sourceDir,
-                        PrivilegedOcrEntry::class.java.name,
-                        "--host", context.packageName,
-                        "--req", reqFile.absolutePath,
-                        "--out", outFile.absolutePath,
-                    )
-                    process = ProcessBuilder("su", "-c", command).redirectErrorStream(true).start()
-                    outputTail = readHelperOutput(process!!)
-                    waitForHelper(process!!, APP_WAIT_SECONDS)
-                    process!!.exitValue()
-                }
-                val result = outFile.inputStream().use { ColorOcrResultPacket.read(it) }
+                val result = withAiUnitBinding(context) { runWithShizuku(context, reqFile) }
                 if (result.status != ColorOcrResultPacket.STATUS_OK) {
-                    throw ColorOsOcrException(describeStatus(result.status) + ": " + result.message + tailOf(outputTail))
+                    throw ColorOsOcrException(describeStatus(result.status) + ": " + result.message)
                 }
                 val lines = ColorOcrLine.parseJson(result.json)
                 AppLogger.event(
                     LogModule.OCR, "coloros_request_completed", LogLevel.DEBUG,
                     fields = mapOf(
                         "lines" to lines.size,
+                        "backend" to "Shizuku",
                         "elapsedMs" to (SystemClock.elapsedRealtime() - started)))
                 lines
             } catch (error: CancellationException) {
@@ -127,16 +109,36 @@ object ColorOsOcrClient {
                     LogModule.OCR, "coloros_request_failed", LogLevel.WARN,
                     fields = mapOf("elapsedMs" to (SystemClock.elapsedRealtime() - started)),
                     error = error)
-                throw if (error is ColorOsOcrException) error else ColorOsOcrException(describe(error) + tailOf(outputTail), error)
+                throw if (error is ColorOsOcrException) error else ColorOsOcrException(describe(error), error)
             } finally {
-                process?.destroyForcibly()
-                runCatching { process?.inputStream?.close() }
                 reqFile.delete()
-                outFile.delete()
             }
         }
 
-    /** Binds AIUnit for the duration of the request; the root helper peeks this live binding. */
+    private suspend fun runWithShizuku(context: Context, request: File): ColorOcrResultPacket {
+        val service = ShizukuServiceHelper.awaitService()
+        val token = UUID.randomUUID().toString()
+        var resultFd: ParcelFileDescriptor? = null
+        try {
+            withContext(Dispatchers.IO + NonCancellable) {
+                ParcelFileDescriptor.open(request, ParcelFileDescriptor.MODE_READ_ONLY).use { input ->
+                    resultFd = service.recognizeColorOsOcr(token, input, context.applicationInfo.sourceDir, context.packageName)
+                }
+            }
+            val reader = CompletableFuture.supplyAsync {
+                ParcelFileDescriptor.AutoCloseInputStream(resultFd!!).use { ColorOcrResultPacket.read(it) }
+            }
+            return withTimeoutOrNull(APP_WAIT_SECONDS * 1000) { reader.awaitSuspended() }
+                ?: throw ColorOsOcrException("OCR 等待超时")
+        } finally {
+            withContext(Dispatchers.IO + NonCancellable) {
+                runCatching { service.closeColorOsOcr(token) }
+                runCatching { resultFd?.close() }
+            }
+        }
+    }
+
+    /** Binds AIUnit for the duration of the request; the privileged helper peeks this live binding. */
     private suspend fun <T> withAiUnitBinding(context: Context, block: suspend () -> T): T {
         val ready = CompletableFuture<IBinder>()
         val connection = object : ServiceConnection {
@@ -189,49 +191,6 @@ object ColorOsOcrClient {
                 }
             }
         }
-
-    /** Cancellable wait: delay() throws on cancellation and the caller's finally kills the helper. */
-    private suspend fun waitForHelper(process: Process, timeoutSeconds: Long) {
-        val deadline = SystemClock.elapsedRealtime() + timeoutSeconds * 1000
-        while (true) {
-            try {
-                process.exitValue()
-                return
-            } catch (_: IllegalThreadStateException) {
-                // Still running; keep polling.
-            }
-            if (SystemClock.elapsedRealtime() > deadline) {
-                throw ColorOsOcrException("Root helper 等待超过 ${timeoutSeconds}s；未确认本次调用完成")
-            }
-            delay(200)
-        }
-    }
-
-    private fun readHelperOutput(process: Process): List<String> {
-        val tail = ArrayDeque<String>()
-        Thread({
-            try {
-                process.inputStream.bufferedReader().use { stream ->
-                    stream.forEachLine { line ->
-                        synchronized(tail) {
-                            if (tail.size >= 6) tail.removeFirst()
-                            tail.addLast(line)
-                        }
-                    }
-                }
-            } catch (_: Exception) {
-                // Stream closed by cleanup; the collected tail is enough.
-            }
-        }, "coloros-ocr-output").apply {
-            isDaemon = true
-            start()
-        }
-        return tail
-    }
-
-    private fun tailOf(tail: List<String>): String = synchronized(tail) {
-        if (tail.isEmpty()) "" else "｜" + tail.joinToString(" ⏎ ")
-    }
 
     private fun describeStatus(status: Int): String = when (status) {
         ColorOcrResultPacket.STATUS_AUTHORIZED -> "授权未通过"

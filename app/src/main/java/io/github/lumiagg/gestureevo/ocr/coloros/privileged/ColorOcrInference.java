@@ -9,7 +9,7 @@ import java.lang.reflect.Proxy;
 import java.util.Arrays;
 
 /**
- * Runs one ocr_ar inference through the vendor scanner SDK client inside the root helper
+ * Runs one ocr_ar inference through the vendor scanner SDK client inside the Shizuku helper
  * process. Symbol names (detector, action interface, error/status accessors) are bound to
  * scanner {@link ColorOcrSdk#VERIFIED_SCANNER_VERSION}; a client version bump fails closed
  * in {@link ColorOcrSdk#load}. Returns the raw result JSON, or null when the SDK produced

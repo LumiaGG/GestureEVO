@@ -444,7 +444,7 @@
     <string name="inspire_settings_ocr_description">Choose the text recognition engine and options</string>
     <string name="inspire_settings_ocr_engine_title">OCR Engine</string>
     <string name="inspire_settings_ocr_engine_desc">Offline recognition</string>
-    <string name="inspire_settings_ocr_engine_coloros_desc">ColorOS only, root required</string>
+    <string name="inspire_settings_ocr_engine_coloros_desc">ColorOS only, Shizuku required</string>
     <string name="inspire_settings_ocr_engine_builtin">Built-in engine</string>
     <string name="inspire_settings_ocr_engine_coloros">ColorOS system OCR</string>
     <string name="inspire_settings_ocr_engine_dialog_title">Choose OCR Engine</string>
@@ -706,6 +706,7 @@
     <string name="clipboard_image_read_failed">Unable to read image</string>
     <string name="clipboard_image_process_error">Error processing image</string>
     <string name="inspire_content_ocr_empty">No content recognized</string>
+    <string name="inspire_content_ocr_failed">Text recognition failed: %1$s</string>
     <string name="inspire_content_accessibility_empty">No content extracted</string>
     <string name="pin_pool_title">Pin Pool</string>
     <string name="pin_pool_text_not_found">No text content found</string>

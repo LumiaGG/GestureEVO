@@ -477,7 +477,7 @@
     <string name="inspire_settings_ocr_description">选择文字识别使用的引擎与处理选项</string>
     <string name="inspire_settings_ocr_engine_title">OCR 引擎</string>
     <string name="inspire_settings_ocr_engine_desc">本地离线识别</string>
-    <string name="inspire_settings_ocr_engine_coloros_desc">仅限 ColorOS，需 Root</string>
+    <string name="inspire_settings_ocr_engine_coloros_desc">仅限 ColorOS，需 Shizuku</string>
     <string name="inspire_settings_ocr_engine_builtin">内置引擎</string>
     <string name="inspire_settings_ocr_engine_coloros">ColorOS 系统 OCR</string>
     <string name="inspire_settings_ocr_engine_dialog_title">选择 OCR 引擎</string>
@@ -771,6 +771,7 @@
     <string name="clipboard_image_read_failed">无法读取图片</string>
     <string name="clipboard_image_process_error">处理图片时出错</string>
     <string name="inspire_content_ocr_empty">没有识别到内容</string>
+    <string name="inspire_content_ocr_failed">文字识别失败：%1$s</string>
     <string name="inspire_content_accessibility_empty">没有提取到内容</string>
     <string name="pin_pool_title">Pin池</string>
     <string name="pin_pool_text_not_found">未找到文本内容</string>

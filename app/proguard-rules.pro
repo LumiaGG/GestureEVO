@@ -27,6 +27,6 @@
 -keep class org.xmlpull.** { *; }
 -keepclassmembers class org.xmlpull.** { *; }
 
-# ColorOS OCR root helper: launched by class name through su/app_process with the
-# app APK as CLASSPATH, so its framework-only classes must keep their names.
+# ColorOS OCR helper: launched by Shizuku through app_process with the app APK
+# as CLASSPATH, so its framework-only classes must keep their names.
 -keep class io.github.lumiagg.gestureevo.ocr.coloros.privileged.** { *; }

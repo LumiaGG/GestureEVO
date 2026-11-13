@@ -15,10 +15,10 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 
 /**
- * Hands the app-held AIUnit binder to the vendor SDK when it re-binds from inside the root
- * helper process. It does not fake the service or invent results: the binder is the real one
+ * Hands the app-held AIUnit binder to the vendor SDK when it re-binds from inside the
+ * Shizuku helper process. It does not fake the service or invent results: the binder is the real one
  * the app obtained through its own bindService, and the app keeps owning that binding.
- * Uses framework classes only so the root helper can load it from the app APK classpath.
+ * Uses framework classes only so the helper can load it from the app APK classpath.
  */
 public class ColorOcrHeldBinderContext extends ContextWrapper {
     private final IBinder binder;

@@ -12,4 +12,6 @@ interface IUserService {
     ExecuteResult readDiagnosticLogs() = 3;
     ParcelFileDescriptor openDiagnosticStream(String token) = 4;
     void closeDiagnosticStream(String token) = 5;
+    ParcelFileDescriptor recognizeColorOsOcr(String token, in ParcelFileDescriptor request, String apkPath, String host) = 6;
+    void closeColorOsOcr(String token) = 7;
 }

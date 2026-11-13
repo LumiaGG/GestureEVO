@@ -7,8 +7,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * One OCR result file from the root helper back to the app: status, message and the raw
- * ocr_ar JSON on success. The app pre-creates the file so it stays owned by the app UID.
+ * One OCR result streamed from the Shizuku helper back to the app: status, message and
+ * the raw ocr_ar JSON on success.
  */
 public final class ColorOcrResultPacket {
     public static final int MAGIC = 0x47435232; // "GCR2"

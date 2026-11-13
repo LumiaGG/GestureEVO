@@ -35,6 +35,14 @@ internal class TokenContentController(
         contentView.ocrContents = null
     }
 
+    fun showOcrError(message: String) {
+        clearOcrData()
+        contentView.ocrContents = listOf(message)
+        if (contentView.getCurrentMode().isOCR) {
+            contentView.switchToMode(InspireTokenContentMode.OCR)
+        }
+    }
+
     fun applyOcrResult(ocrResult: OcrProcessingResult, loadPlan: InspireContentLoadPlan) {
         val correction = AccessibilityTextCorrection.correctOcrResult(
             result = ocrResult,

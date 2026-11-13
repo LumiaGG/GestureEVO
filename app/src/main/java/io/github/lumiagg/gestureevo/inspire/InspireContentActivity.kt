@@ -333,12 +333,20 @@ class InspireContentActivity : AppCompatActivity() {
 
     private suspend fun processOCRData(loadPlan: InspireContentLoadPlan) {
         if (!loadPlan.hasScreenshot) return
-        val ocrResult = withContext(Dispatchers.Default) {
-            screenshotBitmapHandle?.bitmapOrNull?.let { originalBitmap ->
-                contentLoader.buildOcrResult(
-                    originalBitmap = originalBitmap,
-                )
+        val ocrResult = try {
+            withContext(Dispatchers.Default) {
+                screenshotBitmapHandle?.bitmapOrNull?.let { originalBitmap ->
+                    contentLoader.buildOcrResult(originalBitmap = originalBitmap)
+                }
             }
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w(TAG, "OCR failed", error)
+            val message = getString(R.string.inspire_content_ocr_failed, error.message ?: error.javaClass.simpleName)
+            tokenContentController.showOcrError(message)
+            ToastHelper.showInUIThread(this, message)
+            return
         } ?: return
         tokenContentController.applyOcrResult(ocrResult, loadPlan)
     }

@@ -10,8 +10,8 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 
 /**
- * Keeps one real external AIUnit provider alive for the lifetime of one root OCR request.
- * Moved verbatim from the debug probe; the helper process is not registered in AMS, so a
+ * Keeps one real external AIUnit provider alive for one Shizuku OCR request.
+ * The helper process is not registered in AMS, so a
  * normal provider acquisition fails there and this external holder is required. The external
  * token owns the AMS reference; the SDK client close must not release an app connection.
  * Uses framework classes only.
@@ -26,7 +26,9 @@ public final class RootAiUnitProvider implements AutoCloseable {
     private boolean acquired;
 
     public RootAiUnitProvider(Context context, ColorOcrLog log) throws Exception {
-        if (Process.myUid() != 0) throw new SecurityException("External provider holder requires actual UID 0");
+        if (Process.myUid() != 0 && Process.myUid() != 2000) {
+            throw new SecurityException("External provider holder requires Shizuku Root or shell identity");
+        }
         this.log = log;
         managerType = Class.forName("android.app.IActivityManager");
         manager = Class.forName("android.app.ActivityManager").getDeclaredMethod("getService").invoke(null);
@@ -51,14 +53,14 @@ public final class RootAiUnitProvider implements AutoCloseable {
         }
         Class<?> activityThread = Class.forName("android.app.ActivityThread");
         Object thread = activityThread.getMethod("currentActivityThread").invoke(null);
-        if (thread == null) throw new IllegalStateException("Root ActivityThread is unavailable");
+        if (thread == null) throw new IllegalStateException("OCR helper ActivityThread is unavailable");
         Method install = activityThread.getDeclaredMethod("installProvider", Context.class,
                 Class.forName("android.app.ContentProviderHolder"), ProviderInfo.class,
                 boolean.class, boolean.class, boolean.class);
         install.setAccessible(true);
         // The external token owns the AMS reference; SDK client close must not release an app connection.
         Object installed = install.invoke(thread, context, holder, info, false, true, true);
-        if (installed == null) throw new IllegalStateException("Root Provider cache installation failed");
+        if (installed == null) throw new IllegalStateException("OCR helper Provider cache installation failed");
         log.log("Provider", "External AIUnit Provider installed for user=" + userId
                 + ", actual UID=" + Process.myUid() + "; SDK reads real service responses");
     }

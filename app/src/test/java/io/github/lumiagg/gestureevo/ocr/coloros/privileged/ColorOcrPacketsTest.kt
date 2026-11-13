@@ -23,11 +23,16 @@ class ColorOcrPacketsTest {
     }
 
     @Test
-    fun resultPacketRejectsUnknownStatusAndTrailingData() {
+    fun resultPacketRejectsUnknownStatusTruncationAndTrailingData() {
         assertThrows(IOException::class.java) { ColorOcrResultPacket(9, "x", null) }
         val output = ByteArrayOutputStream()
-        ColorOcrResultPacket(ColorOcrResultPacket.STATUS_ENGINE, "boom", null).write(output)
-        val trailing = output.toByteArray() + byteArrayOf(0x00)
-        assertThrows(IOException::class.java) { ColorOcrResultPacket.read(ByteArrayInputStream(trailing)) }
+        ColorOcrResultPacket(ColorOcrResultPacket.STATUS_OK, "", "{\"items\":[]}").write(output)
+        val bytes = output.toByteArray()
+        assertThrows(IOException::class.java) {
+            ColorOcrResultPacket.read(ByteArrayInputStream(bytes.copyOf(bytes.size - 1)))
+        }
+        assertThrows(IOException::class.java) {
+            ColorOcrResultPacket.read(ByteArrayInputStream(bytes + byteArrayOf(0x00)))
+        }
     }
 }
