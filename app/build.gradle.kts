@@ -184,4 +184,6 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kxml2)
+    // Real org.json implementation so JVM unit tests can exercise the ColorOS OCR JSON parser.
+    testImplementation(libs.orgjson)
 }

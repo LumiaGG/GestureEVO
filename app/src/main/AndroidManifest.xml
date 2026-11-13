@@ -31,6 +31,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GestureEVO"
         tools:targetApi="34">
+        <!-- ColorOS OCR: the vendor SDK reads the host auth style from this metadata. -->
+        <meta-data android:name="com.oplus.aiunit.auth_style" android:value="0" />
         <activity
             android:name=".drop.DropSearchActivity"
             android:excludeFromRecents="true"

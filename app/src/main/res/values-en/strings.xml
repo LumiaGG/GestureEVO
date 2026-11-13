@@ -440,6 +440,23 @@
     <!-- Inspire Settings Strings -->
     <string name="inspire_settings_title">Feature Settings</string>
     <string name="inspire_settings_screen_content_title">Screen Content Settings</string>
+    <string name="inspire_settings_ocr_title">OCR Settings</string>
+    <string name="inspire_settings_ocr_description">Choose the text recognition engine and options</string>
+    <string name="inspire_settings_ocr_engine_title">OCR Engine</string>
+    <string name="inspire_settings_ocr_engine_desc">Offline recognition</string>
+    <string name="inspire_settings_ocr_engine_coloros_desc">ColorOS only, root required</string>
+    <string name="inspire_settings_ocr_engine_builtin">Built-in engine</string>
+    <string name="inspire_settings_ocr_engine_coloros">ColorOS system OCR</string>
+    <string name="inspire_settings_ocr_engine_dialog_title">Choose OCR Engine</string>
+    <string name="inspire_settings_ocr_strip_spaces_title">Strip spaces from recognized text</string>
+    <string name="inspire_settings_ocr_strip_spaces_desc">Applies to every engine\'s results</string>
+    <string name="inspire_settings_ocr_filter_confidence_title">Filter low-confidence results</string>
+    <string name="inspire_settings_ocr_filter_confidence_desc">Discards suspicious lines with low confidence</string>
+    <string name="inspire_settings_ocr_test_title">OCR Test</string>
+    <string name="inspire_settings_ocr_test_desc">Recognize a sample image with the selected engine</string>
+    <string name="inspire_settings_ocr_test_running">Testing OCR…</string>
+    <string name="inspire_settings_ocr_test_success">OCR test passed: %1$d lines, %2$.1f s</string>
+    <string name="inspire_settings_ocr_test_failed">OCR test failed: %1$s</string>
     <string name="inspire_settings_ocr_priority">Prioritize OCR Recognition</string>
     <string name="inspire_settings_ocr_priority_desc">Choose the preferred text acquisition method, Accessibility or OCR</string>
     <string name="inspire_settings_double_check">Double Confirmation After Frame Selection</string>

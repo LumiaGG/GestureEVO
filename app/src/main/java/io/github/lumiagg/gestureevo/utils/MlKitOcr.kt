@@ -8,6 +8,10 @@ import android.graphics.Rect
 import android.util.Log
 import io.github.lumiagg.gestureevo.EvoApplication
 import io.github.lumiagg.gestureevo.inspire.ScreenContentNode
+import io.github.lumiagg.gestureevo.ocr.OcrGeometry
+import io.github.lumiagg.gestureevo.ocr.OcrSettings
+import io.github.lumiagg.gestureevo.ocr.coloros.ColorOsOcrClient
+import android.graphics.PointF
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,8 +26,6 @@ import me.fleey.ppocrv5.ocr.OcrEngine
 import me.fleey.ppocrv5.ocr.OcrResult
 import me.fleey.ppocrv5.ocr.RotatedBox
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.ceil
-import kotlin.math.floor
 
 object MlKitOcr {
     private const val PRELOAD_UNUSED_RELEASE_DELAY_MS = 60_000L
@@ -41,6 +43,8 @@ object MlKitOcr {
 
     suspend fun preload() {
         preloadMutex.withLock {
+            // The ColorOS backend has nothing to preload; every request starts its own helper.
+            if (OcrSettings.isColorOs(EvoApplication.application)) return
             if (preloadedEngine == null) {
                 preloadedEngine = createEngine()
                 if (preloadedEngine == null) {
@@ -65,16 +69,27 @@ object MlKitOcr {
                 if (img.width < 32 || img.height < 32) return@withLock nodes
                 running.set(true)
                 try {
-                    AppLogger.event(
-                        LogModule.OCR, "detect_started",
-                        LogLevel.DEBUG,
-                        fields = mapOf("width" to img.width, "height" to img.height))
-                    withBuiltInEngine(retainPreloaded = false) { engine ->
-                        processWithEngine(engine, img, nodes)
+                    val colorOs = OcrSettings.isColorOs(EvoApplication.application)
+                    if (colorOs) {
+                        nodes.addAll(ColorOsOcrClient.detectNodes(img))
+                    } else {
+                        AppLogger.event(
+                            LogModule.OCR, "detect_started",
+                            LogLevel.DEBUG,
+                            fields = mapOf("width" to img.width, "height" to img.height))
+                        val filterLowConfidence = OcrSettings.filterLowConfidence(EvoApplication.application)
+                        withBuiltInEngine(retainPreloaded = false) { engine ->
+                            processWithEngine(engine, img, nodes, filterLowConfidence)
+                        }
+                        AppLogger.event(
+                            LogModule.OCR, "detect_completed",
+                            LogLevel.DEBUG, fields = mapOf("count" to nodes.size))
                     }
-                    AppLogger.event(
-                        LogModule.OCR, "detect_completed",
-                        LogLevel.DEBUG, fields = mapOf("count" to nodes.size))
+                    if (OcrSettings.stripSpaces(EvoApplication.application)) {
+                        for (i in nodes.indices) {
+                            nodes[i] = ScreenContentNode(nodes[i].bound, nodes[i].content?.let(OcrSettings::stripInline))
+                        }
+                    }
                     nodes
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
@@ -96,6 +111,10 @@ object MlKitOcr {
                 if (img.width < 32 || img.height < 32) return@withLock boxes
                 running.set(true)
                 try {
+                    if (OcrSettings.isColorOs(EvoApplication.application)) {
+                        boxes.addAll(ColorOsOcrClient.detectRects(img))
+                        return@withLock boxes
+                    }
                     withBuiltInEngine(retainPreloaded = true) { engine ->
                         engine.detectTextBoxes(img).forEach { box ->
                             box.toRect(img.width, img.height)?.let(boxes::add)
@@ -114,9 +133,18 @@ object MlKitOcr {
             if (img.width < 2 || img.height < 2) return@withLock ""
             running.set(true)
             try {
-                withBuiltInEngine(retainPreloaded = false) { engine ->
-                    engine.recognizeTextBox(img)?.text.orEmpty()
-                }.orEmpty()
+                val text = if (OcrSettings.isColorOs(EvoApplication.application)) {
+                    ColorOsOcrClient.recognize(img)
+                } else {
+                    withBuiltInEngine(retainPreloaded = false) { engine ->
+                        engine.recognizeTextBox(img)?.text.orEmpty()
+                    }.orEmpty()
+                }
+                if (OcrSettings.stripSpaces(EvoApplication.application)) {
+                    OcrSettings.stripInline(text)
+                } else {
+                    text
+                }
             } finally {
                 running.set(false)
             }
@@ -178,9 +206,13 @@ object MlKitOcr {
     private fun processWithEngine(
         engine: OcrEngine,
         img: Bitmap,
-        nodes: ArrayList<ScreenContentNode>
+        nodes: ArrayList<ScreenContentNode>,
+        filterLowConfidence: Boolean,
     ) {
         engine.process(img).forEach { result ->
+            if (filterLowConfidence && result.confidence < OcrSettings.MIN_CONFIDENCE) {
+                return@forEach
+            }
             val node = result.toScreenContentNode(img.width, img.height) ?: return@forEach
             nodes.add(node)
         }
@@ -197,28 +229,22 @@ object MlKitOcr {
         if (corners.isEmpty()) {
             return null
         }
-        val minX = corners.minOf { it.x }
-        val maxX = corners.maxOf { it.x }
-        val minY = corners.minOf { it.y }
-        val maxY = corners.maxOf { it.y }
-        val left = floor(minX.toDouble()).toInt().coerceIn(0, imageWidth)
-        val right = ceil(maxX.toDouble()).toInt().coerceIn(0, imageWidth)
-        val top = floor(minY.toDouble()).toInt().coerceIn(0, imageHeight)
-        val bottom = ceil(maxY.toDouble()).toInt().coerceIn(0, imageHeight)
-        if (right <= left || bottom <= top) {
-            return null
-        }
-        return ScreenContentNode(Rect(left, top, right, bottom), text)
+        return corners.boundingRect(imageWidth, imageHeight)
+            ?.let { ScreenContentNode(Rect(it[0], it[1], it[2], it[3]), text) }
     }
 
-    private fun RotatedBox.toRect(imageWidth: Int, imageHeight: Int): Rect? {
-        val corners = getCorners()
-        if (corners.isEmpty()) return null
-        val left = floor(corners.minOf { it.x }.toDouble()).toInt().coerceIn(0, imageWidth)
-        val right = ceil(corners.maxOf { it.x }.toDouble()).toInt().coerceIn(0, imageWidth)
-        val top = floor(corners.minOf { it.y }.toDouble()).toInt().coerceIn(0, imageHeight)
-        val bottom = ceil(corners.maxOf { it.y }.toDouble()).toInt().coerceIn(0, imageHeight)
-        return if (right > left && bottom > top) Rect(left, top, right, bottom) else null
-    }
+    private fun RotatedBox.toRect(imageWidth: Int, imageHeight: Int): Rect? =
+        getCorners().boundingRect(imageWidth, imageHeight)
+            ?.let { Rect(it[0], it[1], it[2], it[3]) }
+
+    private fun List<PointF>.boundingRect(
+        imageWidth: Int,
+        imageHeight: Int,
+    ): IntArray? = OcrGeometry.boundingRect(
+        this.map { it.x.toDouble() }.toDoubleArray(),
+        this.map { it.y.toDouble() }.toDoubleArray(),
+        imageWidth,
+        imageHeight,
+    )
 
 }

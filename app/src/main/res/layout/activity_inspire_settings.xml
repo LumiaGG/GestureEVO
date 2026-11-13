@@ -35,6 +35,20 @@
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                 </LinearLayout>
             </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/ocrSettingsCard" android:layout_width="match_parent" android:layout_marginTop="@dimen/settings_card_spacing" android:layout_height="wrap_content" app:settingsCardTitle="@string/inspire_settings_ocr_title" app:settingsCardSummary="@string/inspire_settings_ocr_description" app:settingsCardExpanded="false">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/ocr_engine_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_ocr_engine_title" app:settingsRowSummary="@string/inspire_settings_ocr_engine_desc">
+                        <TextView android:id="@+id/selected_ocr_engine_text" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_ocr_strip_spaces_title" app:settingsRowSummary="@string/inspire_settings_ocr_strip_spaces_desc">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/ocrStripSpacesSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_ocr_filter_confidence_title" app:settingsRowSummary="@string/inspire_settings_ocr_filter_confidence_desc">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/ocrFilterConfidenceSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/ocr_test_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_ocr_test_title" app:settingsRowSummary="@string/inspire_settings_ocr_test_desc" />
+                </LinearLayout>
+            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
             <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/defaultShareBehaviorCard" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsCardTitle="@string/inspire_settings_share_settings_title" app:settingsCardSummary="@string/inspire_settings_share_settings_description" app:settingsCardExpanded="false" android:layout_marginTop="@dimen/settings_card_spacing">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/default_share_behavior_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_default_share_behavior_title" app:settingsRowSummary="@string/inspire_settings_default_share_behavior_desc">

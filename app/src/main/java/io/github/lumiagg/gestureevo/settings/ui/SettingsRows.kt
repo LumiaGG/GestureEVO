@@ -30,6 +30,7 @@ class SettingsNavRow @JvmOverloads constructor(
     private val swatchView: View?
     private val chevronView: ImageView
     private val titleView: TextView
+    private val summaryView: TextView
     private var building = true
 
     init {
@@ -63,9 +64,10 @@ class SettingsNavRow @JvmOverloads constructor(
         }
         titleView = labelView(title, isTitle = true)
         textColumn.addView(titleView)
-        textColumn.addView(labelView(summary, isTitle = false).apply {
+        summaryView = labelView(summary, isTitle = false).apply {
             isGone = summary.isBlank()
-        })
+        }
+        textColumn.addView(summaryView)
         addView(textColumn)
 
         swatchView = if (showSwatch) {
@@ -113,6 +115,11 @@ class SettingsNavRow @JvmOverloads constructor(
 
     fun setTitle(text: CharSequence?) {
         titleView.text = text
+    }
+
+    fun setSummary(text: CharSequence?) {
+        summaryView.text = text
+        summaryView.isGone = text.isNullOrBlank()
     }
 
     fun setSwatchColor(color: Int) {

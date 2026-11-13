@@ -5,6 +5,7 @@ ksp = "2.1.20-1.0.32"
 room = "2.8.4"
 junit = "4.13.2"
 kxml2 = "2.3.0"
+orgjson = "20240303"
 xz = "1.12"
 ahocorasick = "0.6.3"
 zxing = "3.5.3"
@@ -30,6 +31,7 @@ kotlinx-serialization = "1.8.1"
 [libraries]
 junit = { module = "junit:junit", version.ref = "junit" }
 kxml2 = { module = "net.sf.kxml:kxml2", version.ref = "kxml2" }
+orgjson = { module = "org.json:json", version.ref = "orgjson" }
 xz = { module = "org.tukaani:xz", version.ref = "xz" }
 ahocorasick = { module = "org.ahocorasick:ahocorasick", version.ref = "ahocorasick" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }

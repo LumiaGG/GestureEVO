@@ -12,6 +12,8 @@ import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.ActivityInspireSettingsBinding
 import io.github.lumiagg.gestureevo.db.APPModel
 import io.github.lumiagg.gestureevo.gesture.EventBusManager.produceKeyboardEvent
+import io.github.lumiagg.gestureevo.ocr.OcrSelfTest
+import io.github.lumiagg.gestureevo.ocr.OcrSettings
 import io.github.lumiagg.gestureevo.gesture.KeyboardEvent
 import io.github.lumiagg.gestureevo.quick.ui.KeyboardType
 import io.github.lumiagg.gestureevo.settings.ui.BlackListSelectAPPBottomSheet
@@ -41,6 +43,8 @@ class InspireSettingsActivity : AppCompatActivity() {
         get() = getString(R.string.inspire_settings_use_evo_image_editor)
     private val evoSearchLabel: String
         get() = getString(R.string.inspire_settings_use_evo_search)
+
+    private var ocrTestRunning = false
 
     companion object {
         // Preference keys
@@ -121,6 +125,11 @@ class InspireSettingsActivity : AppCompatActivity() {
     }
 
     private suspend fun initializeViews() {
+        // Initialize OCR engine selection state
+        updateOcrEngineText(settingsStore.readKey(OcrSettings.KEY_ENGINE, OcrSettings.BUILTIN))
+        binding.ocrStripSpacesSwitch.isChecked = settingsStore.readKey(OcrSettings.KEY_STRIP_SPACES, false)
+        binding.ocrFilterConfidenceSwitch.isChecked = settingsStore.readKey(OcrSettings.KEY_FILTER_LOW_CONFIDENCE, false)
+
         // Initialize OCR-priority switch state
         val ocrPriority = settingsStore.readKey(KEY_OCR_PRIORITY, true)
         binding.ocrPrioritySwitch.isChecked = ocrPriority
@@ -254,6 +263,20 @@ class InspireSettingsActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
+        // OCR engine selection, options and test
+        binding.ocrEngineRow.setOnClickListener { showOcrEngineDialog() }
+        binding.ocrStripSpacesSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(OcrSettings.KEY_STRIP_SPACES, isChecked)
+            }
+        }
+        binding.ocrFilterConfidenceSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(OcrSettings.KEY_FILTER_LOW_CONFIDENCE, isChecked)
+            }
+        }
+        binding.ocrTestRow.setOnClickListener { runOcrTest() }
+
         // OCR-priority switch listener
         binding.ocrPrioritySwitch.setOnCheckedChangeListener { _, isChecked ->
             lifecycleScope.launch {
@@ -471,6 +494,62 @@ class InspireSettingsActivity : AppCompatActivity() {
         binding.pinPoolAutoCopyClipboardSwitch.setOnCheckedChangeListener { _, isChecked ->
             lifecycleScope.launch {
                 settingsStore.saveKey(KEY_PIN_POOL_AUTO_COPY_IMAGE_TO_CLIPBOARD, isChecked)
+            }
+        }
+    }
+
+    private fun updateOcrEngineText(value: String) {
+        binding.selectedOcrEngineText.text = when (value) {
+            OcrSettings.COLOROS -> getString(R.string.inspire_settings_ocr_engine_coloros)
+            else -> getString(R.string.inspire_settings_ocr_engine_builtin)
+        }
+        binding.ocrEngineRow.setSummary(getString(
+            if (value == OcrSettings.COLOROS) R.string.inspire_settings_ocr_engine_coloros_desc
+            else R.string.inspire_settings_ocr_engine_desc
+        ))
+    }
+
+    private fun showOcrEngineDialog() {
+        lifecycleScope.launch {
+            val current = settingsStore.readKey(OcrSettings.KEY_ENGINE, OcrSettings.BUILTIN)
+            val options = arrayOf(
+                getString(R.string.inspire_settings_ocr_engine_builtin),
+                getString(R.string.inspire_settings_ocr_engine_coloros),
+            )
+            MaterialAlertDialogBuilder(this@InspireSettingsActivity)
+                .setTitle(R.string.inspire_settings_ocr_engine_dialog_title)
+                .setSingleChoiceItems(options, if (current == OcrSettings.COLOROS) 1 else 0) { dialog, which ->
+                    val value = if (which == 1) OcrSettings.COLOROS else OcrSettings.BUILTIN
+                    lifecycleScope.launch {
+                        OcrSettings.saveEngine(applicationContext, value)
+                        updateOcrEngineText(value)
+                    }
+                    dialog.dismiss()
+                }
+                .show()
+        }
+    }
+
+    private fun runOcrTest() {
+        if (ocrTestRunning) return
+        ocrTestRunning = true
+        binding.ocrTestRow.isEnabled = false
+        ToastHelper.showInUIThread(applicationContext, getString(R.string.inspire_settings_ocr_test_running))
+        lifecycleScope.launch {
+            val outcome = runCatching { OcrSelfTest.run() }
+            ocrTestRunning = false
+            binding.ocrTestRow.isEnabled = true
+            outcome.onSuccess {
+                ToastHelper.showInUIThread(
+                    applicationContext,
+                    getString(R.string.inspire_settings_ocr_test_success, it.lines, it.elapsedMs / 1000f),
+                )
+            }.onFailure { error ->
+                if (error is kotlinx.coroutines.CancellationException) return@onFailure
+                ToastHelper.showInUIThread(
+                    applicationContext,
+                    getString(R.string.inspire_settings_ocr_test_failed, error.message ?: error.javaClass.simpleName),
+                )
             }
         }
     }
