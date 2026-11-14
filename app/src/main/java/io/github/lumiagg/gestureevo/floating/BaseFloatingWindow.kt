@@ -113,7 +113,7 @@ abstract class BaseFloatingWindow(
             attachments.detach(view, { view.isAttachedToWindow }) {
                 if (immediate) windowManager.removeViewImmediate(view) else windowManager.removeView(view)
             }
-            io.github.lumiagg.gestureevo.drop.SourceTouchRegions.detached(view)
+            OverlayTouchRegions.detached(view)
             onDetached()
         }.onFailure { err ->
             Log.d(logTag, "removeView failed: $err")
@@ -155,7 +155,7 @@ abstract class BaseFloatingWindow(
         val accepted = attachments.submit(view, request, { view.isAttachedToWindow }) {
             windowManager.addView(view, layoutParams)
         }
-        if (accepted) io.github.lumiagg.gestureevo.drop.SourceTouchRegions.attached(view)
+        if (accepted) OverlayTouchRegions.attached(view)
         return accepted
     }
 

@@ -1,12 +1,13 @@
-package io.github.lumiagg.gestureevo.drop
+package io.github.lumiagg.gestureevo.floating
 
 import android.view.View
 import android.view.WindowManager
 import java.util.Collections
 import java.util.WeakHashMap
 
-/** Like MMGG OverlayTouchRegions, prevent presses on EVO windows from reading the app underneath. */
-internal object SourceTouchRegions {
+/** Registry of EVO overlay regions and window IDs for consumers of screen coordinates.
+ * Adapted from MMGG OverlayTouchRegions; see drop/MMGG-NOTICE. */
+internal object OverlayTouchRegions {
     private val views = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
     @Synchronized fun attached(view: View) { views.add(view) }
     @Synchronized fun detached(view: View) { views.remove(view) }

@@ -1,5 +1,6 @@
 package io.github.lumiagg.gestureevo.drop
 
+import io.github.lumiagg.gestureevo.floating.OverlayTouchRegions
 import android.app.KeyguardManager
 import android.content.ClipData
 import android.os.Handler
@@ -95,7 +96,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
         latestY = y
         if (action == MotionEvent.ACTION_DOWN) {
             cancel("next_down")
-            if (systemDrag || !settings.enabled || !screenReady() || panel() == null || SourceTouchRegions.contains(x, y)) return
+            if (systemDrag || !settings.enabled || !screenReady() || panel() == null || OverlayTouchRegions.contains(x, y)) return
             active = true
             downX = x
             downY = y
@@ -207,7 +208,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
         val eventId = event.windowId
         val changes = if (android.os.Build.VERSION.SDK_INT >= 28 &&
             eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) event.windowChanges else 0
-        ownOverlayIds += SourceTouchRegions.windowIds()
+        ownOverlayIds += OverlayTouchRegions.windowIds()
         val sourceRemoved = android.os.Build.VERSION.SDK_INT >= 28 && eventId == origin.windowId &&
             changes and AccessibilityEvent.WINDOWS_CHANGE_REMOVED != 0
         if (sourceRemoved) { cancel("source_removed:event=$eventType,window=$eventId,changes=$changes"); return }
