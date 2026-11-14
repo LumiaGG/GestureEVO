@@ -20,13 +20,25 @@ import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.BigbangFunctionItemBinding
 import io.github.lumiagg.gestureevo.databinding.BigbangSelectBgBinding
+import io.github.lumiagg.gestureevo.link.LinkDispatcher
+import io.github.lumiagg.gestureevo.link.LinkRuleRepository
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.GlassEffectUtils
 import io.github.lumiagg.gestureevo.utils.UrlDetector
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
+import io.github.lumiagg.gestureevo.utils.icon.IconHelper
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.max
 
 class BigBangView : ViewGroup, NestedScrollingChild {
+
+    /** 链接按钮图标的异步更新任务：选择连续变化时只保留最后一次。 */
+    private var urlIconJob: Job? = null
 
     private lateinit var functionItemBinding: BigbangFunctionItemBinding
     private lateinit var selectBgBinding: BigbangSelectBgBinding
@@ -573,9 +585,49 @@ class BigBangView : ViewGroup, NestedScrollingChild {
 
     private fun showURLBt(isShow: Boolean) {
         functionItemBinding.openUrl.visibility = if (isShow) VISIBLE else GONE
+        if (isShow) {
+            updateUrlButtonIcon(makeSelectedText())
+        }
         val measureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
         functionItemBinding.root.measure(measureSpec, measureSpec)
 
+    }
+
+    /**
+     * 分词工具条的链接图标跟随分发规则：命中规则时显示目标应用图标
+     * （优先使用规则自定义的 iconPath），无规则时回退通用链接图标并着主题色。
+     */
+    private fun updateUrlButtonIcon(text: String) {
+        val url = UrlDetector.findFirstUrl(text) ?: return
+        urlIconJob?.cancel()
+        val scope = findViewTreeLifecycleOwner()?.lifecycleScope ?: return
+        urlIconJob = scope.launch {
+            val icon = withContext(Dispatchers.IO) {
+                runCatching {
+                    val rules = LinkRuleRepository.loadRules(context)
+                    val rule = LinkDispatcher.findRule(url, rules, "") ?: return@runCatching null
+                    val pkg = rule.targetPackage.takeIf { it.isNotEmpty() }
+                        ?: return@runCatching null
+                    IconHelper.getIconDrawable(context, pkg, rule.iconPath ?: "")
+                }.getOrNull()
+            }
+            withContext(Dispatchers.Main) {
+                val target = functionItemBinding.openUrl
+                if (icon != null) {
+                    // 规则命中：显示应用原色图标（必须清除 XML 里的视图级 tint，
+                    // 否则整个图标被染成主题色，实心图标会变成纯色方块）
+                    target.imageTintList = null
+                    target.clearColorFilter()
+                    target.setImageDrawable(icon)
+                } else {
+                    // 无规则：通用链接图标 + 主题色（恢复 XML 的 tint 行为）
+                    target.imageTintList = android.content.res.ColorStateList.valueOf(
+                        DynamicColorUtils.primaryColor
+                    )
+                    target.setImageResource(R.drawable.ic_baseline_insert_link_24)
+                }
+            }
+        }
     }
 
     fun selectAll() {
