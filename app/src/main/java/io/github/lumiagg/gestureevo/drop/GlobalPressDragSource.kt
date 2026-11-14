@@ -11,6 +11,9 @@ import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityEvent
 import android.content.Context
+import android.view.WindowManager
+import io.github.lumiagg.gestureevo.ITouchInterruptionGuard
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ENABLED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_EXCLUDED
@@ -48,6 +51,8 @@ internal class GlobalPressDragSource(
     private var settingsJob: Job? = null
     private var lookup: Job? = null
     private var windowCheck: Job? = null
+    private var interruption: Job? = null
+    private var interruptionAllowed: AtomicBoolean? = null
     private val ownOverlayIds = mutableSetOf<Int>()
     private var source: PressContentCapture.Source? = null
     private var cached: ClipData? = null
@@ -188,6 +193,42 @@ internal class GlobalPressDragSource(
         val content = cached ?: return
         val request = generation
         preparing = true
+        if (input.rootActive) {
+            beginPanel(content, request, rootEnabled = true)
+            return
+        }
+        val origin = source ?: run { cancel("source_unavailable"); return }
+        val x = latestX
+        val y = latestY
+        val overEvoWindow = OverlayTouchRegions.contains(x, y)
+        @Suppress("DEPRECATION")
+        val displayId = context.getSystemService(WindowManager::class.java).defaultDisplay.displayId
+        val permitted = AtomicBoolean(true).also { interruptionAllowed = it }
+        val guard = object : ITouchInterruptionGuard.Stub() {
+            override fun isCurrent(): Boolean = permitted.get()
+        }
+        interruption = scope.launch(Dispatchers.IO) {
+            val success = try {
+                // No EVO drag windows are attached yet; the synthetic DOWN must reach the source.
+                if (capture.sourceAt(x, y) != origin || overEvoWindow) false
+                else input.interruptSourceTouch(origin.packageName, x, y, displayId,
+                    SystemClock.uptimeMillis() + 500, guard)
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) {
+                android.util.Log.w("EVO-TouchBlock", "shizuku_cancel_failed type=${error.javaClass.simpleName}")
+                false
+            }
+            withContext(Dispatchers.Main) {
+                if (generation != request || !permitted.get() || !allowed()) return@withContext
+                android.util.Log.i("EVO-TouchBlock", "shizuku_cancel_result success=$success")
+                blocker.reportCancellationResult(success)
+                beginPanel(content, request, rootEnabled = false)
+            }
+        }
+    }
+
+    private fun beginPanel(content: ClipData, request: Long, rootEnabled: Boolean) {
+        if (generation != request || !allowed()) return
         val accepted = panel()?.beginContentDrag(content, latestX, latestY,
             stillCurrent = { generation == request && allowed() },
             onReady = {
@@ -201,7 +242,7 @@ internal class GlobalPressDragSource(
             onFailed = { reason -> if (generation == request) cancel("panel_$reason") },
         ) == true
         if (!accepted) cancel("panel_begin_failed")
-        else blocker.start(rootEnabled = input.rootActive) { generation == request && allowed() }
+        else blocker.start(rootEnabled = rootEnabled) { generation == request && allowed() }
     }
 
     fun onWindowEvent(event: AccessibilityEvent) {
@@ -261,6 +302,11 @@ internal class GlobalPressDragSource(
             reason = reason.substringBefore(':'), flags = (if (shown) 1 else 0) or (if (preparing) 2 else 0))
         if (active || shown || preparing) android.util.Log.i("EVO-Press", "cancel reason=$reason generation=$generation shown=$shown preparing=$preparing sourceWindow=${source?.windowId}")
         generation++
+        // A remote Binder call may outlive coroutine cancellation. Revoke its guard immediately.
+        interruptionAllowed?.set(false)
+        interruptionAllowed = null
+        interruption?.cancel()
+        interruption = null
         active = false
         shown = false
         preparing = false

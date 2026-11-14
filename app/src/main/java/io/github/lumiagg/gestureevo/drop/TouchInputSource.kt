@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.ITouchInterruptionGuard
 import io.github.lumiagg.gestureevo.utils.process.ProcessOutputLines
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +32,14 @@ internal class TouchInputSource(private val context: Context, private val scope:
     private var current: Run? = null
     var rootActive = false
         private set
+
+    suspend fun interruptSourceTouch(sourcePackage: String, x: Float, y: Float, displayId: Int,
+        deadlineUptimeMs: Long, guard: ITouchInterruptionGuard): Boolean {
+        val run = current ?: return false
+        if (run.cancelled || rootActive) return false
+        val connection = run.connection as? ShizukuTouchConnection ?: return false
+        return connection.interrupt(sourcePackage, x, y, displayId, deadlineUptimeMs, guard)
+    }
 
     fun start(rootEnabled: Boolean = false) {
         if (current != null) return

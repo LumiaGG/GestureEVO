@@ -78,6 +78,10 @@ class UserService : IUserService.Stub {
 
     override fun closeTouchStream(token: String) = touchStreams.close(token)
 
+    override fun interruptTouchForDrag(token: String, sourcePackage: String, x: Float, y: Float,
+        displayId: Int, deadlineUptimeMs: Long, guard: io.github.lumiagg.gestureevo.ITouchInterruptionGuard): Boolean =
+        touchStreams.interrupt(token, sourcePackage, x, y, displayId, deadlineUptimeMs, guard)
+
     companion object {
         private const val TAG = "UserService"
     }

@@ -8,6 +8,8 @@ import android.system.Os
 import io.github.lumiagg.gestureevo.utils.process.ProcessCommandRunner
 import io.github.lumiagg.gestureevo.utils.process.ProcessStreamRelay
 import java.io.Closeable
+import android.os.SystemClock
+import io.github.lumiagg.gestureevo.ITouchInterruptionGuard
 
 /** Privileged touch worker: owns discovery, stream tokens, owner death and lease cleanup. */
 internal class TouchStreamHost : Closeable {
@@ -16,6 +18,7 @@ internal class TouchStreamHost : Closeable {
     private var touchOwner: IBinder? = null
     private var touchDeath: IBinder.DeathRecipient? = null
     private val cancelledTouchStreams = LinkedHashSet<String>()
+    private val interrupter = ShizukuTouchInterrupter()
 
     @Synchronized
     fun open(token: String, owner: IBinder): ParcelFileDescriptor {
@@ -67,6 +70,17 @@ internal class TouchStreamHost : Closeable {
         touchDeath?.let { death -> runCatching { touchOwner?.unlinkToDeath(death, 0) } }
         touchDeath = null
         touchOwner = null
+    }
+
+    @Synchronized
+    fun interrupt(token: String, sourcePackage: String, x: Float, y: Float, displayId: Int,
+        deadlineUptimeMs: Long, guard: ITouchInterruptionGuard): Boolean {
+        fun current(): Boolean = token == touchToken && touchOwner?.isBinderAlive == true &&
+            touchStream?.isProcessAlive() == true && guard.asBinder().isBinderAlive &&
+            deadlineUptimeMs - SystemClock.uptimeMillis() in 1L..500L &&
+            runCatching { guard.isCurrent }.getOrDefault(false)
+        if (!current()) return false
+        return interrupter.interrupt(sourcePackage, x, y, displayId, ::current)
     }
 
     @Synchronized

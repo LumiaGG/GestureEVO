@@ -158,7 +158,7 @@ object ShizukuServiceHelper {
         .daemon(false)
         .processNameSuffix("service")
         .debuggable(BuildConfig.DEBUG)
-        .version(BuildConfig.VERSION_CODE + 7) // Replace workers after isolating touch-stream ownership.
+        .version(BuildConfig.VERSION_CODE + 8) // Drag interruption adds an append-only AIDL method.
 
     fun bindUserService(onBound: (() -> Unit)?) {
         if (isServiceBound) {

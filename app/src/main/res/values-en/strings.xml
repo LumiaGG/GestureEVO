@@ -1336,7 +1336,7 @@
     <string name="global_press_mode">Input mode</string>
     <string name="global_press_mode_standard">Standard mode</string>
     <string name="global_press_mode_root">Root enhanced mode</string>
-    <string name="global_press_mode_description">Standard: touch monitoring via Shizuku.\nRoot: direct input, with long-press protection and background scroll blocking.</string>
+    <string name="global_press_mode_description">Standard: Shizuku touch monitoring with an attempt to block background scrolling during drag.\nRoot: direct input with additional early long-press protection.</string>
     <string name="global_press_protect">Prevent native long-press interruptions</string>
     <string name="global_press_protect_description">Cancel the source app’s touch early to prevent long presses from interrupting global drag.\nMay interrupt system drag and drop, text selection, long-press menus, and scrolling after a hold. Enable only if interruptions occur.</string>
     <string name="global_press_root_fallback">Root touch input is unavailable. Trying standard mode; check Root or Shizuku authorization.</string>
@@ -1359,7 +1359,7 @@
         <item quantity="one">%1$d app excluded</item>
         <item quantity="other">%1$d apps excluded</item>
     </plurals>
-    <string name="global_press_permission_required">Global long-press drag requires EVO accessibility. Standard mode needs a running, authorized Shizuku service; Root mode needs superuser authorization. The selected backend must have touchscreen access. Images use the visible screen region. Root mode attempts to cancel the source touch; if denied, the source app still responds to holding and moving.</string>
+    <string name="global_press_permission_required">Global long-press drag requires EVO accessibility. Standard mode needs a running, authorized Shizuku service; Root mode needs superuser authorization. The selected backend must have touchscreen access. Images use the visible screen region. Both modes attempt to cancel the source touch. System restrictions may prevent cancellation, so the source app may still respond to holding and moving.</string>
     <string name="external_drop_conversion_title">Drag text/image conversion</string>
     <string name="external_drop_conversion_desc">Hover over Convert for about half a second to render text as an image or extract image text with local OCR. Keep holding to drag to the updated search engines or other tools. Leave and re-enter to restore the original content. Available for global long-press drags only; hidden during system drags.</string>
     <string name="external_drop_to_image">To image</string>

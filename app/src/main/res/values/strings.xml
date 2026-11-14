@@ -1339,7 +1339,7 @@
     <string name="global_press_mode">运行模式</string>
     <string name="global_press_mode_standard">标准模式</string>
     <string name="global_press_mode_root">Root 增强模式</string>
-    <string name="global_press_mode_description">标准：通过 Shizuku 监听触摸。\nRoot：直接监听，可防长按打断、阻止背景滑动。</string>
+    <string name="global_press_mode_description">标准：通过 Shizuku 监听触摸，拖拽时尝试阻止背景滑动。\nRoot：直接监听，并支持提前防止长按打断。</string>
     <string name="global_press_protect">防止原应用长按打断</string>
     <string name="global_press_protect_description">提前取消原应用触摸，防止长按打断全局拖拽。\n可能中断系统拖拽、文字选择、长按菜单及按住后的滑动；仅在遇到打断时开启。</string>
     <string name="global_press_root_fallback">Root 触摸不可用，正在尝试标准模式；请检查 Root 或 Shizuku 授权。</string>
@@ -1361,7 +1361,7 @@
     <plurals name="global_press_excluded_count">
         <item quantity="other">已排除 %1$d 个应用</item>
     </plurals>
-    <string name="global_press_permission_required">全局长按拖放需要开启 EVO 无障碍服务。标准模式需要运行并授权 Shizuku，Root 模式需要超级用户授权，且所选通道能读取触屏输入。图片仅取屏幕可见区域；Root 模式会尝试取消原应用触摸，系统拒绝时原应用仍会响应长按和滑动。</string>
+    <string name="global_press_permission_required">全局长按拖放需要开启 EVO 无障碍服务。标准模式需要运行并授权 Shizuku，Root 模式需要超级用户授权，且所选通道能读取触屏输入。图片仅取屏幕可见区域；两种模式都会尝试取消原应用触摸，效果受系统限制，失败时原应用仍可能响应长按和滑动。</string>
     <string name="external_drop_conversion_title">拖拽图文转换</string>
     <string name="external_drop_conversion_desc">拖到转换按钮上停留约半秒，将文字生成图片或通过本地 OCR 提取图片文字，保持按住即可继续拖向更新后的搜索引擎或其他工具。移出再拖入可切回原内容。仅支持全局长按拖拽，系统拖拽不显示此按钮。</string>
     <string name="external_drop_to_image">转图片</string>

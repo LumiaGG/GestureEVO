@@ -14,12 +14,9 @@ import kotlinx.coroutines.launch
 /**
  * Full-screen transparent sink attached while a press drag is shown. Window touch targets are
  * fixed at DOWN, so the shield cannot recall the stream already in flight; it only swallows
- * touches that START while it is up (secondary fingers, stray taps). No synthetic gesture is
- * dispatched here: injected streams neither survive real touch events (MotionEventInjector
- * cancels them) nor end the app's own stream - on-device testing (OnePlus PJA110, API 36) showed
- * shield-targeted strokes landing without stopping the background scroll, and the retired 1ms
- * probe only "worked" when it fell through to the app and briefly handed it a second pointer.
- * Root mode additionally asks a separate root runtime to cancel the in-flight stream.
+ * touches that START while it is up (secondary fingers, stray taps). Standard mode attempts
+ * Shizuku DOWN/CANCEL before this shield attaches. Root mode keeps its direct cancellation
+ * helper. Injecting onto the shield itself does not reliably end the source application's stream.
  */
 internal class BackgroundTouchBlocker(private val context: Context, private val scope: CoroutineScope) :
     BaseFloatingWindow(context, scope, "EVO-TouchBlock") {
@@ -36,13 +33,17 @@ internal class BackgroundTouchBlocker(private val context: Context, private val 
         scope.launch(Dispatchers.Main) {
             if (!closed && rootRequested && generation == request) {
                 rootSucceeded = success
-                if (!success && !failureReported) {
-                    failureReported = true
-                    ToastHelper.showInUIThread(context, context.getString(R.string.global_press_cancel_failed))
-                }
+                reportCancellationResult(success)
             }
         }
     })
+
+    fun reportCancellationResult(success: Boolean) {
+        if (!success && !failureReported) {
+            failureReported = true
+            ToastHelper.showInUIThread(context, context.getString(R.string.global_press_cancel_failed))
+        }
+    }
 
     fun protectLongPress(stillCurrent: () -> Boolean) {
         if (closed || rootRequested || !stillCurrent()) return

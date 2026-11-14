@@ -5,6 +5,7 @@ import android.os.Binder
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import io.github.lumiagg.gestureevo.IUserService
+import io.github.lumiagg.gestureevo.ITouchInterruptionGuard
 import io.github.lumiagg.gestureevo.utils.shizuku.ShizukuServiceHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -52,5 +53,13 @@ internal class ShizukuTouchConnection : TouchInputConnection {
         }
         runCatching { shell?.asBinder()?.unlinkToDeath(death, 0) }
         runCatching { shell?.closeTouchStream(token) }
+    }
+
+    suspend fun interrupt(sourcePackage: String, x: Float, y: Float, displayId: Int,
+        deadlineUptimeMs: Long, guard: ITouchInterruptionGuard): Boolean = withContext(Dispatchers.IO) {
+        currentCoroutineContext().ensureActive()
+        val shell = synchronized(this@ShizukuTouchConnection) { if (closed) null else remote }
+            ?: return@withContext false
+        shell.interruptTouchForDrag(token, sourcePackage, x, y, displayId, deadlineUptimeMs, guard)
     }
 }
