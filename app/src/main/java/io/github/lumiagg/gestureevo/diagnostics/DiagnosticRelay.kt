@@ -3,103 +3,19 @@ package io.github.lumiagg.gestureevo.diagnostics
 import java.io.Closeable
 import java.io.InputStream
 import java.io.OutputStream
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
+import io.github.lumiagg.gestureevo.utils.process.ProcessStreamRelay
 
-/** Continuous bounded transport. Raw messages are streamed through a pipe and never saved to disk. */
+/** Bounded log transport. Diagnostic framing and logcat policy stay in this module. */
 class DiagnosticRelay(
-    command: List<String>, private val output: OutputStream,
-    durationMs: Long? = 60_000, private val byteLimit: Int? = 2 * 1024 * 1024,
-    private val stdinLease: Boolean = false, private val receiverClosed: (() -> Boolean)? = null,
-    leaseHeartbeatMs: Long? = null,
+    command: List<String>, output: OutputStream,
+    durationMs: Long = 60_000, byteLimit: Int = 2 * 1024 * 1024,
 ) : Closeable {
-    private val closed = AtomicBoolean()
-    private val process = ProcessBuilder(command).redirectErrorStream(true).start()
-    private val watchdog = Executors.newSingleThreadScheduledExecutor { Thread(it, "log-stream-deadline").apply { isDaemon = true } }
-    private val reader = Thread({ pump() }, "log-stream-relay").apply { isDaemon = true }
+    private val transport = ProcessStreamRelay(command, output, durationMs, byteLimit,
+        onEnd = { stream, reason, code ->
+            stream.write("\nGEVO_END $reason $code\n".toByteArray(Charsets.UTF_8))
+        })
 
-    init {
-        if (!stdinLease) process.outputStream.close()
-        if (durationMs != null) watchdog.schedule({ close() }, durationMs, TimeUnit.MILLISECONDS)
-        if (receiverClosed != null) watchdog.scheduleWithFixedDelay({
-            if (runCatching { receiverClosed?.invoke() == true }.getOrDefault(true)) close()
-        }, 250, 250, TimeUnit.MILLISECONDS)
-        if (leaseHeartbeatMs != null) watchdog.scheduleWithFixedDelay({
-            if (!closed.get()) {
-                try {
-                    process.outputStream.write('\n'.code)
-                    process.outputStream.flush()
-                } catch (_: Exception) { close() }
-            }
-        }, 0, leaseHeartbeatMs, TimeUnit.MILLISECONDS)
-        reader.start()
-    }
-
-    private fun pump() {
-        try {
-            val buffer = ByteArray(4096)
-            var copied = 0
-            process.inputStream.use { input ->
-                while (!closed.get() && (byteLimit == null || copied < byteLimit)) {
-                    val size = input.read(buffer, 0, if (byteLimit == null) buffer.size else minOf(buffer.size, byteLimit - copied))
-                    if (size < 0) break
-                    output.write(buffer, 0, size)
-                    if (byteLimit != null) copied += size
-                }
-            }
-            if (!closed.get()) {
-                val limited = byteLimit != null && copied >= byteLimit
-                if (limited && !stdinLease) process.destroy()
-                val code = if (limited) 0 else process.waitFor()
-                val reason = if (limited) "output_limit" else if (code == 0) "stream_closed" else "command_failed"
-                output.write("\nGEVO_END $reason $code\n".toByteArray(Charsets.UTF_8))
-                output.flush()
-            }
-        } catch (_: Exception) {
-            // A closed receiver or terminated process is expected during cancellation.
-        } finally { close() }
-    }
-
-    internal fun isProcessAlive(): Boolean = try {
-        process.exitValue()
-        false
-    } catch (_: IllegalThreadStateException) { true }
-
-    private fun awaitExit(timeoutMs: Long): Boolean {
-        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
-        while (isProcessAlive()) {
-            if (System.nanoTime() >= deadline) return false
-            Thread.sleep(10)
-        }
-        return true
-    }
-
-    private fun forceStop() {
-        if (android.os.Build.VERSION.SDK_INT >= 26) process.destroyForcibly() else process.destroy()
-    }
-
-    override fun close() {
-        if (!closed.compareAndSet(false, true)) return
-        // Close the outgoing pipe before process cleanup, so a blocked downstream read gets EOF.
-        runCatching { output.close() }
-        runCatching { process.outputStream.close() }
-        try {
-            if (stdinLease) {
-                // Let the shell reap its worker; missing heartbeats also bound a stalled su client.
-                awaitExit(1000)
-            } else {
-                process.destroy()
-                if (!awaitExit(500)) {
-                    forceStop()
-                    awaitExit(500)
-                }
-            }
-        } catch (_: InterruptedException) {
-            if (!stdinLease) forceStop()
-            Thread.currentThread().interrupt()
-        } finally { watchdog.shutdownNow() }
-    }
+    override fun close() = transport.close()
 
     companion object {
         val arguments = listOf("/system/bin/logcat", "-v", "epoch", "-T", "1",
@@ -119,26 +35,6 @@ class DiagnosticRelay(
 }
 
 object DiagnosticLines {
-    /** Discard oversized lines while continuing to drain the stream. No unbounded readLine allocation. */
-    fun read(input: InputStream, maxLength: Int = 8192, onDiscard: () -> Unit = {}, onLine: (String) -> Boolean) {
-        val reader = input.reader(Charsets.UTF_8)
-        val buffer = CharArray(2048)
-        val line = StringBuilder()
-        var oversized = false
-        while (true) {
-            val count = reader.read(buffer)
-            if (count < 0) break
-            for (index in 0 until count) {
-                val char = buffer[index]
-                if (char == '\n') {
-                    if (oversized) onDiscard() else if (!onLine(line.toString().trimEnd('\r'))) return
-                    line.setLength(0)
-                    oversized = false
-                } else if (!oversized) {
-                    if (line.length >= maxLength) { oversized = true; line.setLength(0) } else line.append(char)
-                }
-            }
-        }
-        if (oversized) onDiscard() else if (line.isNotEmpty()) onLine(line.toString())
-    }
+    fun read(input: InputStream, maxLength: Int = 8192, onDiscard: () -> Unit = {}, onLine: (String) -> Boolean) =
+        io.github.lumiagg.gestureevo.utils.process.ProcessOutputLines.read(input, maxLength, onDiscard, onLine)
 }

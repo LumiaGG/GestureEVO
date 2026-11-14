@@ -8,7 +8,7 @@ import android.util.DisplayMetrics
 import android.view.WindowManager
 import io.github.lumiagg.gestureevo.IUserService
 import io.github.lumiagg.gestureevo.R
-import io.github.lumiagg.gestureevo.diagnostics.DiagnosticLines
+import io.github.lumiagg.gestureevo.utils.process.ProcessOutputLines
 import io.github.lumiagg.gestureevo.gesture.GestureService
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.shizuku.ShizukuServiceHelper
@@ -97,7 +97,7 @@ internal class ShizukuTouchSource(private val service: GestureService,
                             }
                         }
                         ParcelFileDescriptor.AutoCloseInputStream(pipe).use { input ->
-                            DiagnosticLines.read(input, maxLength = 512, onDiscard = { throw IllegalStateException("Oversized input frame") }) { line ->
+                            ProcessOutputLines.read(input, maxLength = 512, onDiscard = { throw IllegalStateException("Oversized input frame") }) { line ->
                                 if (run.cancelled || !isActive) return@read false
                                 if (!ready.get()) {
                                     val header = line.split(' ')
@@ -117,6 +117,7 @@ internal class ShizukuTouchSource(private val service: GestureService,
                                         }
                                     }
                                 } else {
+                                    // Accept the terminator emitted by older touch workers until they are replaced.
                                     if (line.startsWith("GEVO_END")) return@read false
                                     val timestamp = TouchInputProtocol.eventTime(line, SystemClock.uptimeMillis())
                                     if (timestamp == null) {

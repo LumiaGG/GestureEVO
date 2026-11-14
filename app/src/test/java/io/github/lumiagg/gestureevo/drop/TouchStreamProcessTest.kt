@@ -1,6 +1,6 @@
 package io.github.lumiagg.gestureevo.drop
 
-import io.github.lumiagg.gestureevo.diagnostics.DiagnosticRelay
+import io.github.lumiagg.gestureevo.utils.process.ProcessStreamRelay
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -30,7 +30,7 @@ class TouchStreamProcessTest {
 
     @Test(timeout = 10000) fun renewalsKeepTheSameWorkerAliveUntilExplicitStop() {
         val sink = Sink()
-        val relay = DiagnosticRelay(command(), sink, durationMs = null, byteLimit = null,
+        val relay = ProcessStreamRelay(command(), sink, durationMs = null, byteLimit = null,
             stdinLease = true, leaseHeartbeatMs = 20)
         try {
             assertTrue(sink.ready.await(3, TimeUnit.SECONDS))
@@ -42,7 +42,7 @@ class TouchStreamProcessTest {
 
     @Test(timeout = 10000) fun missingHeartbeatsReapTheWorkerEvenWithStdinStillOpen() {
         val sink = Sink()
-        DiagnosticRelay(command(), sink, durationMs = null, byteLimit = null, stdinLease = true).use {
+        ProcessStreamRelay(command(), sink, durationMs = null, byteLimit = null, stdinLease = true).use {
             assertTrue(sink.ready.await(3, TimeUnit.SECONDS))
             assertTrue(sink.closed.await(3, TimeUnit.SECONDS))
             assertTrue(sink.toString("UTF-8").contains("reaped"))

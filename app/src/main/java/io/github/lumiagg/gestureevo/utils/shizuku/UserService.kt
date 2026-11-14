@@ -13,7 +13,7 @@ import kotlin.system.exitProcess
 class UserService : IUserService.Stub {
     private val diagnosticStreams = HashMap<String, io.github.lumiagg.gestureevo.diagnostics.DiagnosticRelay>()
     private val cancelledStreams = LinkedHashSet<String>()
-    private var touchStream: io.github.lumiagg.gestureevo.diagnostics.DiagnosticRelay? = null
+    private var touchStream: io.github.lumiagg.gestureevo.utils.process.ProcessStreamRelay? = null
     private var touchToken: String? = null
     private var touchOwner: android.os.IBinder? = null
     private var touchDeath: android.os.IBinder.DeathRecipient? = null
@@ -82,10 +82,10 @@ class UserService : IUserService.Stub {
         check(token !in cancelledTouchStreams)
         closeTouchStream(touchToken.orEmpty())
         val inventory = runCatching {
-            val (code, output) = DiagnosticProcess.run(listOf("/system/bin/cat", "/proc/bus/input/devices"))
+            val (code, output) = io.github.lumiagg.gestureevo.utils.process.ProcessCommandRunner.run(listOf("/system/bin/cat", "/proc/bus/input/devices"))
             if (code == 0) output else ""
         }.getOrDefault("")
-        val (rangeCode, ranges) = DiagnosticProcess.run(listOf("/system/bin/getevent", "-lp"))
+        val (rangeCode, ranges) = io.github.lumiagg.gestureevo.utils.process.ProcessCommandRunner.run(listOf("/system/bin/getevent", "-lp"))
         check(rangeCode == 0) { "Touch device discovery failed: getevent exit=$rangeCode" }
         val device = checkNotNull(io.github.lumiagg.gestureevo.drop.TouchInputProtocol.discover(inventory, ranges)) { "No readable multitouch screen" }
         val pipe = android.os.ParcelFileDescriptor.createPipe()
@@ -97,7 +97,7 @@ class UserService : IUserService.Stub {
             touchDeath = death
             touchToken = token
             output.write("EVO_TOUCH ${device.minX} ${device.maxX} ${device.minY} ${device.maxY}\n".toByteArray())
-            touchStream = io.github.lumiagg.gestureevo.diagnostics.DiagnosticRelay(
+            touchStream = io.github.lumiagg.gestureevo.utils.process.ProcessStreamRelay(
                 io.github.lumiagg.gestureevo.drop.TouchStreamProcess.arguments(device.path), output,
                 durationMs = null, byteLimit = null, stdinLease = true,
                 leaseHeartbeatMs = io.github.lumiagg.gestureevo.drop.TouchStreamProcess.HEARTBEAT_MS,
