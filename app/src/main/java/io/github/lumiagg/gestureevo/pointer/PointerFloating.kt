@@ -101,6 +101,27 @@ class PointerFloating(
     private var pointerVisibleRequested = false
     var triggerSide: String? = null
 
+    /** Pointer icon state for the link radar: screen-space center plus icon radius. */
+    data class PointerSnapshot(val centerX: Float, val centerY: Float, val radiusPx: Float)
+
+    /**
+     * True only while a drag selection box is actually being drawn, so the radar stands down
+     * for real selections but keeps highlighting links while the pointer merely hovers in
+     * drag mode (hover-stability auto-enters drag mode and would otherwise kill the radar).
+     */
+    val isPointerDragSelecting: Boolean
+        get() = pointerManger.isDragMode && pointerManger.isDragSelectionStarted
+
+    /** Current pointer center/radius in screen coordinates, null while the icon is hidden. */
+    fun currentPointerSnapshot(): PointerSnapshot? = pointerManger.currentPointerSnapshot()
+
+    /**
+     * Lets the link radar consume the pointer's tap: with a link targeted, tapping the
+     * pointer dispatches through the rules instead of clicking the screen. Return true to
+     * skip the synthesized screen click.
+     */
+    var onPointerTapInterceptor: ((Float, Float) -> Boolean)? = null
+
     init {
         initView()
         initFloatingWindow()
@@ -461,6 +482,10 @@ class PointerFloating(
         var touchViewX = 0f
         var touchViewY = 0f
         var isDragMode = false
+
+        /** True only once the drag selection box is actually being drawn (not mere drag mode). */
+        val isDragSelectionStarted: Boolean
+            get() = hasStartedDragSelection
         /** Set when the pointer is leaving because of a tap, so hide plays the tap exit. */
         var tapExitPending = false
         /** True once the icon's layout or backplate has been changed away from the stock XML. */
@@ -480,6 +505,16 @@ class PointerFloating(
         private var lastPotentialThinRect: Rect? = null
         private val moveTouchHandler = MoveTouchHandler()
         val viewPositionMonitor = ViewPositionMonitor()
+
+        /** Snapshot for the link radar; null whenever the icon is invisible or not laid out. */
+        fun currentPointerSnapshot(): PointerSnapshot? {
+            if (view.visibility != View.VISIBLE || view.alpha <= 0f || view.width <= 0) return null
+            return PointerSnapshot(
+                view.x + view.width / 2f,
+                view.y + view.height / 2f,
+                minOf(view.width, view.height) / 2f
+            )
+        }
 
         init {
             val layoutParams = LayoutParams(
@@ -987,6 +1022,17 @@ class PointerFloating(
                     potentialDragSelectSourceRect = null
                     pendingPotentialDragSelectRect = null
                     highlightRectView.hidePotentialRect()
+                    // 链接雷达命中且未真正框选：悬停松手＝按规则跳转（LinkGo 语义），不再取词。
+                    // 真正框选过文本（hasStartedDragSelection）时取词优先，照常走取词流程。
+                    val radarIntercepted = !hasStartedDragSelection &&
+                        onPointerTapInterceptor?.invoke(
+                            computePosition().x, computePosition().y
+                        ) == true
+                    if (radarIntercepted) {
+                        view.visibility = View.VISIBLE
+                        exitDragMode()
+                        return
+                    }
                     context.launch {
                         val resolvedSelectionRect = if (!hasStartedDragSelection) {
                             previewSelectionRect ?: resolvePotentialDragSelectRect(currentSelectionRect)
@@ -1034,6 +1080,10 @@ class PointerFloating(
                         "PointerFloating",
                         "handleActionUp: ${targetPoint.x}, ${targetPoint.y}"
                     )
+                    // 链接雷达命中时，点击指针＝按规则跳转，不再向屏幕合成点击。
+                    val intercepted =
+                        onPointerTapInterceptor?.invoke(targetPoint.x, targetPoint.y) == true
+                    if (intercepted) return
                     // The exit animation is driven by hidePointer on the wrapper view, so the
                     // icon and its ring can never drift apart. This only flags the tap.
                     tapExitPending = true

@@ -68,6 +68,10 @@ internal class ImageTextSelectionActionBarController(
             true
         }
         openUrl.setOnClickListener { actionProvider()?.handleBigBangUrlClick() }
+        openUrl.setOnLongClickListener {
+            actionProvider()?.handleBigBangUrlLongClick()
+            true
+        }
         sendToEVO.setOnClickListener { actionProvider()?.handleSendToEVO(false) }
         sendToEVO.setOnLongClickListener {
             actionProvider()?.handleSendToEVO(true)

@@ -128,6 +128,10 @@ class InspireContentView : MaterialCardView {
         btnModeOcr.setOnClickListener { switchSourceMode(isOcr = true) }
         btnModeAccessibility.setOnClickListener { switchSourceMode(isOcr = false) }
         openUrl.setOnClickListener { actionWrapper?.handleUrlClick() }
+        openUrl.setOnLongClickListener {
+            actionWrapper?.handleUrlLongClick()
+            true
+        }
         btnReselect.setOnClickListener { actionWrapper?.handleReselectClick() }
         btnSaveImage.setOnClickListener { actionWrapper?.handleSaveImageClick(false) }
         btnSaveImage.setOnLongClickListener {

@@ -21,18 +21,16 @@ import com.google.zxing.common.HybridBinarizer
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.gesture.GestureService
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionType
+import io.github.lumiagg.gestureevo.link.LinkLauncher
 import io.github.lumiagg.gestureevo.pin.PinPoolStore
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_DELAY_REMOVE_IMAGE
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_SEARCH_APP
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_SEARCH_LINK
-import io.github.lumiagg.gestureevo.settings.ui.DomainAppManager
 import io.github.lumiagg.gestureevo.utils.ActionProxy
 import io.github.lumiagg.gestureevo.utils.ClipboardUtils
 import io.github.lumiagg.gestureevo.utils.GalleryImageManager
-import io.github.lumiagg.gestureevo.utils.GestureActionLink
 import io.github.lumiagg.gestureevo.utils.ToastHelper
-import io.github.lumiagg.gestureevo.utils.UrlDetector
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import io.github.lumiagg.gestureevo.utils.uriBuilder
@@ -43,51 +41,22 @@ import java.io.FileOutputStream
 import java.net.URLEncoder
 
 object InspireHelperUtils {
+    /**
+     * Opens the first link found in [text] using the configured dispatch rules.
+     *
+     * Rule matching, short link resolution and the fallback to the system browser all live in
+     * [LinkLauncher], so this only extracts the text and forwards it.
+     */
     suspend fun extractAndOpenURL(context: Context, text: String, side: String? = null): Boolean {
-        val urls = UrlDetector.findUrls(text)
+        return LinkLauncher.openFromText(context, text)
+    }
 
-        if (urls.isNotEmpty()) {
-            val url = UrlDetector.normalizeForOpening(urls.first()) ?: urls.first()
-
-            // Attempt domain-specific app matching
-            val domainAppManager = DomainAppManager(context)
-            val (pkg, finalUrl) = domainAppManager.processLinkRedirect(url)
-            val effectiveSide = side ?: InspireDataHolder.triggerSide
-            if (pkg.isNotEmpty()) {
-                val actionLink = GestureActionLink()
-                actionLink.actionType = GestureActionType.OTHER_LINK
-                actionLink.addParams("uri", finalUrl)
-                actionLink.addParams("pkg", pkg)
-                actionLink.addParams("freeform", "true")
-                effectiveSide?.let { actionLink.addParams("triggerSide", it) }
-                ActionProxy(context, actionLink.buildLink()).execute(side = effectiveSide)
-                return true
-            }
-
-            // Fallback to opening link with default browser or handler
-            val packageManager = context.packageManager
-            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            if (intent.resolveActivity(packageManager) != null) {
-                context.startActivity(intent)
-                return true
-            } else {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.inspire_link_no_app),
-                        Toast.LENGTH_SHORT
-                    )
-                        .show()
-                }
-                return false
-            }
-        }
-
-        withContext(Dispatchers.Main) {
-            Toast.makeText(context, context.getString(R.string.inspire_link_not_found), Toast.LENGTH_SHORT).show()
-        }
-        return false
+    /**
+     * Opens the first link with the system default handler, skipping the dispatch rules. This
+     * is the long-press escape hatch when a rule misfires.
+     */
+    suspend fun extractAndOpenURLDirect(context: Context, text: String): Boolean {
+        return LinkLauncher.openFromText(context, text, bypassRules = true)
     }
 
 

@@ -1,0 +1,43 @@
+<!-- RecyclerView row ripple, not an Activity window background. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="16dp"
+    tools:ignore="Overdraw">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/appIcon"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="12dp" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/urlText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="middle"
+            android:maxLines="1"
+            android:textSize="14sp" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/metaText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+</LinearLayout>

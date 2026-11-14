@@ -216,6 +216,13 @@ class SettingsActivity : AppCompatActivity() {
                 }
             }
 
+            findPreference<Preference>("preferenceLink")?.apply {
+                setOnPreferenceClickListener {
+                    startActivity(Intent(requireActivity(), LinkRuleSettingsActivity::class.java))
+                    return@setOnPreferenceClickListener true
+                }
+            }
+
             findPreference<Preference>("preferenceInspire")?.apply {
                 setOnPreferenceClickListener {
                     startActivity(

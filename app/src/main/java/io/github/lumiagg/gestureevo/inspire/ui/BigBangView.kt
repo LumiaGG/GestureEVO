@@ -87,6 +87,10 @@ class BigBangView : ViewGroup, NestedScrollingChild {
             }
             openUrl.apply {
                 setOnClickListener { bigBangStatusListener?.onURL() }
+                setOnLongClickListener {
+                    (bigBangStatusListener as? BigBangActionWrapper)?.handleBigBangUrlLongClick()
+                    true
+                }
                 visibility = GONE
             }
             pin.setOnClickListener { bigBangStatusListener?.onPin() }

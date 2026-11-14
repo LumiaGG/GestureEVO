@@ -66,6 +66,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         CurrentPackageProvider.onAccessibilityEvent(event)
         gestureManager?.onWindowStateChanged(event)
+        gestureManager?.onRadarAccessibilityEvent(event)
     }
 
     override fun onInterrupt() {
