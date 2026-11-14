@@ -1,7 +1,6 @@
 package io.github.lumiagg.gestureevo.settings
 
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ENABLED
-import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ROOT
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_PROTECT
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_TIMEOUT
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_EXCLUDED
@@ -162,7 +161,6 @@ class InspireSettingsActivity : AppCompatActivity() {
         updateDefaultShareBehaviorText(defaultShareBehavior)
         binding.globalPressSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_ENABLED, false)
         binding.globalPressProtectSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_PROTECT, false)
-        updateGlobalPressModeText(settingsStore.readKey(KEY_GLOBAL_PRESS_ROOT, false))
         updateGlobalPressSettingsEnabled()
         binding.selectedGlobalPressTimeoutText.text = getString(
             R.string.global_press_milliseconds, settingsStore.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500)
@@ -339,8 +337,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         binding.globalPressSwitch.setOnCheckedChangeListener { _, enabled ->
             updateGlobalPressSettingsEnabled()
             lifecycleScope.launch {
-                if (enabled && !settingsStore.readKey(KEY_GLOBAL_PRESS_ROOT, false) &&
-                    !AShizuku.checkPermission(this@InspireSettingsActivity)) {
+                if (enabled && !AShizuku.checkPermission(this@InspireSettingsActivity)) {
                     binding.globalPressSwitch.isChecked = false
                     return@launch
                 }
@@ -355,23 +352,6 @@ class InspireSettingsActivity : AppCompatActivity() {
         }
         binding.globalPressProtectSwitch.setOnCheckedChangeListener { _, enabled ->
             lifecycleScope.launch { settingsStore.saveKey(KEY_GLOBAL_PRESS_PROTECT, enabled) }
-        }
-        binding.globalPressModeRow.setOnClickListener {
-            lifecycleScope.launch {
-                val root = settingsStore.readKey(KEY_GLOBAL_PRESS_ROOT, false)
-                MaterialAlertDialogBuilder(this@InspireSettingsActivity)
-                    .setTitle(R.string.global_press_mode)
-                    .setSingleChoiceItems(arrayOf(getString(R.string.global_press_mode_standard),
-                        getString(R.string.global_press_mode_root)), if (root) 1 else 0) { dialog, which ->
-                        lifecycleScope.launch {
-                            if (which == 0 && binding.globalPressSwitch.isChecked &&
-                                !AShizuku.checkPermission(this@InspireSettingsActivity)) return@launch
-                            settingsStore.saveKey(KEY_GLOBAL_PRESS_ROOT, which == 1)
-                            updateGlobalPressModeText(which == 1)
-                        }
-                        dialog.dismiss()
-                    }.setNegativeButton(android.R.string.cancel, null).show()
-            }
         }
         binding.globalPressTimeoutRow.setOnClickListener {
             lifecycleScope.launch {
@@ -706,11 +686,6 @@ class InspireSettingsActivity : AppCompatActivity() {
             "pinpool" -> getString(R.string.inspire_settings_share_to_pinpool)
             else -> getString(R.string.inspire_settings_share_to_tokenization)
         }
-    }
-
-    private fun updateGlobalPressModeText(root: Boolean) {
-        binding.selectedGlobalPressModeText.setText(if (root) R.string.global_press_mode_root else R.string.global_press_mode_standard)
-        binding.globalPressProtectRow.visibility = if (root) View.VISIBLE else View.GONE
     }
 
     private fun updateGlobalPressSettingsEnabled() {

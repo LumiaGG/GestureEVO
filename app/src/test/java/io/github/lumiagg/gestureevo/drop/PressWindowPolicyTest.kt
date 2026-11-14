@@ -44,7 +44,7 @@ class PressWindowPolicyTest {
         )) org.junit.Assert.assertFalse(covered(windows))
     }
 
-    @Test fun focusedSmallMenuRequiresRootProtection() {
+    @Test fun focusedSmallMenuRequiresLongPressProtection() {
         for (popup in listOf(menuPopup(focused = true), menuPopup(active = true))) {
             val windows = listOf(source, ownOverlay, popup)
             assertEquals("source_switched", reason(windows))
@@ -52,7 +52,7 @@ class PressWindowPolicyTest {
         }
     }
 
-    @Test fun smallMenuWindowStateRequiresRootProtection() {
+    @Test fun smallMenuWindowStateRequiresLongPressProtection() {
         val windows = listOf(source, ownOverlay, menuPopup())
         assertEquals("other_window_state", reason(windows, stateChanged = true))
         assertNull(reason(windows, stateChanged = true, allowSourceMenu = true))

@@ -19,45 +19,37 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** One input stream owns a gesture; backend changes always cancel the current gesture first. */
+/** One authorized Shizuku stream owns a gesture; reconnects cancel the current gesture first. */
 internal class TouchInputSource(private val context: Context, private val scope: CoroutineScope,
     private val event: (Int, Float, Float, Long) -> Unit, private val disconnected: () -> Unit) {
     private class Run {
         var job: Job? = null
         @Volatile var cancelled = false
-        @Volatile var connection: TouchInputConnection? = null
-        var useRoot = false
-        var rootFailed = false
+        @Volatile var connection: ShizukuTouchConnection? = null
     }
     private var current: Run? = null
-    var rootActive = false
-        private set
 
     suspend fun interruptSourceTouch(sourcePackage: String, x: Float, y: Float, displayId: Int,
         deadlineUptimeMs: Long, guard: ITouchInterruptionGuard): Boolean {
         val run = current ?: return false
-        if (run.cancelled || rootActive) return false
-        val connection = run.connection as? ShizukuTouchConnection ?: return false
+        if (run.cancelled) return false
+        val connection = run.connection ?: return false
         return connection.interrupt(sourcePackage, x, y, displayId, deadlineUptimeMs, guard)
     }
 
-    fun start(rootEnabled: Boolean = false) {
+    fun start() {
         if (current != null) return
-        val run = Run().apply { useRoot = rootEnabled }
+        val run = Run()
         current = run
-        PressInputStatus.update(if (rootEnabled) R.string.global_press_status_root_connecting else R.string.global_press_status_standard_connecting)
+        PressInputStatus.update(R.string.global_press_status_standard_connecting)
         run.job = scope.launch(Dispatchers.IO) {
             var reported = false
             while (isActive && !run.cancelled) {
                 withContext(Dispatchers.Main) {
-                    if (!run.cancelled) PressInputStatus.update(when {
-                        run.useRoot -> R.string.global_press_status_root_connecting
-                        run.rootFailed -> R.string.global_press_status_falling_back
-                        else -> R.string.global_press_status_standard_connecting
-                    })
+                    if (!run.cancelled) PressInputStatus.update(R.string.global_press_status_standard_connecting)
                 }
                 try {
-                    val connection: TouchInputConnection = if (run.useRoot) RootTouchConnection() else ShizukuTouchConnection()
+                    val connection = ShizukuTouchConnection()
                     run.connection = connection
                     val ready = java.util.concurrent.atomic.AtomicBoolean()
                     val deadline = scope.launch(Dispatchers.IO) {
@@ -99,12 +91,7 @@ internal class TouchInputSource(private val context: Context, private val scope:
                                     deadline.cancel()
                                     scope.launch(Dispatchers.Main) {
                                         if (!run.cancelled && run.connection === connection) {
-                                            rootActive = run.useRoot
-                                            PressInputStatus.update(when {
-                                                run.useRoot -> R.string.global_press_status_root_ready
-                                                run.rootFailed -> R.string.global_press_status_fallback_ready
-                                                else -> R.string.global_press_status_standard_ready
-                                            })
+                                            PressInputStatus.update(R.string.global_press_status_standard_ready)
                                         }
                                     }
                                 } else {
@@ -134,21 +121,18 @@ internal class TouchInputSource(private val context: Context, private val scope:
                 } catch (cancelled: CancellationException) { throw cancelled }
                 catch (error: Exception) {
                     android.util.Log.w("EVO-Press", "Touch input unavailable", error)
-                    val rootFailed = run.useRoot
-                    if (rootFailed) { run.useRoot = false; run.rootFailed = true }
                     withContext(Dispatchers.Main) {
                         if (!run.cancelled) {
-                            PressInputStatus.update(if (rootFailed) R.string.global_press_status_falling_back else R.string.global_press_status_unavailable)
+                            PressInputStatus.update(R.string.global_press_status_unavailable)
                             if (!reported) {
                                 reported = true
-                                ToastHelper.showInUIThread(context, context.getString(if (rootFailed)
-                                    R.string.global_press_root_fallback else R.string.global_press_permission_required))
+                                ToastHelper.showInUIThread(context, context.getString(R.string.global_press_permission_required))
                             }
                         }
                     }
                 } finally {
                     withContext(Dispatchers.Main) {
-                        if (!run.cancelled) { rootActive = false; disconnected() }
+                        if (!run.cancelled) { disconnected() }
                     }
                 }
                 delay(3000)
@@ -157,7 +141,6 @@ internal class TouchInputSource(private val context: Context, private val scope:
     }
 
     fun stop() {
-        rootActive = false
         PressInputStatus.update(R.string.global_press_status_stopped)
         val run = current ?: return
         current = null

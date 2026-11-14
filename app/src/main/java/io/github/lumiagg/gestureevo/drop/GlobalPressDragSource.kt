@@ -18,7 +18,6 @@ import kotlinx.coroutines.CoroutineScope
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ENABLED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_EXCLUDED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_TIMEOUT
-import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ROOT
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_PROTECT
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_SELECTION_VIBRATE
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
@@ -42,7 +41,7 @@ internal class GlobalPressDragSource(
     private val panel: () -> ContentDragTarget?,
 ) {
     private data class Settings(val enabled: Boolean, val timeout: Int, val excluded: Set<String>, val vibrate: Boolean,
-        val root: Boolean = false, val protect: Boolean = false)
+        val protect: Boolean = false)
     private val main = Handler(Looper.getMainLooper())
     private val detector = PressTriggerDetector(ViewConfiguration.get(context).scaledTouchSlop.toFloat())
     private val blocker = BackgroundTouchBlocker(context, scope)
@@ -53,6 +52,7 @@ internal class GlobalPressDragSource(
     private var windowCheck: Job? = null
     private var interruption: Job? = null
     private var interruptionAllowed: AtomicBoolean? = null
+    private val interruptionState = PressTouchInterruptionState()
     private val ownOverlayIds = mutableSetOf<Int>()
     private var source: PressContentCapture.Source? = null
     private var cached: ClipData? = null
@@ -85,13 +85,12 @@ internal class GlobalPressDragSource(
             context.settingsStore.data.map {
                 Settings(it.readKey(KEY_GLOBAL_PRESS_ENABLED, false), it.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500).coerceIn(200, 2000),
                     it.readKey(KEY_GLOBAL_PRESS_EXCLUDED, "").split('|').filter(String::isNotBlank).toSet(),
-                    it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true), it.readKey(KEY_GLOBAL_PRESS_ROOT, false),
+                    it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true),
                     it.readKey(KEY_GLOBAL_PRESS_PROTECT, false))
             }.distinctUntilChanged().collect { updated ->
                 cancel("source_settings_changed")
-                if (settings.root != updated.root) input.stop()
                 settings = updated
-                if (updated.enabled && screenReady()) input.start(updated.root) else input.stop()
+                if (updated.enabled && screenReady()) input.start() else input.stop()
             }
         }
     }
@@ -113,7 +112,7 @@ internal class GlobalPressDragSource(
             detector.start(x, y, time, settings.timeout.toLong())
             main.postAtTime(classify, detector.classificationDeadline())
             main.postAtTime(arm, detector.deadline())
-            if (input.rootActive && settings.protect) main.postAtTime(protect,
+            if (settings.protect) main.postAtTime(protect,
                 detector.protectionDeadline(ViewConfiguration.getLongPressTimeout().toLong()))
             main.postDelayed(expiry, 15_000)
             return
@@ -172,12 +171,11 @@ internal class GlobalPressDragSource(
     }
 
     private fun protectLongPress() {
-        if (!settings.protect || !input.rootActive || cached == null || !allowed() ||
+        if (!settings.protect || cached == null || !allowed() ||
             !detector.canProtectLongPress(SystemClock.uptimeMillis(), ViewConfiguration.getLongPressTimeout().toLong())) return
-        val request = generation
-        if (!blocker.hasRootRequest) android.util.Log.i("EVO-Press", "press_protect generation=$request elapsedMs=${SystemClock.uptimeMillis() - detector.downTime()}")
-        blocker.protectLongPress { generation == request && allowed() && (detector.isReady ||
-            detector.canProtectLongPress(SystemClock.uptimeMillis(), ViewConfiguration.getLongPressTimeout().toLong())) }
+        val interruptionRequest = interruptionState.beginProtection() ?: return
+        android.util.Log.i("EVO-Press", "press_protect generation=$generation elapsedMs=${SystemClock.uptimeMillis() - detector.downTime()}")
+        interruptSource(interruptionRequest)
     }
 
     private fun notifyReady() {
@@ -193,10 +191,18 @@ internal class GlobalPressDragSource(
         val content = cached ?: return
         val request = generation
         preparing = true
-        if (input.rootActive) {
-            beginPanel(content, request, rootEnabled = true)
+        if (interruptionState.succeeded) {
+            beginPanel(content, request)
             return
         }
+        // If early protection is still pending, its completion will open the panel after movement.
+        val interruptionRequest = interruptionState.beginDrag() ?: return
+        interruptSource(interruptionRequest)
+    }
+
+    private fun interruptSource(interruptionRequest: Int) {
+        val request = generation
+        interruptionAllowed?.set(false)
         val origin = source ?: run { cancel("source_unavailable"); return }
         val x = latestX
         val y = latestY
@@ -220,14 +226,17 @@ internal class GlobalPressDragSource(
             }
             withContext(Dispatchers.Main) {
                 if (generation != request || !permitted.get() || !allowed()) return@withContext
-                android.util.Log.i("EVO-TouchBlock", "shizuku_cancel_result success=$success")
-                blocker.reportCancellationResult(success)
-                beginPanel(content, request, rootEnabled = false)
+                if (!interruptionState.complete(interruptionRequest, success)) return@withContext
+                android.util.Log.i("EVO-TouchBlock", "shizuku_cancel_result success=$success protection=${interruptionState.protectionRequested}")
+                if (preparing && detector.isFired) {
+                    blocker.reportCancellationResult(success)
+                    cached?.let { beginPanel(it, request) } ?: cancel("content_unavailable")
+                }
             }
         }
     }
 
-    private fun beginPanel(content: ClipData, request: Long, rootEnabled: Boolean) {
+    private fun beginPanel(content: ClipData, request: Long) {
         if (generation != request || !allowed()) return
         val accepted = panel()?.beginContentDrag(content, latestX, latestY,
             stillCurrent = { generation == request && allowed() },
@@ -242,7 +251,7 @@ internal class GlobalPressDragSource(
             onFailed = { reason -> if (generation == request) cancel("panel_$reason") },
         ) == true
         if (!accepted) cancel("panel_begin_failed")
-        else blocker.start(rootEnabled = rootEnabled) { generation == request && allowed() }
+        else blocker.start { generation == request && allowed() }
     }
 
     fun onWindowEvent(event: AccessibilityEvent) {
@@ -266,7 +275,7 @@ internal class GlobalPressDragSource(
                     if (generation != request || !active) return@withContext
                     windows.filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY &&
                         it.packageName == context.packageName }.forEach { ownOverlayIds += it.id }
-                    val allowSourceMenu = settings.protect && input.rootActive && blocker.hasRootRequest &&
+                    val allowSourceMenu = settings.protect && interruptionState.protectionRequested &&
                         (cached != null || shown || preparing)
                     val reason = PressWindowPolicy.cancellationReason(origin.windowId, origin.packageName, origin.bounds,
                         windows, eventId, eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, false,
@@ -295,7 +304,7 @@ internal class GlobalPressDragSource(
     fun onSystemDragEnded() { systemDrag = false }
     fun onScreenChanged() {
         cancel("screen_changed")
-        if (settings.enabled && screenReady()) input.start(settings.root) else input.stop()
+        if (settings.enabled && screenReady()) input.start() else input.stop()
     }
     fun cancel(reason: String = "lifecycle") {
         if (active || shown || preparing) DropDiagnostics.event("drop_source_cancelled", "internal", generation.toInt(),
@@ -307,6 +316,7 @@ internal class GlobalPressDragSource(
         interruptionAllowed = null
         interruption?.cancel()
         interruption = null
+        interruptionState.clear()
         active = false
         shown = false
         preparing = false

@@ -1,7 +1,7 @@
 // Derived from MMGG (com.leaf.hyperdragshare), GPL-3.0; see MMGG-NOTICE and MMGG-LICENSE.
 package io.github.lumiagg.gestureevo.drop;
 
-/** Root evdev hold-then-move detection, independent of contact-size reporting. */
+/** Evdev hold-then-move detection, independent of contact-size reporting. */
 public final class PressTriggerDetector {
     private static final float MOVE_LIMIT = 36f;
     private final float dragThreshold;
@@ -78,7 +78,7 @@ public final class PressTriggerDetector {
     }
 
     public long protectionDeadline(long systemLongPressMillis) {
-        // Reserve startup time for the root helper; never shorten the user's confirmation deadline.
+        // Reserve time for early touch interruption; never shorten the user's confirmation deadline.
         return downTime + Math.min(deadline - downTime, Math.max(120L, systemLongPressMillis - 250L));
     }
 

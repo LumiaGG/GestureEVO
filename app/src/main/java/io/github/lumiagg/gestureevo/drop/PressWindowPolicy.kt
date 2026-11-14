@@ -8,7 +8,7 @@ internal object PressWindowPolicy {
     data class Window(val id: Int, val type: Int, val packageName: String?, val bounds: Bounds,
         val active: Boolean = false, val focused: Boolean = false)
 
-    // Root cancellation can finish after the source app has already opened a small menu.
+    // Early touch cancellation can finish after the source app has already opened a small menu.
     private fun isSourceMenuPopup(window: Window, sourcePackage: String, sourceBounds: Bounds): Boolean {
         if (window.type != APPLICATION || window.packageName != sourcePackage) return false
         val width = window.bounds.right - window.bounds.left

@@ -12,10 +12,11 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
+import java.io.Closeable
 import java.util.UUID
 
 /** Permission requests belong to explicit UI actions; this backend only uses an existing grant. */
-internal class ShizukuTouchConnection : TouchInputConnection {
+internal class ShizukuTouchConnection : Closeable {
     private val token = UUID.randomUUID().toString()
     private val owner = Binder()
     private val death = IBinder.DeathRecipient { close() }
@@ -23,7 +24,7 @@ internal class ShizukuTouchConnection : TouchInputConnection {
     private var remote: IUserService? = null
     private var descriptor: ParcelFileDescriptor? = null
 
-    override suspend fun open(): ParcelFileDescriptor = withContext(Dispatchers.IO) {
+    suspend fun open(): ParcelFileDescriptor = withContext(Dispatchers.IO) {
         check(Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) { "Shizuku permission unavailable" }
         val shell = ShizukuServiceHelper.awaitService()
         currentCoroutineContext().ensureActive()

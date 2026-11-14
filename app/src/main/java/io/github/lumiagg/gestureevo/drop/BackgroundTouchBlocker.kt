@@ -8,36 +8,14 @@ import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.utils.ToastHelper
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
-/**
- * Full-screen transparent sink attached while a press drag is shown. Window touch targets are
- * fixed at DOWN, so the shield cannot recall the stream already in flight; it only swallows
- * touches that START while it is up (secondary fingers, stray taps). Standard mode attempts
- * Shizuku DOWN/CANCEL before this shield attaches. Root mode keeps its direct cancellation
- * helper. Injecting onto the shield itself does not reliably end the source application's stream.
- */
+/** Blocks new touches after Shizuku completes the source application's DOWN/CANCEL sequence. */
 internal class BackgroundTouchBlocker(private val context: Context, private val scope: CoroutineScope) :
     BaseFloatingWindow(context, scope, "EVO-TouchBlock") {
 
     private var current: View? = null
     private var closed = false
     private var failureReported = false
-    private var rootRequested = false
-    val hasRootRequest: Boolean get() = rootRequested
-    private var rootSucceeded = false
-    @Volatile private var generation = 0L
-    private val rootCanceller = RootTouchCanceller(context.applicationInfo.sourceDir, result = { success ->
-        val request = generation
-        scope.launch(Dispatchers.Main) {
-            if (!closed && rootRequested && generation == request) {
-                rootSucceeded = success
-                reportCancellationResult(success)
-            }
-        }
-    })
-
     fun reportCancellationResult(success: Boolean) {
         if (!success && !failureReported) {
             failureReported = true
@@ -45,23 +23,8 @@ internal class BackgroundTouchBlocker(private val context: Context, private val 
         }
     }
 
-    fun protectLongPress(stillCurrent: () -> Boolean) {
-        if (closed || rootRequested || !stillCurrent()) return
-        rootRequested = true
-        rootCanceller.start(stillCurrent)
-    }
-
-    fun start(rootEnabled: Boolean = false, stillCurrent: () -> Boolean) {
-        if (closed || !stillCurrent()) return
-        if (current != null) return
-        if (rootEnabled) {
-            if (rootRequested && !rootSucceeded) {
-                generation++
-                rootCanceller.stop()
-                rootRequested = false
-            }
-            protectLongPress(stillCurrent)
-        }
+    fun start(stillCurrent: () -> Boolean) {
+        if (closed || !stillCurrent() || current != null) return
         val view = View(context).apply {
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
             // Consume every touch that starts on the shield, including secondary fingers.
@@ -85,10 +48,6 @@ internal class BackgroundTouchBlocker(private val context: Context, private val 
     }
 
     fun stop() {
-        generation++
-        rootRequested = false
-        rootSucceeded = false
-        rootCanceller.stop()
         val view = current ?: return
         current = null
         detachViewSafely(view)
@@ -97,6 +56,5 @@ internal class BackgroundTouchBlocker(private val context: Context, private val 
     fun close() {
         closed = true
         stop()
-        rootCanceller.close()
     }
 }
