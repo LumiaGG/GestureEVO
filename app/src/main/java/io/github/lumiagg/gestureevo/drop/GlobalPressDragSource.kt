@@ -11,11 +11,11 @@ import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityEvent
 import io.github.lumiagg.gestureevo.gesture.GestureService
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_GLOBAL_PRESS_ENABLED
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_GLOBAL_PRESS_EXCLUDED
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_GLOBAL_PRESS_TIMEOUT
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_GLOBAL_PRESS_ROOT
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_GLOBAL_PRESS_PROTECT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ENABLED
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_EXCLUDED
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_TIMEOUT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ROOT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_PROTECT
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_SELECTION_VIBRATE
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.readKey

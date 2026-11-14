@@ -1,5 +1,8 @@
 package io.github.lumiagg.gestureevo.settings
 
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_BACKGROUND_BLUR
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR
 import io.github.lumiagg.gestureevo.databinding.BottomSheetAppIconOverrideBinding
 import android.os.Bundle
 import android.view.View
@@ -52,9 +55,6 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         const val KEY_PIN_POOL_CARD_BACKGROUND_BLUR = "key_pin_pool_card_background_blur"
         const val KEY_SCREEN_CONTENT_BACKGROUND_BLUR = "key_screen_content_background_blur"
         const val KEY_SCREEN_CONTENT_CARD_BACKGROUND_BLUR = "key_screen_content_card_background_blur"
-        const val KEY_EXTERNAL_DROP_BACKGROUND_BLUR = "key_external_drop_background_blur"
-        const val KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR = "key_external_drop_system_drag_blur"
-        const val KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR = "key_external_drop_card_background_blur"
         const val KEY_DYNAMIC_COLOR_SCHEME = "key_dynamic_color_scheme"
         const val KEY_POINTER_COLOR = "key_pointer_color"
         const val KEY_POINTER_SHAPE = "key_pointer_shape"

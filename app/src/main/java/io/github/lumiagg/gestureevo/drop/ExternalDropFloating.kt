@@ -1,8 +1,5 @@
 package io.github.lumiagg.gestureevo.drop
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
-import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipDescription
@@ -21,7 +18,6 @@ import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
-import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.R
@@ -40,24 +36,18 @@ import io.github.lumiagg.gestureevo.search.config.SearchEngine
 import io.github.lumiagg.gestureevo.search.config.SearchEngineDataManager
 import io.github.lumiagg.gestureevo.search.setEngineIcon
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity
-import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_EXTERNAL_DROP_BACKGROUND_BLUR
-import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR
-import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_CONVERSION
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SHOW_ENGINES
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_POSITION_BOTTOM
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_POSITION_LEFT
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_POSITION_RIGHT
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SIDEBAR_MAX_COLUMNS
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SIDEBAR_MAX_HEIGHT_PERCENT
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SIDEBAR_FILL_PRIORITY
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_FILL_HEIGHT
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_FILL_COLUMNS
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_CONVERSION
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SHOW_ENGINES
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_POSITION_BOTTOM
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_POSITION_LEFT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_POSITION_RIGHT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SIDEBAR_MAX_COLUMNS
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SIDEBAR_MAX_HEIGHT_PERCENT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SIDEBAR_FILL_PRIORITY
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_FILL_HEIGHT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_FILL_COLUMNS
 import io.github.lumiagg.gestureevo.share.ImageShareLauncher
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
-import io.github.lumiagg.gestureevo.utils.GlassEffectUtils
-import io.github.lumiagg.gestureevo.utils.OverlaySurfaceBlur
-import io.github.lumiagg.gestureevo.utils.Rom
 import io.github.lumiagg.gestureevo.utils.ScreenUtil
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.dp2px
@@ -68,8 +58,6 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -83,27 +71,30 @@ class ExternalDropFloating(
 
     private val toolActions = listOf(R.id.externalDropPool to Action.POOL, R.id.externalDropPin to Action.PIN,
         R.id.externalDropTokenize to Action.TOKENIZE, R.id.externalDropConvert to Action.CONVERT)
-    private val conversion = DragConversionState<ClipData>()
-    private var conversionJob: Job? = null
-    private var conversionHoverJob: Job? = null
+    private val conversion = DragConversionController(
+        scope = service,
+        convert = DragContentConverter(service, ::decodeImage)::convert,
+        onPreview = { content, hint ->
+            updateConversionLabel(content.description)
+            contentPreview.show(content, contentX, contentY, sidebarBounds(), hint?.let(service::getString))
+        },
+        prepareContent = { configureEngines(it.description) },
+        onConverted = { content ->
+            internalContent = content
+            if (sidebar) {
+                positionSidebar()
+                updateViewLayoutSafely(targets, targetParams)
+            }
+            io.github.lumiagg.gestureevo.utils.VibratorUtils.vibrator(service, false)
+        },
+        onError = ::toast,
+        onFinished = { updateContentDrag(contentX, contentY) },
+    )
 
     private val sidebar = position == EXTERNAL_DROP_POSITION_LEFT || position == EXTERNAL_DROP_POSITION_RIGHT
     private val themeContext = DynamicColorUtils.dynamicThemedContext(service)
     private val observer = View(service)
-    private val blurBackground = View(service).apply {
-        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-    }
-    private val blurParams = WindowManager.LayoutParams().apply {
-        configureAccessibilityOverlay(
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-            title = "GestureEVO:ExternalDrop:Background",
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) setFitInsetsTypes(0)
-    }
+    private val appearance = DropOverlayAppearance(service, service)
     private val targets = LayoutInflater.from(themeContext)
         .inflate(if (sidebar) R.layout.external_drop_sidebar else R.layout.external_drop_floating, null)
     private val enginePager = targets.findViewById<QuickSearchEnginePager>(R.id.externalDropEngines)
@@ -116,15 +107,6 @@ class ExternalDropFloating(
     private var previewEngine: SearchEngine? = null
     private var previewPageDirection = 0
     private var showImageBadge = true
-    private var backgroundBlurEnabled = false
-    private var systemDragBlurEnabled = true
-    private var cardBlurEnabled = false
-    private var backgroundBlurRadius = 0
-    private var backgroundBlurAnimator: ValueAnimator? = null
-    /** Whether the full-screen blur may run for the drag in progress. */
-    private val backgroundBlurActive: Boolean
-        get() = backgroundBlurEnabled && (internalContent != null || systemDragBlurEnabled)
-    private val originOsSurfaceBlur = Rom.isOriginOS()
     private val imageShareLauncher = ImageShareLauncher(service.applicationContext)
     private var dragGeneration = 0
     private var prepareJob: Job? = null
@@ -389,10 +371,6 @@ class ExternalDropFloating(
 
     fun cancelContentDrag() {
         contentSession.cancel()
-        conversionHoverJob?.cancel()
-        conversionHoverJob = null
-        conversionJob?.cancel()
-        conversionJob = null
         conversion.clear()
         contentPreview.clear()
         if (internalContent == null) return
@@ -425,13 +403,13 @@ class ExternalDropFloating(
             val card = targets.findViewById<MaterialCardView>(id)
             val (lx, ly) = localPoint(card, x, y)
             val active = card.isShown && lx >= 0 && ly >= 0 && lx < card.width && ly < card.height
-            setHighlighted(card, active)
+            appearance.setHighlighted(card, active)
             if (active) tool = action
         }
         val (px, py) = localPoint(enginePager, x, y)
         val overEngines = enginePager.isShown && px >= 0 && py >= 0 && px < enginePager.width && py < enginePager.height
         enginePager.updateContentDrag(if (overEngines) px else -1000f, if (overEngines) py else -1000f)
-        updateConversionHover(tool == Action.CONVERT && !release)
+        conversion.hover(tool == Action.CONVERT && !release)
         if (tool != null) showPreview(tool) else if (!overEngines) hidePreview()
         if (sidebar) {
             val (tx, ty) = localPoint(targets, x, y)
@@ -467,10 +445,7 @@ class ExternalDropFloating(
                 EXTERNAL_DROP_FILL_COLUMNS
         }
         showImageBadge = store.readKey(SearchEngineSettingsActivity.KEY_SHOW_IMAGE_BADGE, true)
-        backgroundBlurEnabled = store.readKey(KEY_EXTERNAL_DROP_BACKGROUND_BLUR, false) &&
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-        systemDragBlurEnabled = store.readKey(KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR, true)
-        cardBlurEnabled = store.readKey(KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR, false)
+        appearance.configure()
         val config = QuickSearchEnginePager.Config(
             rowCount = if (sidebar) 1 else store.readKey(SearchEngineSettingsActivity.KEY_ROW_COUNT, 1)
                 .coerceIn(SearchEngineSettingsActivity.MIN_ROW_COUNT, SearchEngineSettingsActivity.MAX_ROW_COUNT),
@@ -480,7 +455,7 @@ class ExternalDropFloating(
             showImageBadge = showImageBadge,
             previewSortMode = false,
         )
-        enginePager.configure(config)
+        enginePager.configureExternalDrop(config)
         if (sidebar) sidebarConfig = config
         val content = ExternalDropPolicy.content(
             (0 until description.mimeTypeCount).map(description::getMimeType)
@@ -536,7 +511,7 @@ class ExternalDropFloating(
             else maxColumns..maxColumns
         val layouts = columnOptions.map { columns ->
             applySidebarColumns(columns)
-            enginePager.configure(config.copy(rowCount = 1, columnCount = columns))
+            enginePager.configureExternalDrop(config.copy(rowCount = 1, columnCount = columns))
             setPagingVisible(false)
             var panelHeight = measureSidebar()
             val rowHeight = (enginePager.measuredHeight - enginePager.paddingTop - enginePager.paddingBottom).coerceAtLeast(1)
@@ -550,14 +525,14 @@ class ExternalDropFloating(
                     maxHeight, panelHeight - rowHeight, rowHeight, sidebarEngines.size, columns,
                 )
             }
-            enginePager.configure(config.copy(rowCount = rows, columnCount = columns))
+            enginePager.configureExternalDrop(config.copy(rowCount = rows, columnCount = columns))
             ExternalDropSidebarPolicy.Layout(columns, rows, measureSidebar())
         }
         val layout = ExternalDropSidebarPolicy.choose(layouts, sidebarEngines.size, maxHeight, sidebarPreferColumns)
         sidebarColumns = layout.columns
         sidebarRows = layout.rows
         applySidebarColumns(sidebarColumns)
-        enginePager.configure(config.copy(rowCount = sidebarRows, columnCount = sidebarColumns))
+        enginePager.configureExternalDrop(config.copy(rowCount = sidebarRows, columnCount = sidebarColumns))
         sidebarPage = sidebarPage.coerceIn(0, sidebarPageCount - 1)
         showSidebarPage()
     }
@@ -748,30 +723,18 @@ class ExternalDropFloating(
 
     private fun showTargets(): Boolean {
         if (!showTools && !enginesVisible) return false
-        applyGlassStyle()
-        toolActions.forEach { (id, _) -> setHighlighted(targets.findViewById(id), false) }
+        appearance.applyGlassStyle(targets, internalContent != null)
+        toolActions.forEach { (id, _) -> appearance.setHighlighted(targets.findViewById(id), false) }
         if (sidebar) {
             targets.scrollTo(0, 0)
             positionSidebar()
         }
         positionPreview()
-        if (backgroundBlurActive) {
-            attachViewSafely(
-                blurBackground,
-                blurParams,
-                // Retrying after the targets attach would put blur above the targets.
-                shouldRetry = { false },
-                onAttached = {
-                    blurBackground.post {
-                        if (dragActive && !destroyed && blurBackground.isAttachedToWindow) startBackgroundBlur()
-                    }
-                },
-            )
-        }
+        appearance.show { dragActive && !destroyed }
         val accepted = attachViewSafely(targets, targetParams, shouldRetry = { dragActive && !destroyed })
         attachViewSafely(previewIcon, previewParams, shouldRetry = { dragActive && !destroyed })
         DropDiagnostics.event("drop_targets_shown", if (internalContent != null) "internal" else "system", dragGeneration,
-            reason = if (backgroundBlurActive) "blur_enabled" else "blur_disabled", width = targets.width,
+            reason = if (appearance.backgroundBlurActive) "blur_enabled" else "blur_disabled", width = targets.width,
             height = targets.height, flags = targetParams.flags)
         return accepted
     }
@@ -781,7 +744,6 @@ class ExternalDropFloating(
         targets.alpha = 1f
         contentPreview.clear()
         stopPageHover()
-        clearBackgroundBlur()
         enginePager.animate().cancel()
         enginePager.translationY = 0f
         enginePager.alpha = 1f
@@ -791,7 +753,7 @@ class ExternalDropFloating(
         previewIcon.alpha = 0f
         detachViewSafely(previewIcon)
         detachViewSafely(targets)
-        detachViewSafely(blurBackground)
+        appearance.hide()
     }
 
     private fun showPreview(action: Action? = null, engine: SearchEngine? = null, pageDirection: Int = 0) {
@@ -833,13 +795,13 @@ class ExternalDropFloating(
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> !destroyed && accepts(event)
                 DragEvent.ACTION_DRAG_ENTERED -> {
-                    setHighlighted(card, true)
+                    appearance.setHighlighted(card, true)
                     showPreview(action)
                     true
                 }
                 DragEvent.ACTION_DRAG_LOCATION -> true
                 DragEvent.ACTION_DRAG_EXITED, DragEvent.ACTION_DRAG_ENDED -> {
-                    setHighlighted(card, false)
+                    appearance.setHighlighted(card, false)
                     hidePreview(action)
                     true
                 }
@@ -847,92 +809,6 @@ class ExternalDropFloating(
                 else -> false
             }
         }
-    }
-
-    private fun setHighlighted(card: MaterialCardView, active: Boolean) {
-        card.strokeWidth = (if (active) 2 else 1).dp2px.toInt().coerceAtLeast(1)
-        card.strokeColor = if (active) DynamicColorUtils.primaryColor
-            else ColorUtils.setAlphaComponent(DynamicColorUtils.onSurfaceColor, 28)
-        card.setCardBackgroundColor(
-            if (active) DynamicColorUtils.secondaryContainerColor else targetSurfaceColor()
-        )
-    }
-
-    private fun targetSurfaceColor(): Int = ColorUtils.setAlphaComponent(
-        DynamicColorUtils.surfaceContainerHighColor, if (cardBlurEnabled) 199 else 255,
-    )
-
-    /** Applies the panel glass style from the current blur settings before each show. */
-    private fun applyGlassStyle() {
-        val panel = targets.findViewById<MaterialCardView>(R.id.externalDropPanel)
-        val enginesCard = targets.findViewById<MaterialCardView>(R.id.externalDropEnginesCard)
-        // The effective state keeps the glass consistent when a system drag suppresses the full-screen blur.
-        GlassEffectUtils.applyCardStyle(
-            card = panel,
-            color = DynamicColorUtils.surfaceContainerColor,
-            glassEnabled = cardBlurEnabled,
-            blurRegion = GlassEffectUtils.usesCardRegionBlur(backgroundBlurActive, cardBlurEnabled),
-            backgroundBlurEnabled = backgroundBlurActive,
-            overlayOnContent = true,
-        )
-        if (cardBlurEnabled) {
-            // Keep busy content behind the overlay from washing out its labels and icons.
-            val color = panel.cardBackgroundColor.defaultColor
-            panel.setCardBackgroundColor(ColorUtils.setAlphaComponent(color, maxOf(Color.alpha(color), 209)))
-        } else {
-            panel.cardElevation = PANEL_ELEVATION_DP.dp2px
-        }
-        panel.strokeWidth = 1.dp2px.toInt().coerceAtLeast(1)
-        panel.strokeColor = ColorUtils.setAlphaComponent(DynamicColorUtils.onSurfaceColor, 48)
-        enginesCard.setCardBackgroundColor(targetSurfaceColor())
-        enginesCard.strokeWidth = 1.dp2px.toInt().coerceAtLeast(1)
-        enginesCard.strokeColor = ColorUtils.setAlphaComponent(DynamicColorUtils.onSurfaceColor, 28)
-    }
-
-    private fun startBackgroundBlur() {
-        if (!backgroundBlurEnabled || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-        if (backgroundBlurRadius == BACKGROUND_BLUR_RADIUS) return
-        val animator = ValueAnimator.ofInt(backgroundBlurRadius, BACKGROUND_BLUR_RADIUS).apply {
-            duration = BLUR_ANIMATION_MILLIS
-            interpolator = LinearInterpolator()
-            addUpdateListener { valueAnimator ->
-                applyBackgroundBlurRadius(valueAnimator.animatedValue as Int)
-            }
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    if (backgroundBlurAnimator !== this@apply) return
-                    backgroundBlurAnimator = null
-                }
-            })
-        }
-        val previous = backgroundBlurAnimator
-        backgroundBlurAnimator = animator
-        previous?.cancel()
-        animator.start()
-    }
-
-    private fun applyBackgroundBlurRadius(radius: Int) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-        backgroundBlurRadius = radius
-        if (originOsSurfaceBlur) {
-            OverlaySurfaceBlur.apply(blurBackground, radius)
-            return
-        }
-        val blurFlag = WindowManager.LayoutParams.FLAG_BLUR_BEHIND
-        blurParams.blurBehindRadius = radius
-        blurParams.flags = if (radius > 0) {
-            blurParams.flags or blurFlag
-        } else {
-            blurParams.flags and blurFlag.inv()
-        }
-        if (!blurBackground.isAttachedToWindow) return
-        updateViewLayoutSafely(blurBackground, blurParams)
-    }
-
-    private fun clearBackgroundBlur() {
-        backgroundBlurAnimator?.cancel()
-        backgroundBlurAnimator = null
-        applyBackgroundBlurRadius(0)
     }
 
     private fun receive(
@@ -982,92 +858,6 @@ class ExternalDropFloating(
         val convert = targets.findViewById<MaterialCardView>(R.id.externalDropConvert)
         convert.contentDescription = service.getString(label)
         convert.alpha = if (conversion.busy) 0.5f else 1f
-    }
-
-    private fun updateConversionHover(active: Boolean) {
-        if (!conversion.hover(active)) return
-        conversionHoverJob?.cancel()
-        conversionHoverJob = null
-        if (!active) return
-        conversionHoverJob = service.launch(Dispatchers.Main) {
-            delay(500)
-            convertDraggedContent()
-        }
-    }
-
-    private fun convertDraggedContent() {
-        val original = internalContent ?: return
-        val request = conversion.begin() ?: return
-        val generation = dragGeneration
-        conversionJob = service.launch(Dispatchers.Main) {
-            try {
-                updateConversionLabel(original.description)
-                if (conversion.alternate == null) {
-                    val hint = if (original.description.hasMimeType("image/*")) R.string.external_drop_recognizing_hint
-                        else R.string.external_drop_converting_hint
-                    contentPreview.show(original, contentX, contentY, sidebarBounds(), service.getString(hint))
-                }
-                val converted = conversion.alternate ?: convertContent(original)
-                if (generation != dragGeneration || internalContent == null || destroyed) return@launch
-                if (converted == null) {
-                    conversion.fail(request)
-                    toast(R.string.external_drop_conversion_empty)
-                    return@launch
-                }
-                configureEngines(converted.description)
-                if (generation != dragGeneration || !conversion.complete(request, converted)) return@launch
-                internalContent = converted
-                if (sidebar) {
-                    positionSidebar()
-                    updateViewLayoutSafely(targets, targetParams)
-                }
-                io.github.lumiagg.gestureevo.utils.VibratorUtils.vibrator(service, false)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                conversion.fail(request)
-                Log.w("ExternalDrop", "Cannot convert dragged content", error)
-                toast(if (error is IllegalArgumentException) R.string.external_drop_conversion_too_long
-                    else R.string.external_drop_failed)
-            } finally {
-                if (generation == dragGeneration && !destroyed && currentCoroutineContext().isActive) {
-                    internalContent?.let {
-                        updateConversionLabel(it.description)
-                        contentPreview.show(it, contentX, contentY, sidebarBounds())
-                    }
-                    updateContentDrag(contentX, contentY)
-                }
-            }
-        }
-    }
-
-    private suspend fun convertContent(clip: ClipData): ClipData? {
-        val image = clip.description.hasMimeType("image/*")
-        val text = buildList {
-            for (index in 0 until clip.itemCount) {
-                val item = clip.getItemAt(index)
-                if (image) {
-                    val uri = item.uri ?: continue
-                    val bitmap = decodeImage(uri) ?: error("Image cannot be decoded")
-                    bitmap.use {
-                        add(OcrImageTextProcessor(service).process(it.requireBitmap()).rawText)
-                    }
-                } else {
-                    add(withContext(Dispatchers.IO) { item.coerceToText(service)?.toString().orEmpty() })
-                }
-            }
-        }.filter { it.isNotBlank() }.joinToString("\n")
-        if (text.isBlank()) return null
-        if (image) return ClipData.newPlainText("text", text)
-        return withContext(Dispatchers.IO) {
-            val bitmap = DragTextImageRenderer.render(text)
-            try {
-                val payload = checkNotNull(imageShareLauncher.buildPayload(bitmap, null))
-                ClipData.newUri(service.contentResolver, "image", payload.contentUris.first())
-            } finally {
-                bitmap.recycle()
-            }
-        }
     }
 
     private suspend fun isImage(clip: ClipData, uri: Uri?): Boolean =
@@ -1199,8 +989,5 @@ class ExternalDropFloating(
     private companion object {
         const val SIDEBAR_COLUMN_WIDTH_DP = 52
         const val MAX_IMAGE_SIDE = 4096
-        const val BACKGROUND_BLUR_RADIUS = 72
-        const val BLUR_ANIMATION_MILLIS = 250L
-        const val PANEL_ELEVATION_DP = 2
     }
 }

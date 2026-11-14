@@ -139,6 +139,14 @@ class QuickSearchEnginePager @JvmOverloads constructor(
         get() = engines.toList()
 
     fun configure(config: Config) {
+        highlightExternalTarget(NO_POSITION)
+        this.config = config
+        rebuildChildren()
+        requestLayout()
+    }
+
+    /** Drag sidebar measurement changes density repeatedly without rebinding unchanged icons. */
+    internal fun configureExternalDrop(config: Config) {
         if (this.config == config) return
         highlightExternalTarget(NO_POSITION)
         val rebind = config.showLabel != this.config.showLabel || config.showImageBadge != this.config.showImageBadge

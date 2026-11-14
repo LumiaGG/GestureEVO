@@ -18,11 +18,11 @@ import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import io.github.lumiagg.gestureevo.drop.ExternalDropFloating
 import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_CONVERSION
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_ENABLED
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_POSITION
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_POSITION_BOTTOM
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SHOW_ENGINES
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_CONVERSION
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_ENABLED
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_POSITION
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_POSITION_BOTTOM
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SHOW_ENGINES
 import io.github.lumiagg.gestureevo.utils.CurrentPackageProvider
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.RecentAppsRecorder
