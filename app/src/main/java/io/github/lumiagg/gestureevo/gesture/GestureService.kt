@@ -17,7 +17,13 @@ import android.os.PowerManager
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import io.github.lumiagg.gestureevo.drop.ExternalDropFloating
+import io.github.lumiagg.gestureevo.drop.DragContentConverter
+import io.github.lumiagg.gestureevo.drop.DropContentDispatcher
+import io.github.lumiagg.gestureevo.drop.DropImageDecoder
+import io.github.lumiagg.gestureevo.drop.PressContentCapture
+import io.github.lumiagg.gestureevo.drop.GlobalPressDragSource
 import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
+import io.github.lumiagg.gestureevo.inspire.PictureFloating
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_CONVERSION
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_ENABLED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_POSITION
@@ -29,7 +35,6 @@ import io.github.lumiagg.gestureevo.utils.RecentAppsRecorder
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
-import io.github.lumiagg.gestureevo.utils.shizuku.initShizukuService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -63,7 +68,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
     private var lastNightMode = Configuration.UI_MODE_NIGHT_UNDEFINED
     private var externalDropFloating: ExternalDropFloating? = null
     private var externalDropSettingsJob: Job? = null
-    private var globalPressDragSource: io.github.lumiagg.gestureevo.drop.GlobalPressDragSource? = null
+    private var globalPressDragSource: GlobalPressDragSource? = null
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         CurrentPackageProvider.onAccessibilityEvent(event)
@@ -87,7 +92,10 @@ class GestureService : AccessibilityService(), CoroutineScope {
         launch(Dispatchers.Main) {
             delay(1000)
             gestureManager = GestureManager(this@GestureService, this)
-            globalPressDragSource = io.github.lumiagg.gestureevo.drop.GlobalPressDragSource(this@GestureService) { externalDropFloating }.also { it.start() }
+            globalPressDragSource = GlobalPressDragSource(
+                this@GestureService, this@GestureService,
+                PressContentCapture(this@GestureService, this@GestureService::takeScreenshot),
+            ) { externalDropFloating }.also { it.start() }
             observeExternalDropSettings()
             DynamicColorUtils.themeRevision.collect {
                 gestureManager?.refreshOverlayThemes()
@@ -99,7 +107,6 @@ class GestureService : AccessibilityService(), CoroutineScope {
                 this@GestureService
             )
             RecentAppsRecorder.initLauncherPackagesInDB(applicationContext)
-            initShizukuService(applicationContext)
         }
     }
 
@@ -128,7 +135,14 @@ class GestureService : AccessibilityService(), CoroutineScope {
                 globalPressDragSource?.cancel("panel_settings_rebuild")
                 externalDropFloating?.destroy()
                 externalDropFloating = if (showTools || showEngines) {
-                    ExternalDropFloating(this@GestureService, position, showTools).also {
+                    val decoder = DropImageDecoder(this@GestureService)
+                    val dispatcher = DropContentDispatcher(
+                        this@GestureService, decoder,
+                        showTextPin = { PictureFloating.build(this@GestureService, it) },
+                        showImagePin = { PictureFloating.build(this@GestureService, it) },
+                    )
+                    ExternalDropFloating(this@GestureService, this@GestureService, position, showTools, dispatcher,
+                        DragContentConverter(this@GestureService, decoder)).also {
                         it.onSystemDragStarted = { globalPressDragSource?.onSystemDragStarted() }
                         it.onSystemDragEnded = { globalPressDragSource?.onSystemDragEnded() }
                         it.start()

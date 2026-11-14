@@ -2,8 +2,6 @@ package io.github.lumiagg.gestureevo.drop
 
 import android.content.ClipData
 import android.content.Context
-import android.net.Uri
-import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
 import io.github.lumiagg.gestureevo.inspire.OcrImageTextProcessor
 import io.github.lumiagg.gestureevo.share.ImageShareLauncher
 import kotlinx.coroutines.Dispatchers
@@ -12,7 +10,7 @@ import kotlinx.coroutines.withContext
 /** Converts content without owning any windows or drag session state. */
 internal class DragContentConverter(
     private val context: Context,
-    private val decodeImage: suspend (Uri) -> ManagedBitmap?,
+    private val imageDecoder: DropImageDecoder,
 ) {
     private val imageShareLauncher = ImageShareLauncher(context.applicationContext)
     suspend fun convert(clip: ClipData): ClipData? {
@@ -22,7 +20,7 @@ internal class DragContentConverter(
                 val item = clip.getItemAt(index)
                 if (image) {
                     val uri = item.uri ?: continue
-                    val bitmap = decodeImage(uri) ?: error("Image cannot be decoded")
+                    val bitmap = imageDecoder.decode(uri) ?: error("Image cannot be decoded")
                     bitmap.use {
                         add(OcrImageTextProcessor(context).process(it.requireBitmap()).rawText)
                     }

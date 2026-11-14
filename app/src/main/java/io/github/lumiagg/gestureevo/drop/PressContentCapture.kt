@@ -6,7 +6,7 @@ import android.graphics.Rect
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
-import io.github.lumiagg.gestureevo.gesture.GestureService
+import android.accessibilityservice.AccessibilityService
 import io.github.lumiagg.gestureevo.inspire.OcrImageTextProcessor
 import io.github.lumiagg.gestureevo.share.ImageShareLauncher
 import kotlinx.coroutines.Dispatchers
@@ -15,7 +15,10 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 
 /** MMGG RootNodeCapture filtering adapted to EVO's accessibility/screenshot/OCR permission path. */
-internal class PressContentCapture(private val service: GestureService) {
+internal class PressContentCapture(
+    private val service: AccessibilityService,
+    private val screenshot: suspend () -> Bitmap?,
+) {
     data class Source(val packageName: String, val windowId: Int, val bounds: PressWindowPolicy.Bounds)
     private data class Node(val bounds: Rect, val text: String?, val description: String?,
         val control: Boolean, val password: Boolean, val parent: Int?, val snapshot: AccessibilityNodeSnapshot)
@@ -149,7 +152,7 @@ internal class PressContentCapture(private val service: GestureService) {
         if (!region.intersect(windowBounds)) return@withContext null
         val protectedRegion = Rect(region).apply { inset(-metrics.density.toInt().coerceAtLeast(1), -metrics.density.toInt().coerceAtLeast(1)) }
         if (nodes.any { it.password && Rect.intersects(protectedRegion, it.bounds) }) return@withContext null
-        val screen = service.takeScreenshot() ?: return@withContext null
+        val screen = screenshot() ?: return@withContext null
         val crop = try {
             if (!region.intersect(0, 0, screen.width, screen.height)) return@withContext null
             val software = screen.copy(Bitmap.Config.ARGB_8888, false) ?: return@withContext null

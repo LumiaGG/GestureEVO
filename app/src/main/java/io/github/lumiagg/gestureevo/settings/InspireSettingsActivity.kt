@@ -18,6 +18,7 @@ import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SIDEB
 import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_FILL_HEIGHT
 import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_FILL_COLUMNS
 import android.content.Intent
+import io.github.lumiagg.gestureevo.utils.app.AShizuku
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
@@ -338,6 +339,12 @@ class InspireSettingsActivity : AppCompatActivity() {
         binding.globalPressSwitch.setOnCheckedChangeListener { _, enabled ->
             updateGlobalPressSettingsEnabled()
             lifecycleScope.launch {
+                if (enabled && !settingsStore.readKey(KEY_GLOBAL_PRESS_ROOT, false) &&
+                    !AShizuku.checkPermission(this@InspireSettingsActivity)) {
+                    binding.globalPressSwitch.isChecked = false
+                    return@launch
+                }
+                if (enabled != binding.globalPressSwitch.isChecked) return@launch
                 settingsStore.saveKey(KEY_GLOBAL_PRESS_ENABLED, enabled)
                 if (enabled) {
                     MaterialAlertDialogBuilder(this@InspireSettingsActivity)
@@ -357,6 +364,8 @@ class InspireSettingsActivity : AppCompatActivity() {
                     .setSingleChoiceItems(arrayOf(getString(R.string.global_press_mode_standard),
                         getString(R.string.global_press_mode_root)), if (root) 1 else 0) { dialog, which ->
                         lifecycleScope.launch {
+                            if (which == 0 && binding.globalPressSwitch.isChecked &&
+                                !AShizuku.checkPermission(this@InspireSettingsActivity)) return@launch
                             settingsStore.saveKey(KEY_GLOBAL_PRESS_ROOT, which == 1)
                             updateGlobalPressModeText(which == 1)
                         }

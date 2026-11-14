@@ -4,7 +4,8 @@ import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
-import io.github.lumiagg.gestureevo.gesture.GestureService
+import android.content.Context
+import kotlinx.coroutines.CoroutineScope
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import kotlinx.coroutines.Dispatchers
@@ -20,8 +21,8 @@ import kotlinx.coroutines.launch
  * probe only "worked" when it fell through to the app and briefly handed it a second pointer.
  * Root mode additionally asks a separate root runtime to cancel the in-flight stream.
  */
-internal class BackgroundTouchBlocker(private val service: GestureService) :
-    BaseFloatingWindow(service, service, "EVO-TouchBlock") {
+internal class BackgroundTouchBlocker(private val context: Context, private val scope: CoroutineScope) :
+    BaseFloatingWindow(context, scope, "EVO-TouchBlock") {
 
     private var current: View? = null
     private var closed = false
@@ -30,14 +31,14 @@ internal class BackgroundTouchBlocker(private val service: GestureService) :
     val hasRootRequest: Boolean get() = rootRequested
     private var rootSucceeded = false
     @Volatile private var generation = 0L
-    private val rootCanceller = RootTouchCanceller(service.applicationInfo.sourceDir, result = { success ->
+    private val rootCanceller = RootTouchCanceller(context.applicationInfo.sourceDir, result = { success ->
         val request = generation
-        service.launch(Dispatchers.Main) {
+        scope.launch(Dispatchers.Main) {
             if (!closed && rootRequested && generation == request) {
                 rootSucceeded = success
                 if (!success && !failureReported) {
                     failureReported = true
-                    ToastHelper.showInUIThread(service, service.getString(R.string.global_press_cancel_failed))
+                    ToastHelper.showInUIThread(context, context.getString(R.string.global_press_cancel_failed))
                 }
             }
         }
@@ -60,7 +61,7 @@ internal class BackgroundTouchBlocker(private val service: GestureService) :
             }
             protectLongPress(stillCurrent)
         }
-        val view = View(service).apply {
+        val view = View(context).apply {
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
             // Consume every touch that starts on the shield, including secondary fingers.
             setOnTouchListener { _, _ -> true }

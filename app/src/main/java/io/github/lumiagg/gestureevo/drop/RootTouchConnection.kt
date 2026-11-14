@@ -3,18 +3,17 @@ package io.github.lumiagg.gestureevo.drop
 import android.os.ParcelFileDescriptor
 import io.github.lumiagg.gestureevo.utils.process.ProcessCommandRunner
 import io.github.lumiagg.gestureevo.utils.process.ProcessStreamRelay
-import java.io.Closeable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
-internal class RootTouchConnection : Closeable {
+internal class RootTouchConnection : TouchInputConnection {
     @Volatile private var closed = false
     private var relay: ProcessStreamRelay? = null
     private var descriptor: ParcelFileDescriptor? = null
 
-    suspend fun open(): ParcelFileDescriptor = withContext(Dispatchers.IO) {
+    override suspend fun open(): ParcelFileDescriptor = withContext(Dispatchers.IO) {
         val (code, ranges) = ProcessCommandRunner.run(listOf("su", "-c", "exec /system/bin/getevent -lp"), 10_000)
         check(code == 0) { "Root touchscreen discovery failed: exit=$code" }
         val device = checkNotNull(TouchInputProtocol.discover("", ranges)) { "No readable root touchscreen" }

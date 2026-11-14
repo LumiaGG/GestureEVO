@@ -16,7 +16,8 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
-import io.github.lumiagg.gestureevo.gesture.GestureService
+import android.content.Context
+import kotlinx.coroutines.CoroutineScope
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.GlassEffectUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
@@ -27,8 +28,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** MMGG DragShareController preview adapted to EVO's themed overlay and URI bitmap ownership. */
-internal class DragContentPreview(private val service: GestureService) : BaseFloatingWindow(service, service, "EVO-PressPreview") {
-    private val theme = DynamicColorUtils.dynamicThemedContext(service)
+internal class DragContentPreview(private val context: Context, private val scope: CoroutineScope) :
+    BaseFloatingWindow(context, scope, "EVO-PressPreview") {
+    private val theme = DynamicColorUtils.dynamicThemedContext(context)
     private val card = MaterialCardView(theme).apply {
         radius = 12.dp2px
         cardElevation = 4.dp2px
@@ -124,20 +126,20 @@ internal class DragContentPreview(private val service: GestureService) : BaseFlo
             if (generation == request) clear()
             throw cancelled
         }
-        job = service.launch(Dispatchers.Main) {
+        job = scope.launch(Dispatchers.Main) {
             var decoded: Bitmap? = null
             try {
                 if (text == null && uri != null) {
                     withContext(Dispatchers.IO) {
                         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                        service.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+                        context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
                         if (options.outWidth <= 0 || options.outHeight <= 0) return@withContext
                         options.inJustDecodeBounds = false
                         val limit = 128.dp2px.toInt().coerceAtLeast(1)
                         while (maxOf(options.outWidth, options.outHeight) / options.inSampleSize.coerceAtLeast(1) > limit) {
                             options.inSampleSize = options.inSampleSize.coerceAtLeast(1) * 2
                         }
-                        decoded = service.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+                        decoded = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
                     }
                     if (active && request == generation && decoded != null) {
                         image.setImageBitmap(decoded)

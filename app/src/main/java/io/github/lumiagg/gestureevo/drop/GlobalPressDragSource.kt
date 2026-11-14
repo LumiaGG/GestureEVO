@@ -10,7 +10,8 @@ import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityEvent
-import io.github.lumiagg.gestureevo.gesture.GestureService
+import android.content.Context
+import kotlinx.coroutines.CoroutineScope
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ENABLED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_EXCLUDED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_TIMEOUT
@@ -31,13 +32,17 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 
 /** MMGG PressCaptureSource timing/generation pipeline; both kinds enter EVO's drop panel. */
-internal class GlobalPressDragSource(private val service: GestureService, private val panel: () -> ExternalDropFloating?) {
+internal class GlobalPressDragSource(
+    private val context: Context,
+    private val scope: CoroutineScope,
+    private val capture: PressContentCapture,
+    private val panel: () -> ContentDragTarget?,
+) {
     private data class Settings(val enabled: Boolean, val timeout: Int, val excluded: Set<String>, val vibrate: Boolean,
         val root: Boolean = false, val protect: Boolean = false)
     private val main = Handler(Looper.getMainLooper())
-    private val detector = PressTriggerDetector(ViewConfiguration.get(service).scaledTouchSlop.toFloat())
-    private val blocker = BackgroundTouchBlocker(service)
-    private val capture = PressContentCapture(service)
+    private val detector = PressTriggerDetector(ViewConfiguration.get(context).scaledTouchSlop.toFloat())
+    private val blocker = BackgroundTouchBlocker(context, scope)
     private val captureGate = Mutex()
     private var settings = Settings(false, 500, emptySet(), true)
     private var settingsJob: Job? = null
@@ -58,7 +63,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
     private var downY = 0f
     private var latestX = 0f
     private var latestY = 0f
-    private val input = ShizukuTouchSource(service, ::onPointer) { cancel("input_disconnected") }
+    private val input = TouchInputSource(context, scope, ::onPointer) { cancel("input_disconnected") }
     private val classify = Runnable { if (detector.takeClassification(SystemClock.uptimeMillis())) lookup() }
     private val arm = Runnable {
         if (!allowed()) cancel("confirmation_not_allowed")
@@ -71,8 +76,8 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
     private val expiry = Runnable { cancel("gesture_timeout") }
 
     fun start() {
-        settingsJob = service.launch(Dispatchers.Main) {
-            service.settingsStore.data.map {
+        settingsJob = scope.launch(Dispatchers.Main) {
+            context.settingsStore.data.map {
                 Settings(it.readKey(KEY_GLOBAL_PRESS_ENABLED, false), it.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500).coerceIn(200, 2000),
                     it.readKey(KEY_GLOBAL_PRESS_EXCLUDED, "").split('|').filter(String::isNotBlank).toSet(),
                     it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true), it.readKey(KEY_GLOBAL_PRESS_ROOT, false),
@@ -86,8 +91,8 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
         }
     }
 
-    private fun screenReady(): Boolean = service.getSystemService(PowerManager::class.java).isInteractive &&
-        !service.getSystemService(KeyguardManager::class.java).isKeyguardLocked
+    private fun screenReady(): Boolean = context.getSystemService(PowerManager::class.java).isInteractive &&
+        !context.getSystemService(KeyguardManager::class.java).isKeyguardLocked
     private fun allowed(): Boolean = settings.enabled && active && !systemDrag && screenReady() && panel() != null
 
     private fun onPointer(action: Int, x: Float, y: Float, time: Long) {
@@ -126,7 +131,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
         val request = generation
         val x = downX
         val y = downY
-        lookup = service.launch(Dispatchers.IO) {
+        lookup = scope.launch(Dispatchers.IO) {
             if (!captureGate.tryLock()) {
                 withContext(Dispatchers.Main) { if (generation == request) cancel("capture_busy") }
                 return@launch
@@ -155,7 +160,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
                 withContext(Dispatchers.Main) { if (generation == request) cancel("capture_failed") }
             } finally { captureGate.unlock() }
         }
-        service.launch(Dispatchers.Main) {
+        scope.launch(Dispatchers.Main) {
             delay(1800)
             if (generation == request && cached == null && !shown && !preparing) cancel("capture_timeout")
         }
@@ -175,7 +180,7 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
         protectLongPress()
         readyNotified = true
         android.util.Log.i("EVO-Press", "press_ready generation=$generation elapsedMs=${SystemClock.uptimeMillis() - detector.downTime()}")
-        if (settings.vibrate) VibratorUtils.vibrator(service, true)
+        if (settings.vibrate) VibratorUtils.vibrator(context, true)
     }
 
     private fun display() {
@@ -213,18 +218,18 @@ internal class GlobalPressDragSource(private val service: GestureService, privat
             changes and AccessibilityEvent.WINDOWS_CHANGE_REMOVED != 0
         if (sourceRemoved) { cancel("source_removed:event=$eventType,window=$eventId,changes=$changes"); return }
         windowCheck?.cancel()
-        windowCheck = service.launch(Dispatchers.IO) {
+        windowCheck = scope.launch(Dispatchers.IO) {
             try {
                 val windows = capture.windowSnapshot()
                 withContext(Dispatchers.Main) {
                     if (generation != request || !active) return@withContext
                     windows.filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY &&
-                        it.packageName == service.packageName }.forEach { ownOverlayIds += it.id }
+                        it.packageName == context.packageName }.forEach { ownOverlayIds += it.id }
                     val allowSourceMenu = settings.protect && input.rootActive && blocker.hasRootRequest &&
                         (cached != null || shown || preparing)
                     val reason = PressWindowPolicy.cancellationReason(origin.windowId, origin.packageName, origin.bounds,
                         windows, eventId, eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, false,
-                        service.packageName, ownOverlayIds, allowSourceMenu)
+                        context.packageName, ownOverlayIds, allowSourceMenu)
                     if (reason != null) {
                         cancel("$reason:event=$eventType,window=$eventId,changes=$changes")
                         return@withContext
