@@ -451,7 +451,7 @@
     <string name="inspire_settings_delay_remove_image">Delay 5 minutes before deleting image</string>
     <string name="inspire_settings_delay_remove_image_desc">After enabling, short press save button to delay deletion, long press to permanently save</string>
     <string name="inspire_settings_default_share_behavior_title">Default Share Behavior</string>
-    <string name="inspire_settings_share_settings_title">Share Settings</string>
+    <string name="inspire_settings_share_settings_title">Sharing &amp; Drag and Drop</string>
     <string name="inspire_settings_default_share_behavior_desc">Choose default behavior for sharing to tokenization or Pin pool</string>
     <string name="inspire_settings_share_to_tokenization">Share to Tokenization</string>
     <string name="inspire_settings_share_to_pinpool">Share to Pin Pool</string>
@@ -1087,9 +1087,7 @@
     <string name="gesture_type_batch_apply">Apply to selection</string>
     <string name="gesture_type_batch_selected_count">Selected gestures: %1$d; stages: %2$d</string>
     <string name="inspire_settings_screen_content_description">Manage screen text recognition, copying and screenshots</string>
-    <string name="inspire_settings_share_settings_description">Configure the default sharing behavior</string>
-    <string name="inspire_settings_external_drop_settings_title">External Drop Settings</string>
-    <string name="inspire_settings_external_drop_settings_description">Configure tool buttons, overlay position and sidebar layout for external drops</string>
+    <string name="inspire_settings_share_settings_description">Configure default sharing, drag-and-drop tools, search engines and overlay layout</string>
     <string name="inspire_settings_external_drop">Show Tool Buttons when Dragging</string>
     <string name="inspire_settings_external_drop_desc">Show the Pin Pool, Pin, and Tokenize tool buttons when dragging text or images from other apps</string>
     <string name="inspire_settings_external_drop_position">Drag and Drop Overlay Position</string>

@@ -488,10 +488,8 @@
     <string name="inspire_settings_delay_remove_image">延迟5分钟后删除图片</string>
     <string name="inspire_settings_delay_remove_image_desc">开启后，短按保存按钮延迟删除，长按永久保存</string>
     <string name="inspire_settings_default_share_behavior_title">默认分享行为</string>
-    <string name="inspire_settings_share_settings_title">分享设置</string>
-    <string name="inspire_settings_share_settings_description">设置默认分享行为</string>
-    <string name="inspire_settings_external_drop_settings_title">外部拖放设置</string>
-    <string name="inspire_settings_external_drop_settings_description">设置外部拖放的工具按钮、悬浮窗位置与侧栏布局</string>
+    <string name="inspire_settings_share_settings_title">分享与拖放设置</string>
+    <string name="inspire_settings_share_settings_description">设置默认分享行为、拖放工具、搜索引擎与悬浮窗布局</string>
     <string name="inspire_settings_external_drop">拖放时显示工具按钮</string>
     <string name="inspire_settings_external_drop_desc">其他应用拖动文字或图片时，显示 Pin池、Pin图和分词三个工具按钮</string>
     <string name="inspire_settings_external_drop_position">拖放悬浮窗位置</string>
