@@ -72,19 +72,26 @@ internal class PressContentCapture(
             return windows.map { window ->
                 val bounds = Rect().also(window::getBoundsInScreen)
                 val root = window.root
-                val packageName = try { root?.packageName?.toString() } finally { root?.recycle() }
-                PressWindowPolicy.Window(window.id, window.type, packageName,
-                    PressWindowPolicy.Bounds(bounds.left, bounds.top, bounds.right, bounds.bottom), window.isActive, window.isFocused)
+                val identity = try { root?.packageName?.toString() to (root?.isVisibleToUser == true) }
+                    finally { root?.recycle() }
+                PressWindowPolicy.Window(window.id, window.type, identity.first,
+                    PressWindowPolicy.Bounds(bounds.left, bounds.top, bounds.right, bounds.bottom),
+                    window.isActive, window.isFocused, visible = identity.second)
             }
         } finally { windows.forEach { it.recycle() } }
     }
 
+    fun isSourceCurrent(source: Source): Boolean = PressWindowPolicy.cancellationReason(
+        source.windowId, source.packageName, source.bounds, windowSnapshot(), source.windowId,
+        stateChanged = false, removed = false, ownPackage = service.packageName,
+    ) == null
+
     suspend fun capture(source: Source, x: Float, y: Float): ClipData? = withContext(Dispatchers.IO) {
         val point = Rect(x.toInt() - 1, y.toInt() - 1, x.toInt() + 1, y.toInt() + 1)
         val content = withAccessibilityNodes(service, windowId = source.windowId,
-            expectedPackage = source.packageName, maxNodes = 600, maxDurationMs = 450) { nodes ->
+            expectedPackage = source.packageName) { nodes ->
             if (nodes.any { it.info.isPassword && it.bounds.contains(x.toInt(), y.toInt()) })
-                return@withAccessibilityNodes null
+                return@withAccessibilityNodes captureMiss("password_at_point")
             // Never read password descendants or summaries containing a password field.
             val excluded = mutableSetOf<Int>()
             nodes.indices.filter { nodes[it].info.isPassword }.forEach { index ->
@@ -99,10 +106,10 @@ internal class PressContentCapture(
                 }
             }
             val target = smallestScreenView(screenViews(nodes, point, clickMode = true, excluded = excluded))
-                ?: return@withAccessibilityNodes null
+                ?: return@withAccessibilityNodes captureMiss("no_target")
             val targetNode = nodes.withIndex().firstOrNull {
                 it.index !in excluded && it.value.readable && it.value.bounds == target.bound
-            }?.value ?: return@withAccessibilityNodes null
+            }?.value ?: return@withAccessibilityNodes captureMiss("target_unavailable")
             val cls = targetNode.info.className?.toString().orEmpty()
             val description = targetNode.info.contentDescription?.toString()?.trim()?.lowercase()
             val image = cls.endsWith("ImageView") || cls == "android.widget.Image" ||
@@ -111,14 +118,14 @@ internal class PressContentCapture(
                 val region = Rect(target.bound)
                 val margin = service.resources.displayMetrics.density.toInt().coerceAtLeast(1)
                 val sensitiveRegion = Rect(region).apply { inset(-margin, -margin) }
-                if (nodes.any { it.info.isPassword && Rect.intersects(sensitiveRegion, it.bounds) }) null
+                if (nodes.any { it.info.isPassword && Rect.intersects(sensitiveRegion, it.bounds) }) captureMiss("password_in_image")
                 else CapturedContent(imageBounds = region)
             } else {
                 screenContentText(selectScreenContent(nodes, target.bound, excluded)).takeIf { it.isNotBlank() }
-                    ?.let { CapturedContent(text = it) }
+                    ?.let { CapturedContent(text = it) } ?: captureMiss("no_text_in_target")
             }
         } ?: return@withContext null
-        if (sourceAt(x, y) != source) return@withContext null
+        if (!isSourceCurrent(source)) return@withContext captureMiss("source_changed")
         content.text?.let { return@withContext ClipData.newPlainText("EVO press", it) }
         val region = content.imageBounds ?: return@withContext null
         if (!region.intersect(source.bounds.left, source.bounds.top, source.bounds.right, source.bounds.bottom)) return@withContext null
@@ -133,11 +140,16 @@ internal class PressContentCapture(
         } finally { screen.recycle() } ?: return@withContext null
         try {
             coroutineContext.ensureActive()
-            if (sourceAt(x, y) != source) return@withContext null
+            if (!isSourceCurrent(source)) return@withContext captureMiss("source_changed")
             val payload = ImageShareLauncher(service.applicationContext).buildPayload(crop, null) ?: return@withContext null
             val uri = payload.contentUris.firstOrNull() ?: return@withContext null
             ClipData.newUri(service.contentResolver, "EVO visible image", uri)
         } finally { crop.recycle() }
+    }
+
+    private fun captureMiss(reason: String): Nothing? {
+        DropDiagnostics.event("drop_capture_unavailable", "internal", 0, reason = reason)
+        return null
     }
 
 }

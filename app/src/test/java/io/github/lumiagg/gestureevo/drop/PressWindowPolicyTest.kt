@@ -29,28 +29,45 @@ class PressWindowPolicyTest {
         assertNull(reason(listOf(source, ownOverlay), eventId = 9, stateChanged = true))
     }
 
-    @Test fun focusedSmallMenuCancels() {
+    @Test fun focusedSourceMenuDoesNotCancel() {
         for (popup in listOf(menuPopup(focused = true), menuPopup(active = true))) {
             val windows = listOf(source, ownOverlay, popup)
-            assertEquals("source_switched", reason(windows))
+            assertNull(reason(windows))
         }
     }
 
-    @Test fun smallMenuWindowStateCancels() {
+    @Test fun sourceMenuWindowStateDoesNotCancel() {
         val windows = listOf(source, ownOverlay, menuPopup())
-        assertEquals("other_window_state", reason(windows, stateChanged = true))
+        assertNull(reason(windows, stateChanged = true))
     }
 
-    @Test fun stillCancelsOnFullWidthSamePackagePanel() {
-        assertEquals("source_switched",
-            reason(listOf(source, ownOverlay, menuPopup(focused = true, bounds = PressWindowPolicy.Bounds(0, 1200, 1000, 2000)))))
-        assertEquals("other_window_state",
-            reason(listOf(source, ownOverlay, menuPopup(bounds = PressWindowPolicy.Bounds(0, 1200, 1000, 2000))), stateChanged = true))
+    @Test fun sourceBottomSheetDoesNotCancel() {
+        assertNull(reason(listOf(source, ownOverlay,
+            menuPopup(focused = true, bounds = PressWindowPolicy.Bounds(0, 1200, 1000, 2000)))))
+        assertNull(reason(listOf(source, ownOverlay,
+            menuPopup(bounds = PressWindowPolicy.Bounds(0, 1200, 1000, 2000))), stateChanged = true))
     }
 
-    @Test fun stillCancelsOnNearFullscreenSamePackageDialog() {
-        assertEquals("source_switched",
-            reason(listOf(source, ownOverlay, menuPopup(focused = true, bounds = PressWindowPolicy.Bounds(50, 100, 950, 1900)))))
+    @Test fun sourceDialogDoesNotCancel() {
+        assertNull(reason(listOf(source, ownOverlay,
+            menuPopup(focused = true, bounds = PressWindowPolicy.Bounds(50, 100, 950, 1900)))))
+    }
+
+    @Test fun inactiveButVisibleSourceRemainsUsableUnderItsMenu() {
+        assertNull(reason(listOf(source.copy(active = false), menuPopup(active = true)), stateChanged = true))
+        assertEquals("source_hidden", reason(listOf(source.copy(visible = false), menuPopup(active = true))))
+    }
+
+    @Test fun sameAppReplacementAndOutsideWindowStillCancel() {
+        assertEquals("source_switched", reason(listOf(source, menuPopup(active = true, bounds = sourceBounds))))
+        assertEquals("source_switched", reason(listOf(source,
+            menuPopup(active = true, bounds = PressWindowPolicy.Bounds(-1, 100, 300, 400)))))
+    }
+
+    @Test fun closedSourceMenuDoesNotLookLikeAnAppSwitch() {
+        assertNull(PressWindowPolicy.cancellationReason(1, "com.app", sourceBounds, listOf(source),
+            2, true, false, "io.github.lumiagg.gestureevo.debug", eventPackage = "com.app"))
+        assertEquals("other_window_state", reason(listOf(source), stateChanged = true))
     }
 
     @Test fun stillCancelsOnForeignPackageWindow() {

@@ -1339,7 +1339,7 @@
     <string name="global_press_status_standard_ready">Shizuku connected</string>
     <string name="global_press_status_unavailable">Failed: check Shizuku, authorization and touch access</string>
     <string name="global_press_title">Global long-press drag and drop</string>
-    <string name="global_press_description">Only apps in the allowlist can start a long-press drag.\nHold text or a visible image, move after the light vibration, then drag to the panel to drop.\nHolding alone shows no panel. Haptic feedback requires vibration to be enabled.</string>
+    <string name="global_press_description">Only apps in the allowlist can start a long-press drag.\nHold text or a visible image, then move after the light vibration to start recognition. Drag to the panel once the content is ready.\nHolding alone shows no panel. Haptic feedback requires vibration to be enabled.</string>
     <string name="global_press_timeout">Hold duration before moving</string>
     <string name="global_press_allowed">Long-press drag app allowlist</string>
     <string name="global_press_milliseconds">%1$d ms</string>

@@ -1,7 +1,6 @@
 package io.github.lumiagg.gestureevo.drop;
 
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -111,11 +110,8 @@ public final class PressTriggerDetectorTest {
     }
 
     @Test
-    public void newPressResetsActivationAndKeepsClassificationTiming() {
+    public void newPressResetsActivation() {
         detector.start(100f, 100f, 0L, 500L);
-        assertFalse(detector.takeClassification(119L));
-        assertTrue(detector.takeClassification(120L));
-        assertFalse(detector.takeClassification(121L));
         detector.arm(500L);
         detector.onPointerEvent(2, 109f, 100f, 1);
         assertTrue(detector.isFired());

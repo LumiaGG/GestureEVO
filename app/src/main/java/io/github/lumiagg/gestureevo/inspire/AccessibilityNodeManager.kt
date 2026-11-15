@@ -9,7 +9,6 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.annotation.RequiresApi
 import android.accessibilityservice.AccessibilityService
-import android.os.SystemClock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -39,18 +38,14 @@ internal suspend fun <T> withAccessibilityNodes(
     readText: Boolean = true,
     windowId: Int? = null,
     expectedPackage: String? = null,
-    maxNodes: Int = Int.MAX_VALUE,
-    maxDurationMs: Long = Long.MAX_VALUE,
     block: (List<AccessibilityNodeSnapshot>) -> T,
 ): T? = withContext(Dispatchers.Default) {
     val snapshots = mutableListOf<AccessibilityNodeSnapshot>()
     val pending = ArrayDeque<Pair<AccessibilityNodeInfo, Int?>>()
     try {
-        val started = SystemClock.uptimeMillis()
         getWindowRoots(service, windowId).asReversed().forEach { pending.addLast(it to null) }
         while (pending.isNotEmpty()) {
             ensureActive()
-            if (snapshots.size >= maxNodes || SystemClock.uptimeMillis() - started > maxDurationMs) return@withContext null
             val (node, parentIndex) = pending.removeLast()
             val snapshot = AccessibilityNodeSnapshot(node, parentIndex)
             val index = snapshots.size
@@ -136,7 +131,7 @@ private fun getWindowRoots(service: AccessibilityService, windowId: Int?): List<
         buildList {
             for (window in windows) {
                 if (window.type == AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY) continue
-                if (windowId != null && (window.id != windowId || !window.isActive ||
+                if (windowId != null && (window.id != windowId ||
                         window.type != AccessibilityWindowInfo.TYPE_APPLICATION)) continue
                 window.root?.let(::add)
             }

@@ -1342,7 +1342,7 @@
     <string name="global_press_status_standard_ready">Shizuku 已连接</string>
     <string name="global_press_status_unavailable">连接失败：检查 Shizuku 服务、授权及触屏权限</string>
     <string name="global_press_title">全局长按拖放</string>
-    <string name="global_press_description">仅对白名单中的应用生效。\n按住文字或可见图片，轻振后移动，再拖向面板投放。\n仅长按不弹出面板；轻振需开启振动。</string>
+    <string name="global_press_description">仅对白名单中的应用生效。\n按住文字或可见图片，轻振后移动开始识别，内容就绪后拖向面板投放。\n仅长按不弹出面板；轻振需开启振动。</string>
     <string name="global_press_timeout">移动前按住时长</string>
     <string name="global_press_allowed">长按拖放白名单</string>
     <string name="global_press_milliseconds">%1$d 毫秒</string>

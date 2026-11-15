@@ -16,7 +16,6 @@ public final class PressTriggerDetector {
     private float anchorY;
     private long downTime = -1L;
     private long deadline = -1L;
-    private long classificationDeadline = -1L;
 
     public PressTriggerDetector(float dragThreshold) {
         this.dragThreshold = dragThreshold;
@@ -30,7 +29,6 @@ public final class PressTriggerDetector {
         lastY = downY = y;
         downTime = time;
         deadline = time + confirmMillis;
-        classificationDeadline = time + 120L;
     }
 
     /** MOVE=2 continues one pointer; release, cancellation or a second pointer ends it. */
@@ -45,17 +43,10 @@ public final class PressTriggerDetector {
             float dy = y - anchorY;
             if (dx * dx + dy * dy > dragThreshold * dragThreshold) {
                 fired = true;
-                classificationDeadline = -1L;
             }
         } else if (Math.abs(x - downX) > MOVE_LIMIT || Math.abs(y - downY) > MOVE_LIMIT) {
             cancel();
         }
-    }
-
-    public boolean takeClassification(long now) {
-        if (!active || fired || classificationDeadline < 0L || now < classificationDeadline) return false;
-        classificationDeadline = -1L;
-        return true;
     }
 
     public void arm(long now) {
@@ -69,7 +60,6 @@ public final class PressTriggerDetector {
         active = false;
         armed = false;
         deadline = -1L;
-        classificationDeadline = -1L;
     }
 
     public boolean isActive() { return active; }
@@ -77,5 +67,4 @@ public final class PressTriggerDetector {
     public boolean isFired() { return fired; }
     public long downTime() { return downTime; }
     public long deadline() { return deadline; }
-    public long classificationDeadline() { return classificationDeadline; }
 }

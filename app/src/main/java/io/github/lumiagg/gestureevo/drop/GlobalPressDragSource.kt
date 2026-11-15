@@ -26,6 +26,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -46,14 +48,13 @@ internal class GlobalPressDragSource(
     private val captureGate = Mutex()
     private var settings = Settings(false, 500, emptySet(), true)
     private var settingsJob: Job? = null
-    private var lookup: Job? = null
-    private var lookupTimeout: Job? = null
+    private var sourceCheck: Job? = null
+    private var preparation: Job? = null
+    private var preparationTimeout: Job? = null
     private var windowCheck: Job? = null
-    private var interruption: Job? = null
     private var interruptionAllowed: AtomicBoolean? = null
     private val ownOverlayIds = mutableSetOf<Int>()
     private var source: PressContentCapture.Source? = null
-    private var cached: ClipData? = null
     @Volatile private var generation = 0L
     private var active = false
     private var shown = false
@@ -61,16 +62,17 @@ internal class GlobalPressDragSource(
     private var readyNotified = false
     val isGestureActive: Boolean get() = active || shown || preparing
     private var systemDrag = false
-    private var downX = 0f
-    private var downY = 0f
+    private var captureX = 0f
+    private var captureY = 0f
     private var latestX = 0f
     private var latestY = 0f
     private val input = TouchInputSource(context, scope, ::onPointer) { cancel("input_disconnected") }
-    private val classify = Runnable { if (detector.takeClassification(SystemClock.uptimeMillis())) lookup() }
     private val arm = Runnable {
         if (!allowed()) cancel("confirmation_not_allowed")
         else {
             detector.arm(SystemClock.uptimeMillis())
+            captureX = latestX
+            captureY = latestY
             notifyReady()
         }
     }
@@ -103,10 +105,8 @@ internal class GlobalPressDragSource(
             cancel("next_down")
             if (systemDrag || !settings.enabled || !screenReady() || panel() == null || OverlayTouchRegions.contains(x, y)) return
             active = true
-            downX = x
-            downY = y
             detector.start(x, y, time, settings.timeout.toLong())
-            main.postAtTime(classify, detector.classificationDeadline())
+            checkSource(x, y)
             main.postAtTime(arm, detector.deadline())
             main.postDelayed(expiry, 15_000)
             return
@@ -119,98 +119,116 @@ internal class GlobalPressDragSource(
             return
         }
         detector.onPointerEvent(action, x, y, 1)
-        if (!detector.isActive) { cancel("pointer_rejected:action=$action"); return }
-        if (detector.isFired) display()
+        if (!detector.isActive) {
+            cancel(if (action == MotionEvent.ACTION_MOVE) "moved_before_hold" else "contact_cancelled")
+            return
+        }
+        if (detector.isFired) prepareDrag()
         if (shown || preparing) panel()?.updateContentDrag(x, y)
     }
 
-    private fun lookup() {
-        if (!allowed()) { cancel("lookup_not_allowed"); return }
+    /** Lock only the source window on DOWN; no content tree traversal or screenshots yet. */
+    private fun checkSource(x: Float, y: Float) {
         val request = generation
-        val x = downX
-        val y = downY
-        lookup = scope.launch(Dispatchers.IO) {
-            if (!captureGate.tryLock()) {
-                withContext(Dispatchers.Main) { if (generation == request) cancel("capture_busy") }
-                return@launch
-            }
+        sourceCheck = scope.launch(Dispatchers.IO) {
             try {
                 val origin = capture.sourceAt(x, y)
-                if (origin == null || origin.packageName !in settings.whitelist || capture.excludedPackage(origin.packageName)) {
-                    withContext(Dispatchers.Main) { if (generation == request) cancel("source_unavailable_or_not_allowed") }
-                    return@launch
+                val rejection = when {
+                    origin == null -> "source_unavailable"
+                    origin.packageName !in settings.whitelist -> "app_not_allowed"
+                    capture.excludedPackage(origin.packageName) -> "protected_package"
+                    else -> null
                 }
-                withContext(Dispatchers.Main) { if (generation == request) source = origin }
-                val content = capture.capture(origin, x, y)
                 withContext(Dispatchers.Main) {
                     if (generation != request || !allowed()) return@withContext
-                    if (SystemClock.uptimeMillis() - detector.downTime() > 2000) { cancel("capture_expired"); return@withContext }
-                    if (content == null) { cancel("content_unavailable"); return@withContext }
-                    cached = content
-                    lookupTimeout?.cancel()
-                    lookupTimeout = null
-                    android.util.Log.i("EVO-Press", "content_ready generation=$request elapsedMs=${SystemClock.uptimeMillis() - detector.downTime()} threshold=${settings.timeout}")
+                    if (rejection != null || origin == null) {
+                        cancel(rejection ?: "source_unavailable")
+                        return@withContext
+                    }
+                    source = origin
                     notifyReady()
-                    if (detector.isFired) display()
+                    if (detector.isFired) prepareDrag()
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
-            catch (error: Exception) {
-                android.util.Log.w("EVO-Press", "Press capture failed", error)
-                withContext(Dispatchers.Main) { if (generation == request) cancel("capture_failed") }
-            } finally { captureGate.unlock() }
-        }
-        lookupTimeout = scope.launch(Dispatchers.Main) {
-            delay(1800)
-            if (generation == request && cached == null && !shown && !preparing) cancel("capture_timeout")
+            catch (_: Exception) {
+                withContext(Dispatchers.Main) { if (generation == request) cancel("source_check_failed") }
+            }
         }
     }
 
     private fun notifyReady() {
-        if (readyNotified || !detector.isReady || cached == null || !allowed()) return
+        if (readyNotified || !detector.isReady || source == null || !allowed()) return
         readyNotified = true
         android.util.Log.i("EVO-Press", "press_ready generation=$generation elapsedMs=${SystemClock.uptimeMillis() - detector.downTime()}")
         if (settings.vibrate) VibratorUtils.vibrator(context, true)
     }
 
-    private fun display() {
-        if (shown || preparing || !allowed()) return
-        if (cached == null) return
+    private fun prepareDrag() {
+        if (shown || preparing || !detector.isFired || !allowed()) return
+        val origin = source ?: return // The lightweight source check may still be in flight.
         preparing = true
-        interruptSource()
-    }
-
-    private fun interruptSource() {
         val request = generation
-        interruptionAllowed?.set(false)
-        val origin = source ?: run { cancel("source_unavailable"); return }
-        val x = latestX
-        val y = latestY
-        val overEvoWindow = OverlayTouchRegions.contains(x, y)
+        val started = SystemClock.uptimeMillis()
+        val x = captureX
+        val y = captureY
+        val inputX = latestX
+        val inputY = latestY
+        val overEvoWindow = OverlayTouchRegions.contains(inputX, inputY)
         @Suppress("DEPRECATION")
         val displayId = context.getSystemService(WindowManager::class.java).defaultDisplay.displayId
         val permitted = AtomicBoolean(true).also { interruptionAllowed = it }
         val guard = object : ITouchInterruptionGuard.Stub() {
             override fun isCurrent(): Boolean = permitted.get()
         }
-        interruption = scope.launch(Dispatchers.IO) {
-            val success = try {
-                // No EVO drag windows are attached yet; the synthetic DOWN must reach the source.
-                if (capture.sourceAt(x, y) != origin || overEvoWindow) false
-                else input.interruptSourceTouch(origin.packageName, x, y, displayId,
-                    SystemClock.uptimeMillis() + 500, guard)
+        preparation = scope.launch(Dispatchers.IO) {
+            if (!captureGate.tryLock()) {
+                withContext(Dispatchers.Main) { if (generation == request) cancel("capture_busy") }
+                return@launch
+            }
+            try {
+                if (overEvoWindow || !capture.isSourceCurrent(origin)) {
+                    withContext(Dispatchers.Main) { if (generation == request) cancel("source_changed") }
+                    return@launch
+                }
+                coroutineScope {
+                    val content = async { capture.capture(origin, x, y) }
+                    val interruption = async {
+                        try {
+                            input.interruptSourceTouch(origin.packageName, inputX, inputY, displayId,
+                                SystemClock.uptimeMillis() + 500, guard)
+                        } catch (cancelled: CancellationException) { throw cancelled }
+                        catch (error: Exception) {
+                            android.util.Log.w("EVO-TouchBlock", "shizuku_cancel_failed type=${error.javaClass.simpleName}")
+                            false
+                        }
+                    }
+                    val payload = content.await()
+                    if (payload == null) {
+                        withContext(Dispatchers.Main) { if (generation == request) cancel("content_unavailable") }
+                        return@coroutineScope
+                    }
+                    val interrupted = interruption.await()
+                    withContext(Dispatchers.Main) {
+                        if (generation != request || !permitted.get() || !allowed()) return@withContext
+                        if (SystemClock.uptimeMillis() - started > 1800) { cancel("preparation_timeout"); return@withContext }
+                        preparationTimeout?.cancel()
+                        preparationTimeout = null
+                        DropDiagnostics.event("drop_source_prepared", "internal", request.toInt(),
+                            reason = if (interrupted) "interrupted" else "interruption_failed")
+                        blocker.reportCancellationResult(interrupted)
+                        beginPanel(payload, request)
+                    }
+                }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) {
-                android.util.Log.w("EVO-TouchBlock", "shizuku_cancel_failed type=${error.javaClass.simpleName}")
-                false
-            }
-            withContext(Dispatchers.Main) {
-                if (generation != request || !permitted.get() || !allowed()) return@withContext
-                android.util.Log.i("EVO-TouchBlock", "shizuku_cancel_result success=$success")
-                if (preparing && detector.isFired) {
-                    blocker.reportCancellationResult(success)
-                    cached?.let { beginPanel(it, request) } ?: cancel("content_unavailable")
-                }
-            }
+                android.util.Log.w("EVO-Press", "Press preparation failed", error)
+                withContext(Dispatchers.Main) { if (generation == request) cancel("preparation_failed") }
+            } finally { captureGate.unlock() }
+        }
+        // Main-thread watchdog revokes Binder permission even if a remote call outlives cancellation.
+        preparationTimeout = scope.launch(Dispatchers.Main) {
+            delay(1800)
+            if (generation == request && preparing && !shown) cancel("preparation_timeout")
         }
     }
 
@@ -222,7 +240,6 @@ internal class GlobalPressDragSource(
                 if (generation == request && allowed()) {
                     preparing = false
                     shown = true
-                    cached = null
                     android.util.Log.i("EVO-Press", "source_ready generation=$request sourceWindow=${source?.windowId}")
                 }
             },
@@ -239,6 +256,7 @@ internal class GlobalPressDragSource(
         val request = generation
         val eventType = event.eventType
         val eventId = event.windowId
+        val eventPackage = event.packageName?.toString()
         val changes = if (android.os.Build.VERSION.SDK_INT >= 28 &&
             eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) event.windowChanges else 0
         ownOverlayIds += OverlayTouchRegions.windowIds()
@@ -255,7 +273,7 @@ internal class GlobalPressDragSource(
                         it.packageName == context.packageName }.forEach { ownOverlayIds += it.id }
                     val reason = PressWindowPolicy.cancellationReason(origin.windowId, origin.packageName, origin.bounds,
                         windows, eventId, eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, false,
-                        context.packageName, ownOverlayIds)
+                        context.packageName, ownOverlayIds, eventPackage)
                     if (reason != null) {
                         cancel("$reason:event=$eventType,window=$eventId,changes=$changes")
                         return@withContext
@@ -285,22 +303,20 @@ internal class GlobalPressDragSource(
         // A remote Binder call may outlive coroutine cancellation. Revoke its guard immediately.
         interruptionAllowed?.set(false)
         interruptionAllowed = null
-        interruption?.cancel()
-        interruption = null
+        preparation?.cancel()
+        preparation = null
         active = false
         shown = false
         preparing = false
         readyNotified = false
         source = null
-        cached = null
         detector.cancel()
-        main.removeCallbacks(classify)
         main.removeCallbacks(arm)
         main.removeCallbacks(expiry)
-        lookup?.cancel()
-        lookup = null
-        lookupTimeout?.cancel()
-        lookupTimeout = null
+        sourceCheck?.cancel()
+        sourceCheck = null
+        preparationTimeout?.cancel()
+        preparationTimeout = null
         windowCheck?.cancel()
         windowCheck = null
         ownOverlayIds.clear()
