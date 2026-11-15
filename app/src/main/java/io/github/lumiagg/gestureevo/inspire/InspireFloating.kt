@@ -36,7 +36,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -132,7 +131,7 @@ class InspireFloating(private val context: GestureService) :
                     return
                 }
                 taskJob = context.launch {
-                    val targetRect = resolveTargetRect(dragSelectRect) ?: dragSelectRect
+                    val targetRect = resolveScreenContentRect(context, dragSelectRect) ?: dragSelectRect
                     processScreenContent(targetRect)
                 }
             }
@@ -529,40 +528,6 @@ class InspireFloating(private val context: GestureService) :
         return Rect(this).takeIf { it.intersect(selection) && !it.isEmpty }
     }
 
-    private suspend fun resolveTargetRect(dragSelectRect: Rect): Rect? =
-        withContext(Dispatchers.Default) {
-            val tooSmallWidth = inspireView.rectTooSmallWidth(dragSelectRect)
-            val tooSmallHeight = inspireView.rectTooSmallHeight(dragSelectRect)
-            when {
-                tooSmallWidth && tooSmallHeight -> {
-                    val intersectingViews = getScreenView(context, dragSelectRect, clickMode = true)
-                    smallestScreenView(intersectingViews,
-                        minimumArea = dragSelectRect.height() * dragSelectRect.width() * 1.2)?.bound
-                }
-
-                tooSmallHeight || tooSmallWidth -> {
-                    val views = getScreenView(context, dragSelectRect, clickMode = false)
-                    if (views.isEmpty()) {
-                        null
-                    } else {
-                        val expandedRect = Rect()
-                        var isFirst = true
-                        views.forEach { view ->
-                            if (isFirst) {
-                                expandedRect.set(view.bound)
-                                isFirst = false
-                            } else {
-                                expandedRect.union(view.bound)
-                            }
-                        }
-                        expandedRect
-                    }
-                }
-
-                else -> dragSelectRect
-            }
-        }
-
     private suspend fun recoverInspireState() = withContext(Dispatchers.Main) {
         context.gestureManager?.setInteractionMode(InteractionMode.NORMAL)
         inspireView.stopTransitionAnimation()
@@ -587,27 +552,17 @@ class InspireFloating(private val context: GestureService) :
                 resetTransitionState()
                 scheduleTransition(startUptimeMs)
 
-                val accessibilityJob = async {
-                    getScreenContentText(context, dragSelectRect)
-                }
-
-                val takeScreenshotJob = async {
-                    captureFreshScreenshot()?.use { screenshotHandle ->
-                        val croppedBitmap =
-                            screenshotHandle.cropByRect(dragSelectRect) ?: return@async
-                        InspireDataHolder.replaceScreenshotBitmap(croppedBitmap)
-                        PinPoolStore.addScreenContentImageIfEnabled(
-                            context,
-                            croppedBitmap.requireBitmap()
-                        )
-                        croppedBitmap.close()
+                val content = captureScreenContent(context, dragSelectRect, ::captureFreshScreenshot)
+                    ?: error("Screen content selection unavailable")
+                content.use {
+                    InspireDataHolder.accessibilityContent = it.accessibilityText
+                    InspireDataHolder.replaceScreenshotBitmap(it.image)
+                    it.image?.let { image ->
+                        PinPoolStore.addScreenContentImageIfEnabled(context, image.requireBitmap())
                         screenshotDone = true
                         maybeStartTransitionAfterScreenshot(startUptimeMs)
                     }
                 }
-
-                InspireDataHolder.accessibilityContent = accessibilityJob.await()
-                takeScreenshotJob.await()
                 InspireDataHolder.replaceOcrAllowedTextBoxes(null)
 
                 InspireDataHolder.dragRect = Rect()

@@ -53,7 +53,6 @@ internal class GlobalPressDragSource(
     private var preparationTimeout: Job? = null
     private var windowCheck: Job? = null
     private var interruptionAllowed: AtomicBoolean? = null
-    private val ownOverlayIds = mutableSetOf<Int>()
     private var source: PressContentCapture.Source? = null
     @Volatile private var generation = 0L
     private var active = false
@@ -186,12 +185,12 @@ internal class GlobalPressDragSource(
                 return@launch
             }
             try {
-                if (overEvoWindow || !capture.isSourceCurrent(origin)) {
+                if (overEvoWindow || !capture.isSourceAppCurrent(origin)) {
                     withContext(Dispatchers.Main) { if (generation == request) cancel("source_changed") }
                     return@launch
                 }
                 coroutineScope {
-                    val content = async { capture.capture(origin, x, y) }
+                    val content = async { capture.capture(x, y) }
                     val interruption = async {
                         try {
                             input.interruptSourceTouch(origin.packageName, inputX, inputY, displayId,
@@ -208,8 +207,10 @@ internal class GlobalPressDragSource(
                         return@coroutineScope
                     }
                     val interrupted = interruption.await()
+                    val sourceCurrent = capture.isSourceAppCurrent(origin)
                     withContext(Dispatchers.Main) {
                         if (generation != request || !permitted.get() || !allowed()) return@withContext
+                        if (!sourceCurrent) { cancel("source_app_changed"); return@withContext }
                         if (SystemClock.uptimeMillis() - started > 1800) { cancel("preparation_timeout"); return@withContext }
                         preparationTimeout?.cancel()
                         preparationTimeout = null
@@ -240,7 +241,7 @@ internal class GlobalPressDragSource(
                 if (generation == request && allowed()) {
                     preparing = false
                     shown = true
-                    android.util.Log.i("EVO-Press", "source_ready generation=$request sourceWindow=${source?.windowId}")
+                    android.util.Log.i("EVO-Press", "source_ready generation=$request")
                 }
             },
             onFailed = { reason -> if (generation == request) cancel("panel_$reason") },
@@ -254,34 +255,16 @@ internal class GlobalPressDragSource(
                 event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)) return
         val origin = source ?: return
         val request = generation
-        val eventType = event.eventType
-        val eventId = event.windowId
-        val eventPackage = event.packageName?.toString()
-        val changes = if (android.os.Build.VERSION.SDK_INT >= 28 &&
-            eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) event.windowChanges else 0
-        ownOverlayIds += OverlayTouchRegions.windowIds()
-        val sourceRemoved = android.os.Build.VERSION.SDK_INT >= 28 && eventId == origin.windowId &&
-            changes and AccessibilityEvent.WINDOWS_CHANGE_REMOVED != 0
-        if (sourceRemoved) { cancel("source_removed:event=$eventType,window=$eventId,changes=$changes"); return }
         windowCheck?.cancel()
         windowCheck = scope.launch(Dispatchers.IO) {
             try {
-                val windows = capture.windowSnapshot()
+                val current = capture.isSourceAppCurrent(origin)
                 withContext(Dispatchers.Main) {
-                    if (generation != request || !active) return@withContext
-                    windows.filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY &&
-                        it.packageName == context.packageName }.forEach { ownOverlayIds += it.id }
-                    val reason = PressWindowPolicy.cancellationReason(origin.windowId, origin.packageName, origin.bounds,
-                        windows, eventId, eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, false,
-                        context.packageName, ownOverlayIds, eventPackage)
-                    if (reason != null) {
-                        cancel("$reason:event=$eventType,window=$eventId,changes=$changes")
-                        return@withContext
-                    }
+                    if (generation == request && active && !current) cancel("source_app_changed")
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) {
-                withContext(Dispatchers.Main) { if (generation == request) cancel("window_snapshot_failed") }
+                withContext(Dispatchers.Main) { if (generation == request) cancel("source_check_failed") }
             }
         }
     }
@@ -298,7 +281,7 @@ internal class GlobalPressDragSource(
     fun cancel(reason: String = "lifecycle") {
         if (active || shown || preparing) DropDiagnostics.event("drop_source_cancelled", "internal", generation.toInt(),
             reason = reason.substringBefore(':'), flags = (if (shown) 1 else 0) or (if (preparing) 2 else 0))
-        if (active || shown || preparing) android.util.Log.i("EVO-Press", "cancel reason=$reason generation=$generation shown=$shown preparing=$preparing sourceWindow=${source?.windowId}")
+        if (active || shown || preparing) android.util.Log.i("EVO-Press", "cancel reason=$reason generation=$generation shown=$shown preparing=$preparing")
         generation++
         // A remote Binder call may outlive coroutine cancellation. Revoke its guard immediately.
         interruptionAllowed?.set(false)
@@ -319,7 +302,6 @@ internal class GlobalPressDragSource(
         preparationTimeout = null
         windowCheck?.cancel()
         windowCheck = null
-        ownOverlayIds.clear()
         panel()?.cancelContentDrag()
         blocker.stop()
     }

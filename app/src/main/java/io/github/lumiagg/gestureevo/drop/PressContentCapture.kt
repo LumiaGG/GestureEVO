@@ -6,13 +6,9 @@ import android.graphics.Rect
 import android.view.accessibility.AccessibilityWindowInfo
 import android.accessibilityservice.AccessibilityService
 import io.github.lumiagg.gestureevo.share.ImageShareLauncher
-import io.github.lumiagg.gestureevo.inspire.withAccessibilityNodes
-import io.github.lumiagg.gestureevo.inspire.screenViews
-import io.github.lumiagg.gestureevo.inspire.smallestScreenView
-import io.github.lumiagg.gestureevo.inspire.selectScreenContent
-import io.github.lumiagg.gestureevo.inspire.screenContentText
-import io.github.lumiagg.gestureevo.inspire.cropByRect
-import io.github.lumiagg.gestureevo.inspire.useSoftwareBitmap
+import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
+import io.github.lumiagg.gestureevo.inspire.captureScreenContent
+import io.github.lumiagg.gestureevo.inspire.resolveScreenContentRect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -23,8 +19,7 @@ internal class PressContentCapture(
     private val service: AccessibilityService,
     private val screenshot: suspend () -> Bitmap?,
 ) {
-    data class Source(val packageName: String, val windowId: Int, val bounds: PressWindowPolicy.Bounds)
-    private data class CapturedContent(val text: String? = null, val imageBounds: Rect? = null)
+    data class Source(val packageName: String)
 
     fun excludedPackage(packageName: String): Boolean {
         if (EvoSourcePackages.contains(packageName) || packageName == "com.android.systemui") return true
@@ -56,8 +51,7 @@ internal class PressContentCapture(
                 val root = window.root ?: continue
                 try {
                     if (!root.isVisibleToUser) return null
-                    return Source(root.packageName?.toString() ?: continue, window.id,
-                        PressWindowPolicy.Bounds(bounds.left, bounds.top, bounds.right, bounds.bottom))
+                    return Source(root.packageName?.toString() ?: continue)
                 }
                 finally { root.recycle() }
             }
@@ -65,86 +59,44 @@ internal class PressContentCapture(
         } finally { windows.forEach { it.recycle() } }
     }
 
+    /** Only application changes invalidate the gesture; window IDs, bounds and popup focus do not. */
     @Suppress("DEPRECATION")
-    fun windowSnapshot(): List<PressWindowPolicy.Window> {
+    fun isSourceAppCurrent(source: Source): Boolean {
         val windows = service.windows
         try {
-            return windows.map { window ->
-                val bounds = Rect().also(window::getBoundsInScreen)
-                val root = window.root
-                val identity = try { root?.packageName?.toString() to (root?.isVisibleToUser == true) }
-                    finally { root?.recycle() }
-                PressWindowPolicy.Window(window.id, window.type, identity.first,
-                    PressWindowPolicy.Bounds(bounds.left, bounds.top, bounds.right, bounds.bottom),
-                    window.isActive, window.isFocused, visible = identity.second)
+            val applications = windows.filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION && (it.isActive || it.isFocused) }
+                .sortedByDescending { it.isActive }
+            for (window in applications) {
+                val root = window.root ?: continue
+                try {
+                    val current = root.packageName?.toString() ?: continue
+                    return current == source.packageName
+                } finally { root.recycle() }
             }
+            // Accessibility may omit the active app during a window transition. The Shizuku worker
+            // independently checks the actual foreground task before injecting any touch.
+            return true
         } finally { windows.forEach { it.recycle() } }
     }
 
-    fun isSourceCurrent(source: Source): Boolean = PressWindowPolicy.cancellationReason(
-        source.windowId, source.packageName, source.bounds, windowSnapshot(), source.windowId,
-        stateChanged = false, removed = false, ownPackage = service.packageName,
-    ) == null
-
-    suspend fun capture(source: Source, x: Float, y: Float): ClipData? = withContext(Dispatchers.IO) {
+    suspend fun capture(x: Float, y: Float): ClipData? = withContext(Dispatchers.IO) {
         val point = Rect(x.toInt() - 1, y.toInt() - 1, x.toInt() + 1, y.toInt() + 1)
-        val content = withAccessibilityNodes(service, windowId = source.windowId,
-            expectedPackage = source.packageName) { nodes ->
-            if (nodes.any { it.info.isPassword && it.bounds.contains(x.toInt(), y.toInt()) })
-                return@withAccessibilityNodes captureMiss("password_at_point")
-            // Never read password descendants or summaries containing a password field.
-            val excluded = mutableSetOf<Int>()
-            nodes.indices.filter { nodes[it].info.isPassword }.forEach { index ->
-                var current: Int? = index
-                while (current != null) { excluded += current; current = nodes[current].parentIndex }
-            }
-            nodes.forEachIndexed { index, node ->
-                var ancestor = node.parentIndex
-                while (ancestor != null) {
-                    if (nodes[ancestor].info.isPassword) { excluded += index; break }
-                    ancestor = nodes[ancestor].parentIndex
-                }
-            }
-            val target = smallestScreenView(screenViews(nodes, point, clickMode = true, excluded = excluded))
-                ?: return@withAccessibilityNodes captureMiss("no_target")
-            val targetNode = nodes.withIndex().firstOrNull {
-                it.index !in excluded && it.value.readable && it.value.bounds == target.bound
-            }?.value ?: return@withAccessibilityNodes captureMiss("target_unavailable")
-            val cls = targetNode.info.className?.toString().orEmpty()
-            val description = targetNode.info.contentDescription?.toString()?.trim()?.lowercase()
-            val image = cls.endsWith("ImageView") || cls == "android.widget.Image" ||
-                (targetNode.info.text.isNullOrBlank() && description in setOf("图片", "图像", "image", "photo"))
-            if (image) {
-                val region = Rect(target.bound)
-                val margin = service.resources.displayMetrics.density.toInt().coerceAtLeast(1)
-                val sensitiveRegion = Rect(region).apply { inset(-margin, -margin) }
-                if (nodes.any { it.info.isPassword && Rect.intersects(sensitiveRegion, it.bounds) }) captureMiss("password_in_image")
-                else CapturedContent(imageBounds = region)
-            } else {
-                screenContentText(selectScreenContent(nodes, target.bound, excluded)).takeIf { it.isNotBlank() }
-                    ?.let { CapturedContent(text = it) } ?: captureMiss("no_text_in_target")
-            }
-        } ?: return@withContext null
-        if (!isSourceCurrent(source)) return@withContext captureMiss("source_changed")
-        content.text?.let { return@withContext ClipData.newPlainText("EVO press", it) }
-        val region = content.imageBounds ?: return@withContext null
-        if (!region.intersect(source.bounds.left, source.bounds.top, source.bounds.right, source.bounds.bottom)) return@withContext null
-        val screen = screenshot() ?: return@withContext null
-        val crop = try {
-            screen.useSoftwareBitmap { software ->
-                software.cropByRect(region)?.let {
-                    // A full-screen crop may alias its input; the returned image must own its pixels.
-                    if (it === software) it.copy(Bitmap.Config.ARGB_8888, false) else it
-                }
-            }
-        } finally { screen.recycle() } ?: return@withContext null
-        try {
+        val region = resolveScreenContentRect(service, point) ?: return@withContext captureMiss("no_target")
+        val content = captureScreenContent(service, region,
+            screenshot = { screenshot()?.let(ManagedBitmap::from) })
+            ?: return@withContext captureMiss("selection_unavailable")
+        content.use {
             coroutineContext.ensureActive()
-            if (!isSourceCurrent(source)) return@withContext captureMiss("source_changed")
-            val payload = ImageShareLauncher(service.applicationContext).buildPayload(crop, null) ?: return@withContext null
-            val uri = payload.contentUris.firstOrNull() ?: return@withContext null
-            ClipData.newUri(service.contentResolver, "EVO visible image", uri)
-        } finally { crop.recycle() }
+            if (!it.prefersImage && it.accessibilityText.isNotBlank()) {
+                return@withContext ClipData.newPlainText("EVO press", it.accessibilityText)
+            }
+            // As in pointer selection, the resolved region remains useful as an image even without text.
+            val image = it.image ?: return@withContext captureMiss("no_content")
+            val payload = ImageShareLauncher(service.applicationContext).buildPayload(image.requireBitmap(), null)
+                ?: return@withContext captureMiss("image_unavailable")
+            val uri = payload.contentUris.firstOrNull() ?: return@withContext captureMiss("image_unavailable")
+            ClipData.newUri(service.contentResolver, "EVO selection", uri)
+        }
     }
 
     private fun captureMiss(reason: String): Nothing? {

@@ -36,14 +36,12 @@ internal class AccessibilityNodeSnapshot(val info: AccessibilityNodeInfo, val pa
 internal suspend fun <T> withAccessibilityNodes(
     service: AccessibilityService,
     readText: Boolean = true,
-    windowId: Int? = null,
-    expectedPackage: String? = null,
     block: (List<AccessibilityNodeSnapshot>) -> T,
-): T? = withContext(Dispatchers.Default) {
+): T = withContext(Dispatchers.Default) {
     val snapshots = mutableListOf<AccessibilityNodeSnapshot>()
     val pending = ArrayDeque<Pair<AccessibilityNodeInfo, Int?>>()
     try {
-        getWindowRoots(service, windowId).asReversed().forEach { pending.addLast(it to null) }
+        getWindowRoots(service).asReversed().forEach { pending.addLast(it to null) }
         while (pending.isNotEmpty()) {
             ensureActive()
             val (node, parentIndex) = pending.removeLast()
@@ -52,7 +50,6 @@ internal suspend fun <T> withAccessibilityNodes(
             snapshots.add(snapshot)
             node.getBoundsInScreen(snapshot.bounds)
             snapshot.readable = node.isVisibleToUser && !snapshot.bounds.isEmpty
-            if (snapshot.readable && expectedPackage != null && node.packageName?.toString() != expectedPackage) return@withContext null
             if (readText && snapshot.readable) {
                 val nativeText = node.text?.toString()
                 snapshot.fromDescription = nativeText.isNullOrEmpty()
@@ -64,7 +61,6 @@ internal suspend fun <T> withAccessibilityNodes(
                 node.getChild(childIndex)?.let { pending.addLast(it to index) }
             }
         }
-        if (windowId != null && snapshots.isEmpty()) return@withContext null
         block(snapshots)
     } finally {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
@@ -98,41 +94,45 @@ internal fun selectScreenContent(
     }
 }
 
+/** Exclude passwords, their descendants and ancestor summaries from extracted text. */
+internal fun protectedAccessibilityNodes(nodes: List<AccessibilityNodeSnapshot>): Set<Int> {
+    val excluded = mutableSetOf<Int>()
+    val inPassword = BooleanArray(nodes.size)
+    nodes.forEachIndexed { index, node ->
+        inPassword[index] = node.info.isPassword || (node.parentIndex?.let { inPassword[it] } == true)
+        if (inPassword[index]) excluded += index
+        if (node.info.isPassword) {
+            var ancestor = node.parentIndex
+            while (ancestor != null) { excluded += ancestor; ancestor = nodes[ancestor].parentIndex }
+        }
+    }
+    return excluded
+}
+
 internal fun screenContentText(nodes: List<ScreenContentNode>): String =
     joinAccessibilityTextInReadingOrder(nodes.mapNotNull { node ->
         node.content?.let { AccessibilityTextFragment(it, node.bound.top, node.bound.bottom) }
     })
 
-internal fun screenViews(snapshots: List<AccessibilityNodeSnapshot>, rect: Rect, clickMode: Boolean,
-    excluded: Set<Int> = emptySet()): List<ScreenContentNode> = snapshots.mapIndexedNotNull { index, snapshot ->
-    val isTarget = clickMode || snapshot.text != null || snapshot.info.className == "android.widget.ImageView"
-    if (index !in excluded && snapshot.readable && isTarget && Rect.intersects(rect, snapshot.bounds)) {
+internal fun screenViews(snapshots: List<AccessibilityNodeSnapshot>, rect: Rect, clickMode: Boolean): List<ScreenContentNode> =
+    snapshots.mapNotNull { snapshot ->
+    val isTarget = clickMode || snapshot.text != null || accessibilityImageClass(snapshot.info.className)
+    if (snapshot.readable && isTarget && Rect.intersects(rect, snapshot.bounds)) {
         ScreenContentNode(snapshot.bounds, null)
     } else null
 }
 
 /** All point-based entry points use the same smallest intersecting visible region. */
-internal fun smallestScreenView(nodes: List<ScreenContentNode>, minimumArea: Double = 0.0): ScreenContentNode? =
-    nodes.filter { it.area > minimumArea }.minByOrNull { it.area }
-
-suspend fun getScreenContent(service: AccessibilityService, rect: Rect): List<ScreenContentNode> =
-    withAccessibilityNodes(service) { selectScreenContent(it, rect) }.orEmpty()
-
-suspend fun getScreenContentText(service: AccessibilityService, rect: Rect): String =
-    screenContentText(getScreenContent(service, rect))
-
-suspend fun getScreenView(service: AccessibilityService, rect: Rect, clickMode: Boolean): List<ScreenContentNode> =
-    withAccessibilityNodes(service, readText = !clickMode) { screenViews(it, rect, clickMode) }.orEmpty()
+internal fun smallestScreenView(nodes: List<ScreenContentNode>): ScreenContentNode? =
+    nodes.asSequence().filter { it.area > 0 }.minByOrNull { it.area }
 
 @Suppress("DEPRECATION")
-private fun getWindowRoots(service: AccessibilityService, windowId: Int?): List<AccessibilityNodeInfo> {
+private fun getWindowRoots(service: AccessibilityService): List<AccessibilityNodeInfo> {
     val windows = service.windows
     return try {
         buildList {
             for (window in windows) {
                 if (window.type == AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY) continue
-                if (windowId != null && (window.id != windowId ||
-                        window.type != AccessibilityWindowInfo.TYPE_APPLICATION)) continue
                 window.root?.let(::add)
             }
         }
@@ -195,9 +195,11 @@ fun Bitmap.cropByRect(rect: Rect): Bitmap? {
     // Ensure crop bounds are valid
     return if (safeRect.width() > 0 && safeRect.height() > 0) {
         try {
-            Bitmap.createBitmap(
+            val cropped = Bitmap.createBitmap(
                 this, safeRect.left, safeRect.top, safeRect.width(), safeRect.height()
             )
+            // A full-image crop can return its immutable input; callers own the returned bitmap.
+            if (cropped === this) copy(Bitmap.Config.ARGB_8888, false) else cropped
         } catch (e: Exception) {
             e.printStackTrace()
             null

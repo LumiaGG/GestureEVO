@@ -987,7 +987,7 @@ class InspireView : ConstraintLayout {
         private const val FALLBACK_PANEL_CENTER_Y_RATIO = 0.65f
         private const val EDGE_BACK_ZONE_DP = 24f
         val DRAG_SELECT_PAINT_WIDTH_HALF: Float = 3f.dp2px / 2
-        val DRAG_SELECT_CLICK_THRESHOLD: Float = 20f.dp2px
+        val DRAG_SELECT_CLICK_THRESHOLD: Float get() = io.github.lumiagg.gestureevo.inspire.screenContentClickThreshold
     }
 }
 
