@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ENABLED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ALLOWED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_TIMEOUT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.DEFAULT_GLOBAL_PRESS_TIMEOUT_MS
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_SELECTION_VIBRATE
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.readKey
@@ -46,14 +47,14 @@ internal class GlobalPressDragSource(
     private val detector = PressTriggerDetector(ViewConfiguration.get(context).scaledTouchSlop.toFloat())
     private val blocker = BackgroundTouchBlocker(context, scope)
     private val captureGate = Mutex()
-    private var settings = Settings(false, 500, emptySet(), true)
+    private var settings = Settings(false, DEFAULT_GLOBAL_PRESS_TIMEOUT_MS, emptySet(), true)
     private var settingsJob: Job? = null
     private var sourceCheck: Job? = null
     private var preparation: Job? = null
     private var preparationTimeout: Job? = null
     private var windowCheck: Job? = null
     private var interruptionAllowed: AtomicBoolean? = null
-    private var source: PressContentCapture.Source? = null
+    private var sourcePackage: String? = null
     @Volatile private var generation = 0L
     private var active = false
     private var shown = false
@@ -81,7 +82,7 @@ internal class GlobalPressDragSource(
         settingsJob = scope.launch(Dispatchers.Main) {
             DropPreferences.ensureGlobalPressWhitelist(context)
             context.settingsStore.data.map {
-                Settings(it.readKey(KEY_GLOBAL_PRESS_ENABLED, false), it.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500).coerceIn(200, 2000),
+                Settings(it.readKey(KEY_GLOBAL_PRESS_ENABLED, false), it.readKey(KEY_GLOBAL_PRESS_TIMEOUT, DEFAULT_GLOBAL_PRESS_TIMEOUT_MS).coerceIn(200, 2000),
                     it.readKey(KEY_GLOBAL_PRESS_ALLOWED, "").split('|').filter(String::isNotBlank).toSet(),
                     it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true))
             }.distinctUntilChanged().collect { updated ->
@@ -126,16 +127,16 @@ internal class GlobalPressDragSource(
         if (shown || preparing) panel()?.updateContentDrag(x, y)
     }
 
-    /** Lock only the source window on DOWN; no content tree traversal or screenshots yet. */
+    /** Check application eligibility on DOWN without traversing content or taking screenshots. */
     private fun checkSource(x: Float, y: Float) {
         val request = generation
         sourceCheck = scope.launch(Dispatchers.IO) {
             try {
-                val origin = capture.sourceAt(x, y)
+                val origin = capture.sourcePackageAt(x, y)
                 val rejection = when {
                     origin == null -> "source_unavailable"
-                    origin.packageName !in settings.whitelist -> "app_not_allowed"
-                    capture.excludedPackage(origin.packageName) -> "protected_package"
+                    origin !in settings.whitelist -> "app_not_allowed"
+                    capture.excludedPackage(origin) -> "protected_package"
                     else -> null
                 }
                 withContext(Dispatchers.Main) {
@@ -144,7 +145,7 @@ internal class GlobalPressDragSource(
                         cancel(rejection ?: "source_unavailable")
                         return@withContext
                     }
-                    source = origin
+                    sourcePackage = origin
                     notifyReady()
                     if (detector.isFired) prepareDrag()
                 }
@@ -156,7 +157,7 @@ internal class GlobalPressDragSource(
     }
 
     private fun notifyReady() {
-        if (readyNotified || !detector.isReady || source == null || !allowed()) return
+        if (readyNotified || !detector.isReady || sourcePackage == null || !allowed()) return
         readyNotified = true
         android.util.Log.i("EVO-Press", "press_ready generation=$generation elapsedMs=${SystemClock.uptimeMillis() - detector.downTime()}")
         if (settings.vibrate) VibratorUtils.vibrator(context, true)
@@ -164,7 +165,7 @@ internal class GlobalPressDragSource(
 
     private fun prepareDrag() {
         if (shown || preparing || !detector.isFired || !allowed()) return
-        val origin = source ?: return // The lightweight source check may still be in flight.
+        val origin = sourcePackage ?: return // The lightweight source check may still be in flight.
         preparing = true
         val request = generation
         val started = SystemClock.uptimeMillis()
@@ -193,7 +194,7 @@ internal class GlobalPressDragSource(
                     val content = async { capture.capture(x, y) }
                     val interruption = async {
                         try {
-                            input.interruptSourceTouch(origin.packageName, inputX, inputY, displayId,
+                            input.interruptSourceTouch(origin, inputX, inputY, displayId,
                                 SystemClock.uptimeMillis() + 500, guard)
                         } catch (cancelled: CancellationException) { throw cancelled }
                         catch (error: Exception) {
@@ -253,7 +254,7 @@ internal class GlobalPressDragSource(
     fun onWindowEvent(event: AccessibilityEvent) {
         if (!active || (event.eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED &&
                 event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)) return
-        val origin = source ?: return
+        val origin = sourcePackage ?: return
         val request = generation
         windowCheck?.cancel()
         windowCheck = scope.launch(Dispatchers.IO) {
@@ -292,7 +293,7 @@ internal class GlobalPressDragSource(
         shown = false
         preparing = false
         readyNotified = false
-        source = null
+        sourcePackage = null
         detector.cancel()
         main.removeCallbacks(arm)
         main.removeCallbacks(expiry)

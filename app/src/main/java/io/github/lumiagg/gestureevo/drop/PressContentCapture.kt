@@ -19,8 +19,6 @@ internal class PressContentCapture(
     private val service: AccessibilityService,
     private val screenshot: suspend () -> Bitmap?,
 ) {
-    data class Source(val packageName: String)
-
     fun excludedPackage(packageName: String): Boolean {
         if (EvoSourcePackages.contains(packageName) || packageName == "com.android.systemui") return true
         val keyboard = runCatching {
@@ -35,7 +33,7 @@ internal class PressContentCapture(
     }
 
     @Suppress("DEPRECATION")
-    fun sourceAt(x: Float, y: Float): Source? {
+    fun sourcePackageAt(x: Float, y: Float): String? {
         val windows = service.windows
         try {
             for (window in windows) {
@@ -51,7 +49,7 @@ internal class PressContentCapture(
                 val root = window.root ?: continue
                 try {
                     if (!root.isVisibleToUser) return null
-                    return Source(root.packageName?.toString() ?: continue)
+                    return root.packageName?.toString() ?: continue
                 }
                 finally { root.recycle() }
             }
@@ -61,7 +59,7 @@ internal class PressContentCapture(
 
     /** Only application changes invalidate the gesture; window IDs, bounds and popup focus do not. */
     @Suppress("DEPRECATION")
-    fun isSourceAppCurrent(source: Source): Boolean {
+    fun isSourceAppCurrent(packageName: String): Boolean {
         val windows = service.windows
         try {
             val applications = windows.filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION && (it.isActive || it.isFocused) }
@@ -70,7 +68,7 @@ internal class PressContentCapture(
                 val root = window.root ?: continue
                 try {
                     val current = root.packageName?.toString() ?: continue
-                    return current == source.packageName
+                    return current == packageName
                 } finally { root.recycle() }
             }
             // Accessibility may omit the active app during a window transition. The Shizuku worker

@@ -21,10 +21,13 @@ internal suspend fun resolveScreenContentRect(
     val short = rect.height() < screenContentClickThreshold
     if (!narrow && !short) return rect.takeIf { allowRegion }
     return withAccessibilityNodes(service, readText = !(narrow && short)) { nodes ->
-        val views = screenViews(nodes, rect, clickMode = narrow && short)
-        if (narrow && short) smallestScreenView(views)?.bound?.let(::Rect)
+        val views = nodes.asSequence().filter {
+            it.readable && Rect.intersects(rect, it.bounds) &&
+                ((narrow && short) || it.text != null || accessibilityImageClass(it.info.className))
+        }.map { it.bounds }.toList()
+        if (narrow && short) views.minByOrNull { it.width().toLong() * it.height() }?.let(::Rect)
         else views.takeIf { it.isNotEmpty() }?.let { entries ->
-            Rect(entries.first().bound).apply { entries.drop(1).forEach { union(it.bound) } }
+            Rect(entries.first()).apply { entries.drop(1).forEach(::union) }
         }
     }
 }

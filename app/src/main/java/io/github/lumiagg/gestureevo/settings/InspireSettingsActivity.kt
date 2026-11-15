@@ -2,6 +2,7 @@ package io.github.lumiagg.gestureevo.settings
 
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ENABLED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_TIMEOUT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.DEFAULT_GLOBAL_PRESS_TIMEOUT_MS
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ALLOWED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_ENABLED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_CONVERSION
@@ -161,7 +162,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         binding.globalPressSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_ENABLED, false)
         updateGlobalPressSettingsEnabled()
         binding.selectedGlobalPressTimeoutText.text = getString(
-            R.string.global_press_milliseconds, settingsStore.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500)
+            R.string.global_press_milliseconds, settingsStore.readKey(KEY_GLOBAL_PRESS_TIMEOUT, DEFAULT_GLOBAL_PRESS_TIMEOUT_MS)
         )
         updateGlobalPressAllowedText(settingsStore.readKey(KEY_GLOBAL_PRESS_ALLOWED, "").split('|'))
         binding.externalDropSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_ENABLED, true)
@@ -351,7 +352,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         binding.globalPressTimeoutRow.setOnClickListener {
             lifecycleScope.launch {
                 val values = intArrayOf(300, 500, 700, 1000, 1500, 2000)
-                val current = settingsStore.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500)
+                val current = settingsStore.readKey(KEY_GLOBAL_PRESS_TIMEOUT, DEFAULT_GLOBAL_PRESS_TIMEOUT_MS)
                 MaterialAlertDialogBuilder(this@InspireSettingsActivity)
                     .setTitle(R.string.global_press_timeout)
                     .setSingleChoiceItems(values.map { getString(R.string.global_press_milliseconds, it) }.toTypedArray(), values.indexOf(current)) { dialog, which ->

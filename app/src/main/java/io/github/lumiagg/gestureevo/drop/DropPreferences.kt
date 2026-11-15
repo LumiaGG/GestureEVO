@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 internal object DropPreferences {
     const val KEY_GLOBAL_PRESS_ENABLED = "key_global_press_enabled"
     const val KEY_GLOBAL_PRESS_TIMEOUT = "key_global_press_timeout"
+    const val DEFAULT_GLOBAL_PRESS_TIMEOUT_MS = 1000
     const val KEY_GLOBAL_PRESS_ALLOWED = "key_global_press_allowed"
     const val KEY_EXTERNAL_DROP_ENABLED = "key_external_drop_enabled"
     const val KEY_EXTERNAL_DROP_CONVERSION = "key_external_drop_conversion"

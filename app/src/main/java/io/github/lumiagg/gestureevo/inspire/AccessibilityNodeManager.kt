@@ -13,10 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
-data class ScreenContentNode(val bound: Rect, val content: String?) {
-    val area: Int
-        get() = bound.width() * bound.height()
-}
+data class ScreenContentNode(val bound: Rect, val content: String?)
 
 internal class AccessibilityNodeSnapshot(val info: AccessibilityNodeInfo, val parentIndex: Int?) {
     val bounds = Rect()
@@ -72,7 +69,7 @@ internal suspend fun <T> withAccessibilityNodes(
 
 /** Shared text selection: hierarchy deduplication, character clipping and reading order. */
 internal fun selectScreenContent(
-    snapshots: List<AccessibilityNodeSnapshot>, rect: Rect, excluded: Set<Int> = emptySet(),
+    snapshots: List<AccessibilityNodeSnapshot>, rect: Rect, excluded: Set<Int>,
 ): List<ScreenContentNode> {
     val entries = snapshots.mapIndexed { index, snapshot ->
         AccessibilityTextEntry(snapshot.parentIndex, snapshot.text, snapshot.readable && index !in excluded)
@@ -113,18 +110,6 @@ internal fun screenContentText(nodes: List<ScreenContentNode>): String =
     joinAccessibilityTextInReadingOrder(nodes.mapNotNull { node ->
         node.content?.let { AccessibilityTextFragment(it, node.bound.top, node.bound.bottom) }
     })
-
-internal fun screenViews(snapshots: List<AccessibilityNodeSnapshot>, rect: Rect, clickMode: Boolean): List<ScreenContentNode> =
-    snapshots.mapNotNull { snapshot ->
-    val isTarget = clickMode || snapshot.text != null || accessibilityImageClass(snapshot.info.className)
-    if (snapshot.readable && isTarget && Rect.intersects(rect, snapshot.bounds)) {
-        ScreenContentNode(snapshot.bounds, null)
-    } else null
-}
-
-/** All point-based entry points use the same smallest intersecting visible region. */
-internal fun smallestScreenView(nodes: List<ScreenContentNode>): ScreenContentNode? =
-    nodes.asSequence().filter { it.area > 0 }.minByOrNull { it.area }
 
 @Suppress("DEPRECATION")
 private fun getWindowRoots(service: AccessibilityService): List<AccessibilityNodeInfo> {
