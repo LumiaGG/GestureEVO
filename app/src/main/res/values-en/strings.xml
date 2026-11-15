@@ -1359,4 +1359,16 @@
     <string name="external_drop_converting_hint">Converting… Keep holding.</string>
     <string name="external_drop_conversion_empty">No text recognized. Original content kept.</string>
     <string name="external_drop_conversion_too_long">Text is too long to render. Original content kept.</string>
+    <string name="app_select_title">Select app</string>
+    <string name="app_select_blacklist_title">App blocklist</string>
+    <string name="app_select_whitelist_title">App allowlist</string>
+    <string name="app_select_blacklist_hint">Turn on a switch to add an app to the blocklist. Bulk actions apply only to the current category and search results.</string>
+    <string name="app_select_whitelist_hint">Turn on a switch to add an app to the allowlist. Bulk actions apply only to the current category and search results.</string>
+    <string name="app_select_enable_all">Enable all</string>
+    <string name="app_select_disable_all">Disable all</string>
+    <string name="app_select_enabled_count">%1$d / %2$d on</string>
+    <string name="app_select_empty">No matching apps</string>
+    <string name="app_select_save_failed">Could not save app settings. Please try again.</string>
+    <string name="app_select_load_failed">Could not load apps. Please try again.</string>
+    <string name="app_select_bulk_actions">Bulk actions for this list</string>
 </resources>

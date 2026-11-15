@@ -1361,4 +1361,16 @@
     <string name="external_drop_converting_hint">正在转换，请保持按住…</string>
     <string name="external_drop_conversion_empty">未识别到文字，已保留原内容</string>
     <string name="external_drop_conversion_too_long">文字过长，无法生成图片，已保留原内容</string>
+    <string name="app_select_title">选择应用</string>
+    <string name="app_select_blacklist_title">应用黑名单</string>
+    <string name="app_select_whitelist_title">应用白名单</string>
+    <string name="app_select_blacklist_hint">开启开关即加入黑名单。批量操作仅对当前分类和搜索结果生效。</string>
+    <string name="app_select_whitelist_hint">开启开关即加入白名单。批量操作仅对当前分类和搜索结果生效。</string>
+    <string name="app_select_enable_all">全部开启</string>
+    <string name="app_select_disable_all">全部关闭</string>
+    <string name="app_select_enabled_count">已开启 %1$d / %2$d</string>
+    <string name="app_select_empty">没有匹配的应用</string>
+    <string name="app_select_save_failed">应用设置保存失败，请重试</string>
+    <string name="app_select_load_failed">无法加载应用列表，请重试</string>
+    <string name="app_select_bulk_actions">批量操作（当前列表）</string>
 </resources>

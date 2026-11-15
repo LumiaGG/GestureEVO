@@ -22,7 +22,6 @@ import android.provider.Settings
 import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
@@ -415,11 +414,7 @@ class InspireSettingsActivity : AppCompatActivity() {
                 object : SelectAPPCallBack {
                     override fun selectCompleted(model: APPModel) {}
                 },
-                blackListFlag = APPModel.FLAG_NOTIFICATION_APPS_ENABLE,
-                disableIcon = ContextCompat.getDrawable(
-                    applicationContext,
-                    R.drawable.baseline_check_24
-                )
+                blackListFlag = APPModel.FLAG_NOTIFICATION_APPS_ENABLE
             ).show()
         }
 
