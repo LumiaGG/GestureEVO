@@ -1332,8 +1332,8 @@
     <string name="action_seconds_summary">%1$s sec</string>
     <string name="action_placeholder_single">Add a transparent placeholder</string>
     <string name="global_press_settings_title">Global Long-press Drag Settings</string>
-    <string name="global_press_settings_description">Configure hold duration, long-press protection, and excluded apps</string>
-    <string name="global_press_status_stopped">Stopped: disabled, locked, or accessibility inactive</string>
+    <string name="global_press_settings_description">Configure the hold duration and apps allowed to use global dragging</string>
+    <string name="global_press_status_stopped">Stopped: disabled, empty allowlist, locked screen, or accessibility unavailable</string>
     <string name="global_press_status_standard_connecting">Connecting to Shizuku</string>
     <string name="global_press_cancel_failed">Background touch cancellation failed; the source page may still scroll. Export the EVO-TouchBlock logs.</string>
     <string name="global_press_status_standard_ready">Shizuku connected</string>

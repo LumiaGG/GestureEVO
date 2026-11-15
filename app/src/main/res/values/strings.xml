@@ -1335,8 +1335,8 @@
     <string name="action_seconds_summary">%1$s 秒</string>
     <string name="action_placeholder_single">添加透明占位</string>
     <string name="global_press_settings_title">全局长按拖放设置</string>
-    <string name="global_press_settings_description">设置按住时长、长按打断保护与排除应用</string>
-    <string name="global_press_status_stopped">未运行：功能关闭、锁屏或无障碍未启动</string>
+    <string name="global_press_settings_description">设置长按时长与允许使用全局拖放的应用</string>
+    <string name="global_press_status_stopped">未运行：功能关闭、白名单为空、锁屏或无障碍未启动</string>
     <string name="global_press_status_standard_connecting">Shizuku 连接中</string>
     <string name="global_press_cancel_failed">背景触摸取消失败，原页面可能继续滑动；请导出日志中的 EVO-TouchBlock 记录</string>
     <string name="global_press_status_standard_ready">Shizuku 已连接</string>
