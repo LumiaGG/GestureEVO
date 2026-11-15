@@ -69,4 +69,37 @@ class LinkConfigCodecTest {
         assertEquals(1, result.exemptsAdded)
         assertEquals(2, merged.exempts.size)
     }
+
+    @Test
+    fun importedEntriesCannotReuseExistingIds() {
+        val existing = rule("a.com").copy(id = "same")
+        val incoming = LinkConfigBackup(rules = listOf(rule("b.com").copy(id = "same")))
+        val (merged, _) = LinkConfigCodec.merge(listOf(existing), emptyList(), emptyList(), incoming)
+        assertEquals(2, merged.rules.map { it.id }.distinct().size)
+        assertEquals(existing, merged.rules.first())
+    }
+
+    @Test
+    fun exemptionsRetainDifferentSourceApplications() {
+        val existing = listOf(LinkExemptDomain(domain = "bank.com", sourcePackage = "com.a"))
+        val incoming = LinkConfigBackup(exempts = listOf(
+            LinkExemptDomain(domain = "BANK.COM", sourcePackage = "com.a"),
+            LinkExemptDomain(domain = "bank.com", sourcePackage = "com.b")
+        ))
+        val (merged, result) = LinkConfigCodec.merge(emptyList(), existing, emptyList(), incoming)
+        assertEquals(1, result.exemptsAdded)
+        assertEquals(setOf("com.a", "com.b"), merged.exempts.map { it.sourcePackage }.toSet())
+    }
+
+    @Test
+    fun customExtractsWithConflictingIdsRemainIdempotent() {
+        val existing = LinkExtractPattern(id = "same", pattern = "old")
+        val incoming = LinkConfigBackup(extracts = listOf(LinkExtractPattern(id = "same", pattern = "new")))
+        val (first, result) = LinkConfigCodec.merge(emptyList(), emptyList(), listOf(existing), incoming)
+        assertEquals(1, result.extractsAdded)
+        assertEquals(2, first.extracts.map { it.id }.distinct().size)
+        val (second, repeated) = LinkConfigCodec.merge(emptyList(), emptyList(), first.extracts, incoming)
+        assertEquals(0, repeated.extractsAdded)
+        assertEquals(first.extracts, second.extracts)
+    }
 }

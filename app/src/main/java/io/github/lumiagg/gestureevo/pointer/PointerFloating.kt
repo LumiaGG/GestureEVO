@@ -121,6 +121,7 @@ class PointerFloating(
      * skip the synthesized screen click.
      */
     var onPointerTapInterceptor: ((Float, Float) -> Boolean)? = null
+    var onPointerHidden: (() -> Unit)? = null
 
     init {
         initView()
@@ -317,6 +318,7 @@ class PointerFloating(
 
     fun hide() = context.postOnMain {
         pointerVisibleRequested = false
+        onPointerHidden?.invoke()
         pointerManger.viewPositionMonitor.stop()
         if (pointerManger.isDragMode) {
             pointerManger.exitDragMode()
@@ -1005,13 +1007,21 @@ class PointerFloating(
             }
 
             fun handleActionUp(event: MotionEvent) {
+                if (event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                    hoverLongPressJob?.cancel()
+                    hoverLongPressJob = null
+                    pendingHoverLongPress = false
+                    pendingHoverPoint = null
+                    resetHoverLongPressHint()
+                    if (isDragMode) exitDragMode()
+                    return
+                }
                 if (!isLongPressRunning) {
                     hoverLongPressJob?.cancel()
                     hoverLongPressJob = null
                 }
                 if (isDragMode) {
                     resetHoverLongPressHint()
-                    view.visibility = View.INVISIBLE
                     val currentSelectionRect = highlightRectView.currentSelectionRect(computePosition())
                     val previewSelectionRect = potentialDragSelectRect
                         ?.takeIf { potentialDragSelectSourceRect == currentSelectionRect }
@@ -1033,6 +1043,7 @@ class PointerFloating(
                         exitDragMode()
                         return
                     }
+                    view.visibility = View.INVISIBLE
                     context.launch {
                         val resolvedSelectionRect = if (!hasStartedDragSelection) {
                             previewSelectionRect ?: resolvePotentialDragSelectRect(currentSelectionRect)

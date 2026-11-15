@@ -170,7 +170,8 @@ class LinkRuleEditBottomSheet(
                 return
             }
         }
-        if (selectedPackage.isEmpty()) {
+        if (selectedPackage.isEmpty() &&
+            !(binding.resolveShortSwitch.isChecked && selectedStrategy == LinkResolveStrategy.REDISPATCH)) {
             toast(R.string.link_rule_target_required)
             return
         }
@@ -179,6 +180,7 @@ class LinkRuleEditBottomSheet(
             name = binding.nameInput.text?.toString()?.trim().orEmpty(),
             pattern = pattern,
             targetPackage = selectedPackage,
+            component = original?.component?.takeIf { original.targetPackage == selectedPackage },
             matchType = selectedMatchType,
             template = binding.templateInput.text?.toString()?.trim()?.takeIf { it.isNotEmpty() },
             isEnabled = binding.enabledSwitch.isChecked,

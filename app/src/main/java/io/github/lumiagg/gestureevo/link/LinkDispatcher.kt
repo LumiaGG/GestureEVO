@@ -5,7 +5,9 @@ import android.util.Base64
 import android.util.Log
 import io.github.lumiagg.gestureevo.utils.UrlDetector
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLDecoder
@@ -14,7 +16,8 @@ import java.util.concurrent.ConcurrentHashMap
 /** Outcome of routing one link, so callers can decide whether to fall back to the browser. */
 sealed class LinkDispatchResult {
     data class Routed(val rule: LinkDispatchRule, val url: String) : LinkDispatchResult()
-    data class Exempted(val domain: String) : LinkDispatchResult()
+    data class Exempted(val domain: String, val url: String) : LinkDispatchResult()
+    data class SystemDefault(val url: String) : LinkDispatchResult()
     object NoRule : LinkDispatchResult()
     object Failed : LinkDispatchResult()
 }
@@ -77,35 +80,21 @@ object LinkDispatcher {
         extractGroups: List<String> = emptyList()
     ): String {
         val template = rule.template?.takeIf { it.isNotBlank() } ?: return url
-        var result = resolveLinkGoPlaceholders(template, url, extractGroups)
-        if (result == template && rule.matchType == LinkMatchType.REGEX) {
-            // No LinkGo placeholder fired; fall back to $N back-references.
+        val captureMatch = if (rule.matchType == LinkMatchType.REGEX && BACK_REFERENCE.containsMatchIn(template)) {
             val regex = compile(rule.pattern) ?: return url
-            val match = regex.find(url) ?: return url
-            result = template
-            for (group in 0..match.groupValues.lastIndex) {
-                val value = match.groupValues[group]
-                result = result.replace("\$$group", value)
+            regex.find(url) ?: return url
+        } else null
+        // Replace once so captured values containing placeholder syntax remain literal.
+        return TEMPLATE_PLACEHOLDER.replace(template) { match ->
+            val backReference = match.groupValues[1]
+            if (backReference.isNotEmpty()) {
+                return@replace captureMatch?.groupValues?.getOrNull(backReference.toInt()) ?: match.value
             }
+            val key = match.groupValues[2]
+            val raw = if (key == "url") url else
+                extractGroups.getOrNull(key.toInt() - 1) ?: return@replace ""
+            applyTransform(raw, match.groupValues[3].ifEmpty { null })
         }
-        return result
-    }
-
-    private val linkGoPlaceholderRegex =
-        Regex("""\{(url|\d+)(?:_(url_dec|b64_enc|b64_dec|url_dec_b64_dec))?\}""")
-
-    private fun resolveLinkGoPlaceholders(
-        template: String,
-        url: String,
-        groups: List<String>
-    ): String = linkGoPlaceholderRegex.replace(template) { match ->
-        val key = match.groupValues[1]
-        val transform = match.groupValues[2].ifEmpty { null }
-        val raw = when (key) {
-            "url" -> url
-            else -> groups.getOrNull(key.toInt() - 1) ?: return@replace ""
-        }
-        applyTransform(raw, transform)
     }
 
     private fun applyTransform(value: String, transform: String?): String = when (transform) {
@@ -176,38 +165,45 @@ object LinkDispatcher {
         val rules = LinkRuleRepository.loadRules(context)
         val exempts = LinkRuleRepository.loadExemptDomains(context)
 
-        isExempt(normalized, sourcePackage, exempts)?.let { return@withContext LinkDispatchResult.Exempted(it) }
+        routeWithRules(normalized, rules, exempts, sourcePackage, sourceText)
+    }
 
-        val rule = findRule(normalized, rules, sourcePackage)
-            ?: return@withContext LinkDispatchResult.NoRule
-
-        // Extract groups come from the rule's own pattern against the source text, which is how
-        // templates like "type={2}&mainid={1}" recover structured data from a shared link.
-        val extractGroups = rule.extractPattern?.let { pattern ->
-            sourceText?.let { text ->
-                compile(pattern)?.find(text)?.groupValues?.drop(1)
-            }
-        }.orEmpty()
-
-        var target = normalized
-        if (rule.resolveShortLink && rule.resolveStrategy != LinkResolveStrategy.NONE) {
-            val resolved = resolveShortLink(normalized)
-            if (resolved != null && rule.resolveStrategy == LinkResolveStrategy.REDISPATCH) {
-                // The resolved URL may belong to a different rule, so run the table again.
-                val redispatched = findRule(resolved, rules, sourcePackage)
-                if (redispatched != null) {
-                    return@withContext LinkDispatchResult.Routed(
-                        redispatched,
-                        applyTemplate(resolved, redispatched, extractGroups)
-                    )
+    internal suspend fun routeWithRules(
+        url: String,
+        rules: List<LinkDispatchRule>,
+        exempts: List<LinkExemptDomain> = emptyList(),
+        sourcePackage: String = "",
+        sourceText: String? = null,
+        resolver: suspend (String) -> String? = { resolveShortLink(it) }
+    ): LinkDispatchResult {
+        var target = url
+        val visited = mutableSetOf<String>()
+        repeat(MAX_REDIRECTS + 1) {
+            if (!visited.add(target)) return LinkDispatchResult.Failed
+            coroutineContext.ensureActive()
+            isExempt(target, sourcePackage, exempts)?.let { return LinkDispatchResult.Exempted(it, target) }
+            val rule = findRule(target, rules, sourcePackage)
+                ?: return if (target == url) LinkDispatchResult.NoRule else
+                    LinkDispatchResult.SystemDefault(target)
+            if (rule.resolveShortLink && rule.resolveStrategy != LinkResolveStrategy.NONE) {
+                val resolved = resolver(target)
+                if (resolved != null && resolved != target && rule.resolveStrategy == LinkResolveStrategy.REDISPATCH) {
+                    target = resolved
+                    return@repeat
                 }
+                target = resolved ?: target
             }
-            target = resolved ?: normalized
+            if (rule.targetPackage.isBlank()) return LinkDispatchResult.SystemDefault(target)
+            // Radar calls have no source text; the URL itself must still supply captures.
+            val groups = rule.extractPattern?.let { pattern ->
+                compile(pattern)?.find(sourceText ?: target)?.groupValues?.drop(1)
+                    ?: compile(pattern)?.find(target)?.groupValues?.drop(1)
+            }.orEmpty()
+            val finalUrl = applyTemplate(target, rule, groups)
+            return if (finalUrl.isBlank()) LinkDispatchResult.Failed else
+                LinkDispatchResult.Routed(rule, finalUrl)
         }
-
-        val finalUrl = applyTemplate(target, rule, extractGroups)
-        if (finalUrl.isBlank()) return@withContext LinkDispatchResult.Failed
-        LinkDispatchResult.Routed(rule, finalUrl)
+        return LinkDispatchResult.Failed
     }
 
     /**
@@ -216,23 +212,29 @@ object LinkDispatcher {
      */
     suspend fun resolveShortLink(url: String): String? = withContext(Dispatchers.IO) {
         resolvedShortLinks[url]?.let { return@withContext it }
-        var current = url
-        repeat(MAX_REDIRECTS) {
-            val next = runCatching { headRedirect(current) }.getOrNull()
-                ?: return@withContext null
-            if (next == current) return@withContext null
-            current = next
-        }
-        if (current == url) {
-            null
-        } else {
+        val current = followRedirects(url) { headRedirect(it) }
+        if (current != null) {
             if (resolvedShortLinks.size >= SHORT_LINK_CACHE_LIMIT) resolvedShortLinks.clear()
             resolvedShortLinks[url] = current
-            current
         }
+        current
     }
 
-    private fun headRedirect(url: String): String? {
+    /** A null probe means failure; an unchanged URL means a successful terminal response. */
+    internal suspend fun followRedirects(url: String, probe: (String) -> String?): String? {
+        var current = url
+        val visited = mutableSetOf(url)
+        repeat(MAX_REDIRECTS + 1) { hop ->
+            coroutineContext.ensureActive()
+            val next = probe(current) ?: return null
+            if (next == current) return current.takeIf { it != url }
+            if (hop == MAX_REDIRECTS || !visited.add(next)) return null
+            current = next
+        }
+        return null
+    }
+
+    internal fun headRedirect(url: String): String? {
         val connection = runCatching {
             (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "HEAD"
@@ -245,7 +247,12 @@ object LinkDispatcher {
 
         return try {
             val code = connection.responseCode
-            if (code in 300..399) connection.getHeaderField("Location") else null
+            when (code) {
+                301, 302, 303, 307, 308 -> connection.getHeaderField("Location")
+                    ?.let { URL(URL(url), it).takeIf { next -> next.protocol in listOf("http", "https") }?.toString() }
+                in 200..299 -> url
+                else -> null
+            }
         } catch (error: Exception) {
             Log.w(TAG, "Short link probe failed for ${url.take(60)}", error)
             null
@@ -269,4 +276,7 @@ object LinkDispatcher {
     private const val NETWORK_TIMEOUT_MS = 5_000
     private val DOMAIN_SHAPE = Regex("^[A-Za-z0-9][A-Za-z0-9.-]*\\.[A-Za-z]{2,}$")
     private val INVALID_PATTERN = Regex("(?!)")
+    private val BACK_REFERENCE = Regex("""\$(\d)""")
+    private val TEMPLATE_PLACEHOLDER =
+        Regex("""\$(\d)|\{(url|\d+)(?:_(url_dec|b64_enc|b64_dec|url_dec_b64_dec))?\}""")
 }

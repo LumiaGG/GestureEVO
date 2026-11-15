@@ -1,6 +1,7 @@
 package io.github.lumiagg.gestureevo.utils
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.os.Build
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
@@ -8,6 +9,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.HapticFeedbackConstants
 import android.view.View
+import androidx.annotation.RequiresApi
 
 /**
  * 系统级触感反馈辅助工具（LinkGo util/HapticHelper.kt 1:1 移植）
@@ -59,28 +61,24 @@ object HapticHelper {
                 vibrator.cancel()
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    val attrs = VibrationAttributes.Builder()
-                        .setUsage(VibrationAttributes.USAGE_TOUCH)
-                        .build()
-
                     // Android 11+ 触控硬件级低延迟原语
                     if (type == VibrationType.TICK && vibrator.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_LOW_TICK)) {
                         val effect = VibrationEffect.startComposition()
                             .addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.75f)
                             .compose()
-                        vibrator.vibrate(effect, attrs)
+                        vibrateTouch(vibrator, effect)
                         return
                     } else if (type == VibrationType.TICK && vibrator.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_TICK)) {
                         val effect = VibrationEffect.startComposition()
                             .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.6f)
                             .compose()
-                        vibrator.vibrate(effect, attrs)
+                        vibrateTouch(vibrator, effect)
                         return
                     } else if (type == VibrationType.CLICK && vibrator.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_CLICK)) {
                         val effect = VibrationEffect.startComposition()
                             .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.9f)
                             .compose()
-                        vibrator.vibrate(effect, attrs)
+                        vibrateTouch(vibrator, effect)
                         return
                     }
 
@@ -90,7 +88,7 @@ object HapticHelper {
                         VibrationType.CLICK -> Pair(18L, 180)
                         VibrationType.HEAVY_CLICK -> Pair(35L, 255)
                     }
-                    vibrator.vibrate(VibrationEffect.createOneShot(duration, amplitude), attrs)
+                    vibrateTouch(vibrator, VibrationEffect.createOneShot(duration, amplitude))
                     return
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     val (duration, amplitude) = when (type) {
@@ -126,6 +124,23 @@ object HapticHelper {
                 v.isHapticFeedbackEnabled = true
                 v.performHapticFeedback(constant, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING)
             } catch (_: Throwable) {}
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun vibrateTouch(vibrator: Vibrator, effect: VibrationEffect) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val attributes = VibrationAttributes.Builder()
+                .setUsage(VibrationAttributes.USAGE_TOUCH)
+                .build()
+            vibrator.vibrate(effect, attributes)
+        } else {
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(effect, attributes)
         }
     }
 

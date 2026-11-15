@@ -2,6 +2,7 @@ package io.github.lumiagg.gestureevo.link
 
 import android.app.ActivityOptions
 import android.content.Context
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -94,7 +95,8 @@ object LinkLauncher {
                     result.rule.component
                 )
 
-            is LinkDispatchResult.Exempted,
+            is LinkDispatchResult.Exempted -> launch(context, result.url, "", false)
+            is LinkDispatchResult.SystemDefault -> launch(context, result.url, "", false)
             LinkDispatchResult.NoRule ->
                 // No rule owns this link, so behave like the built-in browser action.
                 launch(context, rawUrl, "", false)
@@ -145,7 +147,12 @@ object LinkLauncher {
                 context,
                 LinkHistoryEntry(
                     id = UUID.randomUUID().toString(),
-                    url = routed?.url ?: rawUrl,
+                    url = when (result) {
+                        is LinkDispatchResult.Routed -> result.url
+                        is LinkDispatchResult.Exempted -> result.url
+                        is LinkDispatchResult.SystemDefault -> result.url
+                        else -> rawUrl
+                    },
                     targetPackage = routed?.rule?.targetPackage.orEmpty(),
                     ruleName = routed?.rule?.name.orEmpty(),
                     timestamp = System.currentTimeMillis(),
@@ -255,7 +262,9 @@ object LinkLauncher {
         if (targetPackage.isNotEmpty()) {
             intent.setPackage(targetPackage)
             component?.let { activity ->
-                intent.setClassName(targetPackage, activity)
+                intent.component = ComponentName.unflattenFromString(
+                    if ('/' in activity) activity else "$targetPackage/$activity"
+                )
             }
         }
         return intent

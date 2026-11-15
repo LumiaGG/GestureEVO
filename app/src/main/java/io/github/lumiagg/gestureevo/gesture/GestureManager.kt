@@ -90,7 +90,9 @@ class GestureManager(
         LinkRadarOverlay(
             gestureService,
             pointerStateProvider = {
-                if (pointerFloatingLazy.isInitialized()) pointerFloating.currentPointerSnapshot() else null
+                if (pointerFloatingLazy.isInitialized() && !pointerFloating.isPointerDragSelecting) {
+                    pointerFloating.currentPointerSnapshot()
+                } else null
             },
         )
     }
@@ -248,6 +250,9 @@ class GestureManager(
         lifecycleScope.launch(Dispatchers.Main) {
             pointerEventBus.collect {
                 if (it.enable || pointerFloatingLazy.isInitialized()) {
+                    pointerFloating.onPointerHidden = {
+                        if (linkRadarFloatingLazy.isInitialized()) linkRadarFloating.stopSession()
+                    }
                     pointerFloating.onPointerTapInterceptor = { x, y ->
                         linkRadarFloatingLazy.isInitialized() &&
                             linkRadarFloating.onPointerTapRequested(x, y)

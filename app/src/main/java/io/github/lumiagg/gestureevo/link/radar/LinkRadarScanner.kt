@@ -10,7 +10,9 @@ import android.util.Log
 import android.accessibilityservice.AccessibilityService
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 
 /**
  * 全屏链接扫描器（LinkGo SelectToSpeakService.scanCurrentScreen 管线 1:1 移植）。
@@ -29,7 +31,6 @@ object LinkRadarScanner {
 
     private const val MAX_SCAN_DEPTH = 64
     private const val MAX_SCAN_NODES = 3000
-    private const val MAX_RECT_DEPTH = 32
     private const val VISIBILITY_THRESHOLD = 0.7f
 
     /**
@@ -39,6 +40,7 @@ object LinkRadarScanner {
      */
     suspend fun scan(service: AccessibilityService, patterns: List<Regex>): List<LinkRegion> =
         withContext(Dispatchers.Default) {
+            val scanContext = coroutineContext
             // 与 LinkGo 相同：每次扫描开始清空缓存，缓存仅在本次树快照内有效
             val nodeCoordCache = HashMap<String, List<Rect>>()
             val nodeParentBoundsCache = HashMap<Int, Rect>()
@@ -147,8 +149,8 @@ object LinkRadarScanner {
             }
 
             /**
-             * Requests per-character rects via refreshWithExtraData (API 26+). One accessibility-focus
-             * nudge retry; callers fall back to node bounds when this returns empty.
+             * Requests per-character rects via refreshWithExtraData (API 26+).
+             * Callers fall back to node bounds when this returns empty, without changing focus.
              * （LinkGo tryGetRects 1:1）
              */
             fun tryGetRects(
@@ -157,9 +159,11 @@ object LinkRadarScanner {
                 length: Int,
                 isDesc: Boolean
             ): List<Rect> {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return emptyList()
                 val nodeText = (if (isDesc) node.contentDescription else node.text)?.toString() ?: ""
-                if (nodeText.isEmpty()) return emptyList()
-                if (isDesc && node.text.isNullOrEmpty()) return emptyList()
+                if (nodeText.isEmpty() || nodeText.length > 20_000) return emptyList()
+                // Character locations describe node.text, never an unrelated description.
+                if (isDesc && node.contentDescription?.toString() != node.text?.toString()) return emptyList()
 
                 try {
                     // 1. 获取控件当前的物理显示区域
@@ -175,19 +179,9 @@ object LinkRadarScanner {
                         AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_ARG_LENGTH, nodeText.length
                     )
 
-                    var success = node.refreshWithExtraData(
+                    val success = node.refreshWithExtraData(
                         AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY, arguments
                     )
-                    if (!success || node.extras.get(
-                            AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY
-                        ) == null
-                    ) {
-                        // 首次未取到：请求无障碍焦点后立即重试一次（LinkGo 同款，不用 Thread.sleep）
-                        node.performAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS)
-                        success = node.refreshWithExtraData(
-                            AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY, arguments
-                        )
-                    }
 
                     if (success) {
                         val rawData = node.extras.get(
@@ -208,33 +202,13 @@ object LinkRadarScanner {
                                 }
                             }
                             if (allRects.any { !it.isEmpty }) {
-                                nodeCoordCache["${node.viewIdResourceName}_${nodeText.hashCode()}"] = allRects
+                                nodeCoordCache["${node.viewIdResourceName}_${nodeText.hashCode()}_${nodeScreen.hashCode()}"] = allRects
                                 return sliceAndFilterRects(allRects, start, length, nodeScreen)
                             }
                         }
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "获取精准坐标异常", e)
-                }
-                return emptyList()
-            }
-
-            fun findRectsDeeply(
-                node: AccessibilityNodeInfo,
-                start: Int,
-                length: Int,
-                isDesc: Boolean,
-                depth: Int = 0
-            ): List<Rect> {
-                // 递归深度上限，防止控件层级极深时无界递归
-                if (depth > MAX_RECT_DEPTH) return emptyList()
-                val fromSelf = tryGetRects(node, start, length, isDesc)
-                if (fromSelf.isNotEmpty()) return fromSelf
-
-                for (i in 0 until node.childCount) {
-                    val child = node.getChild(i) ?: continue
-                    val fromChild = findRectsDeeply(child, start, length, isDesc, depth + 1)
-                    if (fromChild.isNotEmpty()) return fromChild
                 }
                 return emptyList()
             }
@@ -257,7 +231,8 @@ object LinkRadarScanner {
 
                 if (isDesc && node.text.isNullOrEmpty()) return emptyList()
 
-                return findRectsDeeply(node, start, length, isDesc)
+                // Descendant text has different offsets; use this node's bounds on failure.
+                return tryGetRects(node, start, length, isDesc)
             }
 
             fun addRegion(
@@ -337,8 +312,9 @@ object LinkRadarScanner {
                     try {
                         val matcher = pattern.toPattern().matcher(content)
                         while (matcher.find()) {
-                            val url = if (matcher.groupCount() > 0) matcher.group(1) else matcher.group() ?: continue
-                            allMatches.add(RawMatch(url, matcher.start(), matcher.end()))
+                            val group = if (matcher.groupCount() > 0 && matcher.group(1) != null) 1 else 0
+                            val url = matcher.group(group) ?: continue
+                            allMatches.add(RawMatch(url, matcher.start(group), matcher.end(group)))
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "正则解析失败: ${e.message}")
@@ -396,7 +372,9 @@ object LinkRadarScanner {
                 results: MutableList<LinkRegion>,
                 depth: Int
             ) {
+                scanContext.ensureActive()
                 if (node == null) return
+                if (!node.isVisibleToUser) return
                 if (depth > MAX_SCAN_DEPTH || scannedNodeCount >= MAX_SCAN_NODES) return
                 scannedNodeCount++
 

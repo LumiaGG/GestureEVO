@@ -38,6 +38,7 @@ import io.github.lumiagg.gestureevo.utils.HapticHelper
 import io.github.lumiagg.gestureevo.utils.UrlDetector
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -69,6 +70,7 @@ class LinkRadarOverlay(
     private var pollJob: Job? = null
     private var scanJob: Job? = null
     private var sessionActive = false
+    private var sessionGeneration = 0
 
     // GEVO 指针会话比 LinkGo 长（指针开启期间用户会正常滚动页面）：
     // 页面一滚就需要重扫，否则链接区域全是旧位置（幻影吸附/错位）。
@@ -100,11 +102,10 @@ class LinkRadarOverlay(
 
     /**
      * 指针会话开始：重置状态 → 挂载 → 异步预扫描。
-     * 注意：GEVO 指针松手后 enable=false 是直接改属性不走事件总线，stopSession 不会被
-     * 调用——所以**每次呼出指针都必须清旧区域并强制重扫**，否则吸附的是上一个界面的链接。
+     * 每次呼出清理上一会话；关闭由指针隐藏回调负责。
      */
     fun startSession() {
-        val wasActive = sessionActive
+        if (sessionActive) stopSession()
         sessionActive = true
         emptyRetryCount = 0
         service.launch(Dispatchers.Main) {
@@ -119,13 +120,14 @@ class LinkRadarOverlay(
         // 每次呼出都重扫：指针隐藏期间页面可能已切换
         lastScanCount = -1
         launchScan()
-        if (!wasActive) startPolling()
+        startPolling()
     }
 
     /** 指针会话结束：卸载全屏层。 */
     fun stopSession() {
         if (!sessionActive) return
         sessionActive = false
+        sessionGeneration++
         pollJob?.cancel(); pollJob = null
         scanJob?.cancel(); scanJob = null
         rescanScheduledJob?.cancel(); rescanScheduledJob = null
@@ -134,6 +136,7 @@ class LinkRadarOverlay(
         scanRunning = false
         rescanPending = false
         service.launch(Dispatchers.Main) {
+            overlayView.resetForSession()
             detachViewSafely(overlayView)
         }
     }
@@ -173,7 +176,7 @@ class LinkRadarOverlay(
 
     private fun scheduleRescan(elapsed: Long) {
         if (rescanScheduledJob?.isActive == true) return
-        rescanScheduledJob = service.launch {
+        rescanScheduledJob = service.launch(Dispatchers.Main.immediate) {
             delay((RESCAN_MIN_INTERVAL_MS - elapsed).coerceAtLeast(16L))
             rescanScheduledJob = null
             if (sessionActive && rescanPending && !scanRunning) {
@@ -190,39 +193,49 @@ class LinkRadarOverlay(
             return
         }
         scanRunning = true
+        val generation = sessionGeneration
         emptyRetryJob?.cancel()
         scanJob?.cancel()
-        scanJob = service.launch {
-            do {
-                rescanPending = false
-                val patterns = runCatching { compilePatterns() }.getOrDefault(emptyList())
-                val links = runCatching { LinkRadarScanner.scan(service, patterns) }.getOrDefault(emptyList())
-                Log.d("LinkRadar", "雷达扫描完成：链接 ${links.size} 个")
-                withContext(Dispatchers.Main) {
-                    if (!sessionActive) return@withContext
-                    overlayView.setLinks(links)
-                    if (links.size != lastScanCount) {
-                        lastScanCount = links.size
-                        AppLogger.event(
-                            LogModule.OVERLAY, "link_radar_scan",
-                            fields = mapOf(
-                                "count" to links.size,
-                                "package" to (CurrentPackageProvider.currentPackageFlow.value ?: ""),
-                                // 扫描统计：w=窗口数 n=节点数 t=带文本数 h=含URL字样数
-                                "method" to LinkRadarScanner.lastDiagnostics,
-                            )
-                        )
+        scanJob = service.launch(Dispatchers.Main.immediate) {
+            try {
+                do {
+                    rescanPending = false
+                    val links = try {
+                        LinkRadarScanner.scan(service, compilePatterns())
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        Log.w("LinkRadar", "Link scan failed", error)
+                        emptyList()
                     }
-                }
-                // 空结果重试（LinkGo runIdentificationFlow 同款节奏）：
-                // 刚切应用/转场时无障碍树可能未就绪，自动补扫直到拿到结果或次数用尽
-                if (links.isEmpty()) {
-                    withContext(Dispatchers.Main) { scheduleEmptyRetry() }
-                } else {
-                    withContext(Dispatchers.Main) { emptyRetryCount = 0 }
-                }
-            } while (rescanPending && sessionActive)
-            scanRunning = false
+                    Log.d("LinkRadar", "雷达扫描完成：链接 ${links.size} 个")
+                    withContext(Dispatchers.Main) {
+                        if (!sessionActive || generation != sessionGeneration) return@withContext
+                        overlayView.setLinks(links)
+                        if (links.size != lastScanCount) {
+                            lastScanCount = links.size
+                            AppLogger.event(
+                                LogModule.OVERLAY, "link_radar_scan",
+                                fields = mapOf(
+                                    "count" to links.size,
+                                    "package" to (CurrentPackageProvider.currentPackageFlow.value ?: ""),
+                                    // 扫描统计：w=窗口数 n=节点数 t=带文本数 h=含URL字样数
+                                    "method" to LinkRadarScanner.lastDiagnostics,
+                                )
+                            )
+                        }
+                    }
+                    // 空结果重试（LinkGo runIdentificationFlow 同款节奏）：
+                    // 刚切应用/转场时无障碍树可能未就绪，自动补扫直到拿到结果或次数用尽
+                    if (links.isEmpty()) {
+                        withContext(Dispatchers.Main) { scheduleEmptyRetry() }
+                    } else {
+                        withContext(Dispatchers.Main) { emptyRetryCount = 0 }
+                    }
+                } while (rescanPending && sessionActive)
+            } finally {
+                if (generation == sessionGeneration) scanRunning = false
+            }
         }
     }
 
@@ -231,7 +244,7 @@ class LinkRadarOverlay(
         if (emptyRetryCount >= MAX_EMPTY_RETRIES || !sessionActive) return
         emptyRetryCount++
         emptyRetryJob?.cancel()
-        emptyRetryJob = service.launch {
+        emptyRetryJob = service.launch(Dispatchers.Main.immediate) {
             delay(EMPTY_RETRY_INTERVAL_MS)
             if (!sessionActive) return@launch
             launchScan()
@@ -451,6 +464,8 @@ class LinkRadarOverlay(
 
         /** 每次指针会话开始重置状态（LinkGo 每次新建 View 的等效操作）。 */
         fun resetForSession() {
+            animate().cancel()
+            localTargetCache.clear()
             links = emptyList()
             hitLinks = emptyList()
             hitBoxRect = null
@@ -477,11 +492,15 @@ class LinkRadarOverlay(
         }
 
         fun setLinks(links: List<LinkRegion>) {
+            hideVisual()
             this.links = links
         }
 
         /** 指针隐藏时收起高亮与胶囊（不清扫描结果，会话仍在）。 */
         fun hideVisual() {
+            dismissGraceRunnable?.let { removeCallbacks(it) }
+            dismissGraceRunnable = null
+            predictionJob?.cancel()
             hitLinks = emptyList()
             hitBoxRect = null
             activeTargetLinks = emptyList()
@@ -882,6 +901,8 @@ class LinkRadarOverlay(
                         // 写入内存高速缓存
                         localTargetCache[link.url] = Pair(icon, Triple(prefix, accent, suffix))
                         invalidate()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
                     } catch (e: Exception) {
                         Log.w("LinkRadar", "预测失败: ${e.message}")
                     }
@@ -1226,6 +1247,9 @@ class LinkRadarOverlay(
         /** 空闲清理：View 销毁时取消协程 */
         override fun onDetachedFromWindow() {
             super.onDetachedFromWindow()
+            animate().cancel()
+            dismissGraceRunnable?.let { removeCallbacks(it) }
+            dismissGraceRunnable = null
             predictionJob?.cancel()
             hudAnimator?.cancel()
         }

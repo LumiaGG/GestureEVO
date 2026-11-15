@@ -2,6 +2,7 @@ package io.github.lumiagg.gestureevo.link
 
 import com.squareup.moshi.JsonClass
 import io.github.lumiagg.gestureevo.utils.MoshiUtils
+import java.util.UUID
 
 /**
  * Serialisable snapshot of the whole link routing configuration.
@@ -71,17 +72,21 @@ object LinkConfigCodec {
         incoming: LinkConfigBackup
     ): Pair<LinkConfigBackup, LinkImportResult> {
         val knownPatterns = existingRules.map { it.pattern }.toMutableSet()
-        val knownDomains = existingExempts.map { it.domain }.toMutableSet()
+        val knownDomains = existingExempts.map { it.domain.lowercase() to it.sourcePackage }.toMutableSet()
         val knownExtractIds = existingExtracts.map { it.id }.toMutableSet()
+        val knownExtractPatterns = existingExtracts.map { it.pattern }.toMutableSet()
 
         val newRules = incoming.rules.filter { rule ->
             rule.pattern.isNotBlank() && knownPatterns.add(rule.pattern)
-        }
+        }.map { it.copy(id = UUID.randomUUID().toString()) }
         val newExempts = incoming.exempts.filter { exempt ->
-            exempt.domain.isNotBlank() && knownDomains.add(exempt.domain)
-        }
+            exempt.domain.isNotBlank() && knownDomains.add(exempt.domain.lowercase() to exempt.sourcePackage)
+        }.map { it.copy(id = UUID.randomUUID().toString()) }
         val newExtracts = incoming.extracts.filter { pattern ->
-            pattern.pattern.isNotBlank() && knownExtractIds.add(pattern.id)
+            pattern.pattern.isNotBlank() && knownExtractPatterns.add(pattern.pattern) &&
+                (!pattern.isBuiltin || knownExtractIds.add(pattern.id))
+        }.map {
+            if (it.isBuiltin) it else it.copy(id = UUID.randomUUID().toString())
         }
 
         val merged = LinkConfigBackup(
