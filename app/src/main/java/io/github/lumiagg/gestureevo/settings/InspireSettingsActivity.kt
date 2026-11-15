@@ -159,6 +159,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         // Default share behavior
         val defaultShareBehavior = settingsStore.readKey(KEY_DEFAULT_SHARE_BEHAVIOR, "tokenization")
         updateDefaultShareBehaviorText(defaultShareBehavior)
+        binding.globalPressImmediateSwitch.isChecked = settingsStore.readKey(io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_IMMEDIATE, false)
         binding.globalPressSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_ENABLED, false)
         updateGlobalPressSettingsEnabled()
         binding.selectedGlobalPressTimeoutText.text = getString(
@@ -337,7 +338,8 @@ class InspireSettingsActivity : AppCompatActivity() {
             updateGlobalPressSettingsEnabled()
             lifecycleScope.launch {
                 if (enabled && !AShizuku.checkPermission(this@InspireSettingsActivity)) {
-                    binding.globalPressSwitch.isChecked = false
+                    binding.globalPressImmediateSwitch.isChecked = settingsStore.readKey(io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_IMMEDIATE, false)
+        binding.globalPressSwitch.isChecked = false
                     return@launch
                 }
                 if (enabled != binding.globalPressSwitch.isChecked) return@launch
@@ -348,6 +350,9 @@ class InspireSettingsActivity : AppCompatActivity() {
                         .setPositiveButton(android.R.string.ok, null).show()
                 }
             }
+        }
+        binding.globalPressImmediateSwitch.setOnCheckedChangeListener { _, enabled ->
+            lifecycleScope.launch { settingsStore.saveKey(io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_IMMEDIATE, enabled) }
         }
         binding.globalPressTimeoutRow.setOnClickListener {
             lifecycleScope.launch {
@@ -683,6 +688,8 @@ class InspireSettingsActivity : AppCompatActivity() {
     private fun updateGlobalPressSettingsEnabled() {
         val enabled = binding.globalPressSwitch.isChecked
         listOf(
+            binding.globalPressImmediateRow,
+            binding.globalPressImmediateSwitch,
             binding.globalPressTimeoutRow,
             binding.globalPressAllowedRow
         ).forEach { row ->

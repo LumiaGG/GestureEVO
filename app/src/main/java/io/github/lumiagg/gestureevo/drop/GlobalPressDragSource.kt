@@ -42,7 +42,7 @@ internal class GlobalPressDragSource(
     private val capture: PressContentCapture,
     private val panel: () -> ContentDragTarget?,
 ) {
-    private data class Settings(val enabled: Boolean, val timeout: Int, val whitelist: Set<String>, val vibrate: Boolean)
+    private data class Settings(val enabled: Boolean, val timeout: Int, val whitelist: Set<String>, val vibrate: Boolean, val immediate: Boolean = false)
     private val main = Handler(Looper.getMainLooper())
     private val detector = PressTriggerDetector(ViewConfiguration.get(context).scaledTouchSlop.toFloat())
     private val blocker = BackgroundTouchBlocker(context, scope)
@@ -74,6 +74,7 @@ internal class GlobalPressDragSource(
             captureX = latestX
             captureY = latestY
             notifyReady()
+            if (settings.immediate && detector.isReady) prepareDrag()
         }
     }
     private val expiry = Runnable { cancel("gesture_timeout") }
@@ -84,7 +85,7 @@ internal class GlobalPressDragSource(
             context.settingsStore.data.map {
                 Settings(it.readKey(KEY_GLOBAL_PRESS_ENABLED, false), it.readKey(KEY_GLOBAL_PRESS_TIMEOUT, DEFAULT_GLOBAL_PRESS_TIMEOUT_MS).coerceIn(200, 2000),
                     it.readKey(KEY_GLOBAL_PRESS_ALLOWED, "").split('|').filter(String::isNotBlank).toSet(),
-                    it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true))
+                    it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true), it.readKey(DropPreferences.KEY_GLOBAL_PRESS_IMMEDIATE, false))
             }.distinctUntilChanged().collect { updated ->
                 cancel("source_settings_changed")
                 settings = updated
@@ -147,7 +148,7 @@ internal class GlobalPressDragSource(
                     }
                     sourcePackage = origin
                     notifyReady()
-                    if (detector.isFired) prepareDrag()
+                    if (detector.isFired || (settings.immediate && detector.isReady)) prepareDrag()
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) {
@@ -160,11 +161,11 @@ internal class GlobalPressDragSource(
         if (readyNotified || !detector.isReady || sourcePackage == null || !allowed()) return
         readyNotified = true
         android.util.Log.i("EVO-Press", "press_ready generation=$generation elapsedMs=${SystemClock.uptimeMillis() - detector.downTime()}")
-        if (settings.vibrate) VibratorUtils.vibrator(context, true)
+        if (settings.vibrate) VibratorUtils.accessibilityFeedback(context)
     }
 
     private fun prepareDrag() {
-        if (shown || preparing || !detector.isFired || !allowed()) return
+        if (shown || preparing || !(detector.isFired || (settings.immediate && detector.isReady)) || !allowed()) return
         val origin = sourcePackage ?: return // The lightweight source check may still be in flight.
         preparing = true
         val request = generation
