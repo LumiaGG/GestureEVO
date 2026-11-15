@@ -35,6 +35,7 @@ import io.github.lumiagg.gestureevo.gesture.InspireEvent
 import io.github.lumiagg.gestureevo.gesture.TriggerSide
 import io.github.lumiagg.gestureevo.inspire.SmartSegmenter
 import io.github.lumiagg.gestureevo.inspire.getScreenView
+import io.github.lumiagg.gestureevo.inspire.smallestScreenView
 import io.github.lumiagg.gestureevo.pointer.ui.HighlightRectView
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_POINTER_COLOR
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_POINTER_CLICK_FEEDBACK
@@ -799,9 +800,7 @@ class PointerFloating(
             potentialDragSelectJob?.cancel()
             potentialDragSelectSourceRect = Rect(sourceRect)
             potentialDragSelectJob = context.launch(Dispatchers.Default) {
-                val targetRect = getScreenView(context, pointRect, clickMode = true)
-                    .filter { it.area > 0 }
-                    .minByOrNull { it.area }
+                val targetRect = smallestScreenView(getScreenView(context, pointRect, clickMode = true))
                     ?.bound
                 if (potentialDragSelectSourceRect != sourceRect) return@launch
                 potentialDragSelectRect = targetRect
@@ -851,9 +850,7 @@ class PointerFloating(
             val tooSmallWidth = selectionRect.width() < io.github.lumiagg.gestureevo.inspire.ui.InspireView.DRAG_SELECT_CLICK_THRESHOLD
             val tooSmallHeight = selectionRect.height() < io.github.lumiagg.gestureevo.inspire.ui.InspireView.DRAG_SELECT_CLICK_THRESHOLD
             return when {
-                tooSmallWidth && tooSmallHeight -> getScreenView(context, selectionRect, clickMode = true)
-                    .filter { it.area > 0 }
-                    .minByOrNull { it.area }
+                tooSmallWidth && tooSmallHeight -> smallestScreenView(getScreenView(context, selectionRect, clickMode = true))
                     ?.bound
 
                 tooSmallWidth || tooSmallHeight -> {

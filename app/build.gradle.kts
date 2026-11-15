@@ -127,6 +127,10 @@ val prepareProjectDocuments by tasks.registering(Copy::class) {
         into("licenses")
         rename { "project_license.txt" }
     }
+    from(layout.projectDirectory.file("src/main/java/io/github/lumiagg/gestureevo/drop/MMGG-NOTICE")) {
+        into("licenses")
+        rename { "MMGG-NOTICE.txt" }
+    }
 }
 
 tasks.matching {

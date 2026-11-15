@@ -3,25 +3,28 @@ package io.github.lumiagg.gestureevo.drop
 import android.content.ClipData
 import android.graphics.Bitmap
 import android.graphics.Rect
-import android.os.SystemClock
-import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.accessibilityservice.AccessibilityService
-import io.github.lumiagg.gestureevo.inspire.OcrImageTextProcessor
 import io.github.lumiagg.gestureevo.share.ImageShareLauncher
+import io.github.lumiagg.gestureevo.inspire.withAccessibilityNodes
+import io.github.lumiagg.gestureevo.inspire.screenViews
+import io.github.lumiagg.gestureevo.inspire.smallestScreenView
+import io.github.lumiagg.gestureevo.inspire.selectScreenContent
+import io.github.lumiagg.gestureevo.inspire.screenContentText
+import io.github.lumiagg.gestureevo.inspire.cropByRect
+import io.github.lumiagg.gestureevo.inspire.useSoftwareBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 
-/** MMGG RootNodeCapture filtering adapted to EVO's accessibility/screenshot/OCR permission path. */
+/** Shared screen-content recognition with drag-specific source and sensitive-region guards. */
 internal class PressContentCapture(
     private val service: AccessibilityService,
     private val screenshot: suspend () -> Bitmap?,
 ) {
     data class Source(val packageName: String, val windowId: Int, val bounds: PressWindowPolicy.Bounds)
-    private data class Node(val bounds: Rect, val text: String?, val description: String?,
-        val control: Boolean, val password: Boolean, val parent: Int?, val snapshot: AccessibilityNodeSnapshot)
+    private data class CapturedContent(val text: String? = null, val imageBounds: Rect? = null)
 
     fun excludedPackage(packageName: String): Boolean {
         if (EvoSourcePackages.contains(packageName) || packageName == "com.android.systemui") return true
@@ -76,107 +79,65 @@ internal class PressContentCapture(
         } finally { windows.forEach { it.recycle() } }
     }
 
-    @Suppress("DEPRECATION")
     suspend fun capture(source: Source, x: Float, y: Float): ClipData? = withContext(Dispatchers.IO) {
-        val roots = service.windows
-        var root: AccessibilityNodeInfo? = null
-        val windowBounds = Rect()
-        try {
-            for (window in roots) {
-                if (window.id == source.windowId && window.type == AccessibilityWindowInfo.TYPE_APPLICATION && window.isActive) {
-                    window.getBoundsInScreen(windowBounds)
-                    root = window.root
-                    break
+        val point = Rect(x.toInt() - 1, y.toInt() - 1, x.toInt() + 1, y.toInt() + 1)
+        val content = withAccessibilityNodes(service, windowId = source.windowId,
+            expectedPackage = source.packageName, maxNodes = 600, maxDurationMs = 450) { nodes ->
+            if (nodes.any { it.info.isPassword && it.bounds.contains(x.toInt(), y.toInt()) })
+                return@withAccessibilityNodes null
+            // Never read password descendants or summaries containing a password field.
+            val excluded = mutableSetOf<Int>()
+            nodes.indices.filter { nodes[it].info.isPassword }.forEach { index ->
+                var current: Int? = index
+                while (current != null) { excluded += current; current = nodes[current].parentIndex }
+            }
+            nodes.forEachIndexed { index, node ->
+                var ancestor = node.parentIndex
+                while (ancestor != null) {
+                    if (nodes[ancestor].info.isPassword) { excluded += index; break }
+                    ancestor = nodes[ancestor].parentIndex
                 }
             }
-        } finally { roots.forEach { it.recycle() } }
-        val start = root ?: return@withContext null
-        val pending = ArrayDeque<Pair<AccessibilityNodeInfo, Int?>>()
-        pending.add(start to null)
-        val nodes = mutableListOf<Node>()
-        val started = SystemClock.uptimeMillis()
-        try {
-            while (pending.isNotEmpty()) {
-                coroutineContext.ensureActive()
-                if (nodes.size >= 600 || SystemClock.uptimeMillis() - started > 450) return@withContext null
-                val (node, parent) = pending.removeLast()
-                try {
-                    val bounds = Rect().also(node::getBoundsInScreen)
-                    if (node.isVisibleToUser && node.packageName?.toString() != source.packageName) return@withContext null
-                    val visible = node.isVisibleToUser && !bounds.isEmpty
-                    val index = nodes.size
-                    val cls = node.className?.toString().orEmpty()
-                    val snapshot = AccessibilityNodeSnapshot.Builder().bounds(bounds)
-                        .className(cls).text(node.text?.toString()?.take(16000))
-                        .contentDescription(node.contentDescription?.toString()?.take(2000)).visible(visible)
-                        .editable(node.isEditable).password(node.isPassword)
-                        .leaf(node.childCount == 0)
-                        .insideWebView(cls.contains("WebView") || (parent != null && nodes[parent].snapshot.insideWebView))
-                        .depth(if (parent == null) 0 else nodes[parent].snapshot.depth + 1).traversalOrder(index).build()
-                    nodes += Node(if (visible || node.isPassword) bounds else Rect(), snapshot.text,
-                        snapshot.contentDescription, node.isClickable || node.isLongClickable, node.isPassword, parent, snapshot)
-                    for (child in 0 until node.childCount.coerceAtMost(600)) node.getChild(child)?.let { pending.add(it to index) }
-                } finally { node.recycle() }
+            val target = smallestScreenView(screenViews(nodes, point, clickMode = true, excluded = excluded))
+                ?: return@withAccessibilityNodes null
+            val targetNode = nodes.withIndex().firstOrNull {
+                it.index !in excluded && it.value.readable && it.value.bounds == target.bound
+            }?.value ?: return@withAccessibilityNodes null
+            val cls = targetNode.info.className?.toString().orEmpty()
+            val description = targetNode.info.contentDescription?.toString()?.trim()?.lowercase()
+            val image = cls.endsWith("ImageView") || cls == "android.widget.Image" ||
+                (targetNode.info.text.isNullOrBlank() && description in setOf("图片", "图像", "image", "photo"))
+            if (image) {
+                val region = Rect(target.bound)
+                val margin = service.resources.displayMetrics.density.toInt().coerceAtLeast(1)
+                val sensitiveRegion = Rect(region).apply { inset(-margin, -margin) }
+                if (nodes.any { it.info.isPassword && Rect.intersects(sensitiveRegion, it.bounds) }) null
+                else CapturedContent(imageBounds = region)
+            } else {
+                screenContentText(selectScreenContent(nodes, target.bound, excluded)).takeIf { it.isNotBlank() }
+                    ?.let { CapturedContent(text = it) }
             }
-        } finally { pending.forEach { it.first.recycle() } }
+        } ?: return@withContext null
         if (sourceAt(x, y) != source) return@withContext null
-        val atPoint = nodes.indices.filter { nodes[it].bounds.contains(x.toInt(), y.toInt()) }
-        if (atPoint.any { nodes[it].password }) return@withContext null
-        if (atPoint.any { index ->
-                val node = nodes[index]
-                (holdLabel(node.text) || holdLabel(node.description)) && atPoint.any { nodes[it].control && nodes[it].bounds.contains(node.bounds) }
-            }) return@withContext null
-        val protected = mutableSetOf<Int>()
-        nodes.indices.filter { nodes[it].password }.forEach { index ->
-            var current: Int? = index
-            while (current != null) { protected += current; current = nodes[current].parent }
-        }
-        fun safe(index: Int): Boolean {
-            var current: Int? = index
-            while (current != null) { if (nodes[current].password) return false; current = nodes[current].parent }
-            return index !in protected
-        }
-        val metrics = service.resources.displayMetrics
-        val classifier = AccessibilityNodeClassifier(metrics.density, windowBounds.right, windowBounds.bottom)
-        val buckets = classifier.classify(nodes.indices.filter(::safe).map { nodes[it].snapshot })
-        val chosen = AccessibilityCandidateSelector.select(buckets, x, y)
-        if (chosen != null && !chosen.isImage) return@withContext ClipData.newPlainText("EVO press", chosen.candidate.text)
-        val region = if (chosen != null) Rect(chosen.candidate.bounds) else {
-            // Only a complete safe window traversal permits a bounded OCR fallback.
-            val width = (windowBounds.width() * .78f).toInt().coerceAtLeast(1)
-            val height = (windowBounds.height() * .34f).toInt().coerceAtLeast(1)
-            val left = (x.toInt() - width / 2).coerceIn(windowBounds.left, windowBounds.right - width)
-            val top = (y.toInt() - height / 2).coerceIn(windowBounds.top, windowBounds.bottom - height)
-            Rect(left, top, left + width, top + height)
-        }
-        if (!region.intersect(windowBounds)) return@withContext null
-        val protectedRegion = Rect(region).apply { inset(-metrics.density.toInt().coerceAtLeast(1), -metrics.density.toInt().coerceAtLeast(1)) }
-        if (nodes.any { it.password && Rect.intersects(protectedRegion, it.bounds) }) return@withContext null
+        content.text?.let { return@withContext ClipData.newPlainText("EVO press", it) }
+        val region = content.imageBounds ?: return@withContext null
+        if (!region.intersect(source.bounds.left, source.bounds.top, source.bounds.right, source.bounds.bottom)) return@withContext null
         val screen = screenshot() ?: return@withContext null
         val crop = try {
-            if (!region.intersect(0, 0, screen.width, screen.height)) return@withContext null
-            val software = screen.copy(Bitmap.Config.ARGB_8888, false) ?: return@withContext null
-            try { Bitmap.createBitmap(software, region.left, region.top, region.width(), region.height()).let {
-                if (it === software) it.copy(Bitmap.Config.ARGB_8888, false) else it
-            } } finally { software.recycle() }
+            screen.useSoftwareBitmap { software ->
+                software.cropByRect(region)?.let {
+                    // A full-screen crop may alias its input; the returned image must own its pixels.
+                    if (it === software) it.copy(Bitmap.Config.ARGB_8888, false) else it
+                }
+            }
         } finally { screen.recycle() } ?: return@withContext null
         try {
             coroutineContext.ensureActive()
             if (sourceAt(x, y) != source) return@withContext null
-            if (chosen != null) {
-                val payload = ImageShareLauncher(service.applicationContext).buildPayload(crop, null) ?: return@withContext null
-                val uri = payload.contentUris.firstOrNull() ?: return@withContext null
-                ClipData.newUri(service.contentResolver, "EVO visible image", uri)
-            } else {
-                val text = OcrImageTextProcessor(service).process(crop).imageTextNodes
-                    .filter { it.bound.contains((x - region.left).toInt(), (y - region.top).toInt()) }
-                    .mapNotNull { it.content }.joinToString("\n")
-                text.takeIf { it.isNotBlank() }?.let { ClipData.newPlainText("EVO press OCR", it) }
-            }
+            val payload = ImageShareLauncher(service.applicationContext).buildPayload(crop, null) ?: return@withContext null
+            val uri = payload.contentUris.firstOrNull() ?: return@withContext null
+            ClipData.newUri(service.contentResolver, "EVO visible image", uri)
         } finally { crop.recycle() }
     }
 
-    private fun holdLabel(value: String?): Boolean = value?.replace(Regex("\\s+"), "")?.lowercase() in setOf(
-        "按住说话", "按住录音", "按住发送", "松开发送", "松开结束录音", "松开取消", "上滑取消", "手指上滑取消发送", "松开转文字",
-        "holdtotalk", "presstotalk", "holdtorecord", "releasetosend", "releasetocancel", "releasetostoprecording", "slideuptocancel")
 }

@@ -536,9 +536,8 @@ class InspireFloating(private val context: GestureService) :
             when {
                 tooSmallWidth && tooSmallHeight -> {
                     val intersectingViews = getScreenView(context, dragSelectRect, clickMode = true)
-                    intersectingViews
-                        .filter { it.area > dragSelectRect.height() * dragSelectRect.width() * 1.2 }
-                        .minByOrNull { it.area }?.bound
+                    smallestScreenView(intersectingViews,
+                        minimumArea = dragSelectRect.height() * dragSelectRect.width() * 1.2)?.bound
                 }
 
                 tooSmallHeight || tooSmallWidth -> {
