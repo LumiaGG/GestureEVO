@@ -97,6 +97,22 @@ internal class PressContentCapture(
         }
     }
 
+    /** Read only the long-click event's current snapshot; do not refresh or traverse its tree. */
+    @Suppress("DEPRECATION")
+    fun longClickText(event: android.view.accessibility.AccessibilityEvent, x: Float, y: Float, origin: String): String? {
+        if (event.isPassword) return null
+        val node = event.source ?: return null
+        try {
+            val bounds = Rect().also(node::getBoundsInScreen)
+            if (node.isPassword || node.packageName?.toString() != origin ||
+                !bounds.contains(x.toInt(), y.toInt()) ||
+                io.github.lumiagg.gestureevo.inspire.accessibilityImageClass(node.className)) return null
+            return node.text?.toString()?.takeIf(String::isNotBlank)
+                ?: event.text.mapNotNull { it?.toString()?.takeIf(String::isNotBlank) }
+                    .joinToString("\n").takeIf(String::isNotBlank)
+        } finally { node.recycle() }
+    }
+
     private fun captureMiss(reason: String): Nothing? {
         DropDiagnostics.event("drop_capture_unavailable", "internal", 0, reason = reason)
         return null

@@ -70,6 +70,9 @@
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/globalPressSwitch" android:checked="false" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                     <TextView android:id="@+id/global_press_status_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginHorizontal="14dp" android:layout_marginTop="6dp" android:text="@string/global_press_status_stopped" android:textAppearance="?attr/textAppearanceBodySmall" android:textColor="?attr/colorOnSurfaceVariant" android:maxLines="1" android:ellipsize="end" android:accessibilityLiveRegion="polite" />
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/globalPressEarlyTextRow" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsRowTitle="@string/global_press_early_text" app:settingsRowSummary="@string/global_press_early_text_description">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/globalPressEarlyTextSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/globalPressImmediateRow" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsRowTitle="@string/global_press_immediate" app:settingsRowSummary="@string/global_press_immediate_description">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/globalPressImmediateSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>

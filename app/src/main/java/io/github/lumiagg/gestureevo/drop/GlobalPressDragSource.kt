@@ -42,7 +42,7 @@ internal class GlobalPressDragSource(
     private val capture: PressContentCapture,
     private val panel: () -> ContentDragTarget?,
 ) {
-    private data class Settings(val enabled: Boolean, val timeout: Int, val whitelist: Set<String>, val vibrate: Boolean, val immediate: Boolean = false)
+    private data class Settings(val enabled: Boolean, val timeout: Int, val whitelist: Set<String>, val vibrate: Boolean, val immediate: Boolean = false, val earlyText: Boolean = false)
     private val main = Handler(Looper.getMainLooper())
     private val detector = PressTriggerDetector(ViewConfiguration.get(context).scaledTouchSlop.toFloat())
     private val blocker = BackgroundTouchBlocker(context, scope)
@@ -55,6 +55,9 @@ internal class GlobalPressDragSource(
     private var windowCheck: Job? = null
     private var interruptionAllowed: AtomicBoolean? = null
     private var sourcePackage: String? = null
+    private var earlyText: String? = null
+    private var downX = 0f
+    private var downY = 0f
     @Volatile private var generation = 0L
     private var active = false
     private var shown = false
@@ -85,7 +88,8 @@ internal class GlobalPressDragSource(
             context.settingsStore.data.map {
                 Settings(it.readKey(KEY_GLOBAL_PRESS_ENABLED, false), it.readKey(KEY_GLOBAL_PRESS_TIMEOUT, DEFAULT_GLOBAL_PRESS_TIMEOUT_MS).coerceIn(200, 2000),
                     it.readKey(KEY_GLOBAL_PRESS_ALLOWED, "").split('|').filter(String::isNotBlank).toSet(),
-                    it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true), it.readKey(DropPreferences.KEY_GLOBAL_PRESS_IMMEDIATE, false))
+                    it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true), it.readKey(DropPreferences.KEY_GLOBAL_PRESS_IMMEDIATE, false),
+                    it.readKey(DropPreferences.KEY_GLOBAL_PRESS_EARLY_TEXT, false))
             }.distinctUntilChanged().collect { updated ->
                 cancel("source_settings_changed")
                 settings = updated
@@ -106,6 +110,8 @@ internal class GlobalPressDragSource(
             cancel("next_down")
             if (systemDrag || !settings.enabled || !screenReady() || panel() == null || OverlayTouchRegions.contains(x, y)) return
             active = true
+            downX = x
+            downY = y
             detector.start(x, y, time, settings.timeout.toLong())
             checkSource(x, y)
             main.postAtTime(arm, detector.deadline())
@@ -167,6 +173,7 @@ internal class GlobalPressDragSource(
     private fun prepareDrag() {
         if (shown || preparing || !(detector.isFired || (settings.immediate && detector.isReady)) || !allowed()) return
         val origin = sourcePackage ?: return // The lightweight source check may still be in flight.
+        val savedText = earlyText
         preparing = true
         val request = generation
         val started = SystemClock.uptimeMillis()
@@ -192,7 +199,12 @@ internal class GlobalPressDragSource(
                     return@launch
                 }
                 coroutineScope {
-                    val content = async { capture.capture(x, y) }
+                    val content = async {
+                        if (savedText != null) {
+                            DropDiagnostics.event("drop_capture_path", "internal", request.toInt(), reason = "early_long_click_text")
+                            ClipData.newPlainText("EVO press", savedText)
+                        } else capture.capture(x, y)
+                    }
                     val interruption = async {
                         try {
                             input.interruptSourceTouch(origin, inputX, inputY, displayId,
@@ -253,6 +265,14 @@ internal class GlobalPressDragSource(
     }
 
     fun onWindowEvent(event: AccessibilityEvent) {
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_LONG_CLICKED) {
+            val origin = sourcePackage ?: return
+            if (!settings.earlyText || earlyText != null || preparing || shown || !allowed() ||
+                event.eventTime < detector.downTime() || event.packageName?.toString() != origin) return
+            earlyText = runCatching { capture.longClickText(event, downX, downY, origin) }.getOrNull()
+            if (earlyText != null) DropDiagnostics.event("drop_early_text_saved", "internal", generation.toInt())
+            return
+        }
         if (!active || (event.eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED &&
                 event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)) return
         val origin = sourcePackage ?: return
@@ -295,6 +315,7 @@ internal class GlobalPressDragSource(
         preparing = false
         readyNotified = false
         sourcePackage = null
+        earlyText = null
         detector.cancel()
         main.removeCallbacks(arm)
         main.removeCallbacks(expiry)

@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 /** Persisted drag settings. Keep key values stable across upgrades. */
 internal object DropPreferences {
     const val KEY_GLOBAL_PRESS_ENABLED = "key_global_press_enabled"
+    const val KEY_GLOBAL_PRESS_EARLY_TEXT = "key_global_press_early_text"
     const val KEY_GLOBAL_PRESS_IMMEDIATE = "key_global_press_immediate"
     const val KEY_GLOBAL_PRESS_TIMEOUT = "key_global_press_timeout"
     const val DEFAULT_GLOBAL_PRESS_TIMEOUT_MS = 1000
