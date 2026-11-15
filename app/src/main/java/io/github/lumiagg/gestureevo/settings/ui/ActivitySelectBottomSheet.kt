@@ -75,6 +75,7 @@ class ActivitySelectBottomSheet(
         bottomSheetDialog =
             BottomSheetDialog(themedContext, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
         bottomSheetDialog.setContentView(R.layout.app_select_bottomsheet)
+        bottomSheetDialog.findViewById<TextView>(R.id.selectionTitle)?.setText(R.string.se_jump_activity_select_activity)
         bottomSheetDialog.setCanceledOnTouchOutside(false)
 
         bottomSheetDialog.findViewById<View>(R.id.filterChipGroup)?.visibility = View.GONE

@@ -4,14 +4,11 @@ import io.github.lumiagg.gestureevo.diagnostics.AppLogger
 import io.github.lumiagg.gestureevo.diagnostics.LogLevel
 import io.github.lumiagg.gestureevo.diagnostics.LogModule
 import android.content.ComponentName
-import android.content.Context
 import android.content.ServiceConnection
-import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
 import io.github.lumiagg.gestureevo.BuildConfig
 import io.github.lumiagg.gestureevo.IUserService
-import io.github.lumiagg.gestureevo.utils.app.AShizuku
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
@@ -23,18 +20,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import rikka.shizuku.Shizuku
 import rikka.shizuku.Shizuku.UserServiceArgs
-
-suspend fun initShizukuService(context: Context) {
-    withContext(Dispatchers.Main) {
-        if (AShizuku.checkPermission(context)) {
-            try {
-                ShizukuServiceHelper.bindUserService(null)
-            } catch (e: Exception) {
-                Log.e("App", "Failed to pre-bind Shizuku service", e)
-            }
-        }
-    }
-}
 
 object ShizukuServiceHelper {
     private const val TAG = "ShizukuHelper"
@@ -55,23 +40,6 @@ object ShizukuServiceHelper {
 
     init {
         Shizuku.addBinderDeadListener { onConnectionLost() }
-        Shizuku.addBinderReceivedListenerSticky { prebindIfPermitted() }
-    }
-
-    /**
-     * The Shizuku server pushes its binder to running apps on every start, so this fires again
-     * after each server restart. Re-binding right away keeps the user service warm, instead of
-     * paying the service start cost on the first frozen-app launch after a restart.
-     */
-    private fun prebindIfPermitted() {
-        if (bindingRequested || isServiceBound) return
-        runCatching {
-            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                bindUserService(null)
-            }
-        }.onFailure {
-            Log.i(TAG, "Skip pre-bind on binder received: ${it.message}")
-        }
     }
 
     private fun onConnectionLost() {
@@ -190,7 +158,7 @@ object ShizukuServiceHelper {
         .daemon(false)
         .processNameSuffix("service")
         .debuggable(BuildConfig.DEBUG)
-        .version(BuildConfig.VERSION_CODE + 2) // Diagnostic stream protocol changed; replace a previously bound user service.
+        .version(BuildConfig.VERSION_CODE + 8) // Drag interruption adds an append-only AIDL method.
 
     fun bindUserService(onBound: (() -> Unit)?) {
         if (isServiceBound) {

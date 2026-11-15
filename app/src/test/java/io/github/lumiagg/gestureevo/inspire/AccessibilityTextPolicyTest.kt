@@ -18,6 +18,14 @@ class AccessibilityTextPolicyTest {
         assertNull(accessibilityNodeText(null, "返回", "android.widget.ImageButton"))
     }
 
+    @Test fun selectableImageDescriptionsRemainImages() {
+        assertNull(accessibilityNodeText(null, "照片描述", "android.widget.ImageView", hasTextSelection = true))
+        assertNull(accessibilityNodeText("照片描述", null, "chat.BubbleImageView", isLongClickable = true))
+        assertTrue(accessibilityImageClass("chat.BubbleImageView"))
+        assertTrue(accessibilityImageClass("android.widget.ImageButton"))
+        assertFalse(accessibilityImageClass("android.widget.TextView"))
+    }
+
     @Test fun genericClickableControlsDoNotSupplyTextDescriptions() {
         assertNull(accessibilityNodeText(null, "投币\n1.2万", VIEW, isClickable = true))
         assertNull(accessibilityNodeText(null, "评论\n第2个标签，共2个", VIEW, isClickable = true))

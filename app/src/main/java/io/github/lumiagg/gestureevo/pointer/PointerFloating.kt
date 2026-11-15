@@ -34,7 +34,7 @@ import io.github.lumiagg.gestureevo.gesture.GestureService
 import io.github.lumiagg.gestureevo.gesture.InspireEvent
 import io.github.lumiagg.gestureevo.gesture.TriggerSide
 import io.github.lumiagg.gestureevo.inspire.SmartSegmenter
-import io.github.lumiagg.gestureevo.inspire.getScreenView
+import io.github.lumiagg.gestureevo.inspire.resolveScreenContentRect
 import io.github.lumiagg.gestureevo.pointer.ui.HighlightRectView
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_POINTER_COLOR
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_POINTER_CLICK_FEEDBACK
@@ -836,10 +836,7 @@ class PointerFloating(
             potentialDragSelectJob?.cancel()
             potentialDragSelectSourceRect = Rect(sourceRect)
             potentialDragSelectJob = context.launch(Dispatchers.Default) {
-                val targetRect = getScreenView(context, pointRect, clickMode = true)
-                    .filter { it.area > 0 }
-                    .minByOrNull { it.area }
-                    ?.bound
+                val targetRect = resolveScreenContentRect(context, pointRect)
                 if (potentialDragSelectSourceRect != sourceRect) return@launch
                 potentialDragSelectRect = targetRect
                 withContext(Dispatchers.Main) {
@@ -869,7 +866,7 @@ class PointerFloating(
                 while (isDragMode && !hasStartedDragSelection) {
                     val sourceRect = pendingPotentialDragSelectRect ?: break
                     pendingPotentialDragSelectRect = null
-                    val targetRect = resolvePotentialDragSelectRect(sourceRect)
+                    val targetRect = resolveScreenContentRect(context, sourceRect, allowRegion = false)
                     potentialDragSelectSourceRect = Rect(sourceRect)
                     potentialDragSelectRect = targetRect
                     withContext(Dispatchers.Main) {
@@ -881,36 +878,6 @@ class PointerFloating(
                         }
                     }
                 }
-            }
-        }
-
-        private suspend fun resolvePotentialDragSelectRect(selectionRect: Rect): Rect? {
-            val tooSmallWidth = selectionRect.width() < io.github.lumiagg.gestureevo.inspire.ui.InspireView.DRAG_SELECT_CLICK_THRESHOLD
-            val tooSmallHeight = selectionRect.height() < io.github.lumiagg.gestureevo.inspire.ui.InspireView.DRAG_SELECT_CLICK_THRESHOLD
-            return when {
-                tooSmallWidth && tooSmallHeight -> getScreenView(context, selectionRect, clickMode = true)
-                    .filter { it.area > 0 }
-                    .minByOrNull { it.area }
-                    ?.bound
-
-                tooSmallWidth || tooSmallHeight -> {
-                    val views = getScreenView(context, selectionRect, clickMode = false)
-                    if (views.isEmpty()) {
-                        null
-                    } else {
-                        Rect().also { expandedRect ->
-                            views.forEachIndexed { index, view ->
-                                if (index == 0) {
-                                    expandedRect.set(view.bound)
-                                } else {
-                                    expandedRect.union(view.bound)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                else -> null
             }
         }
 
@@ -1046,7 +1013,7 @@ class PointerFloating(
                     view.visibility = View.INVISIBLE
                     context.launch {
                         val resolvedSelectionRect = if (!hasStartedDragSelection) {
-                            previewSelectionRect ?: resolvePotentialDragSelectRect(currentSelectionRect)
+                            previewSelectionRect ?: resolveScreenContentRect(context, currentSelectionRect, allowRegion = false)
                         } else {
                             null
                         }

@@ -94,6 +94,9 @@ interface APPDao {
     @Update
     suspend fun update(model: APPModel)
 
+    @Query("UPDATE APPModel SET state = CASE WHEN :enabled THEN state | :flag ELSE state & ~:flag END, isRemove = 0 WHERE id IN (:ids)")
+    suspend fun setSelectionFlag(ids: List<Int>, flag: Int, enabled: Boolean)
+
     @Delete
     suspend fun delete(model: APPModel)
 

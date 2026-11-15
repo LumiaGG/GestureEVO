@@ -7,7 +7,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
@@ -417,10 +416,7 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
                 }
             },
             blackList = ArrayList(trigger.whiteList),
-            disableIcon = ContextCompat.getDrawable(
-                this,
-                R.drawable.baseline_check_24
-            )
+            whitelist = true
         ).show()
     }
 

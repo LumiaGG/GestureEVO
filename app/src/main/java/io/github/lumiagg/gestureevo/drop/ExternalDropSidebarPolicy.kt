@@ -17,6 +17,9 @@ internal object ExternalDropSidebarPolicy {
             ?: fitting.maxWith(compareBy<Layout> { it.pageSize }.thenBy { -it.columns })
     }
 
+    fun topOffset(availableHeight: Int, panelHeight: Int, totalHeight: Int): Int =
+        ((availableHeight - panelHeight) / 2).coerceIn(0, (availableHeight - totalHeight).coerceAtLeast(0))
+
     fun pageCount(engineCount: Int, rows: Int, columns: Int): Int =
         ((engineCount + rows * columns - 1) / (rows * columns)).coerceAtLeast(1)
 

@@ -17,18 +17,24 @@ import android.os.PowerManager
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import io.github.lumiagg.gestureevo.drop.ExternalDropFloating
+import io.github.lumiagg.gestureevo.drop.DragContentConverter
+import io.github.lumiagg.gestureevo.drop.DropContentDispatcher
+import io.github.lumiagg.gestureevo.drop.DropImageDecoder
+import io.github.lumiagg.gestureevo.drop.PressContentCapture
+import io.github.lumiagg.gestureevo.drop.GlobalPressDragSource
 import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_ENABLED
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_POSITION
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_POSITION_BOTTOM
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SHOW_ENGINES
+import io.github.lumiagg.gestureevo.inspire.PictureFloating
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_CONVERSION
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_ENABLED
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_POSITION
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_POSITION_BOTTOM
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SHOW_ENGINES
 import io.github.lumiagg.gestureevo.utils.CurrentPackageProvider
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.RecentAppsRecorder
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
-import io.github.lumiagg.gestureevo.utils.shizuku.initShizukuService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -62,14 +68,17 @@ class GestureService : AccessibilityService(), CoroutineScope {
     private var lastNightMode = Configuration.UI_MODE_NIGHT_UNDEFINED
     private var externalDropFloating: ExternalDropFloating? = null
     private var externalDropSettingsJob: Job? = null
+    private var globalPressDragSource: GlobalPressDragSource? = null
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         CurrentPackageProvider.onAccessibilityEvent(event)
         gestureManager?.onWindowStateChanged(event)
+        globalPressDragSource?.onWindowEvent(event)
         gestureManager?.onRadarAccessibilityEvent(event)
     }
 
     override fun onInterrupt() {
+        globalPressDragSource?.cancel("accessibility_interrupted")
         AppLogger.event(
             LogModule.SERVICE, "accessibility_interrupted",
             LogLevel.WARN)
@@ -84,6 +93,10 @@ class GestureService : AccessibilityService(), CoroutineScope {
         launch(Dispatchers.Main) {
             delay(1000)
             gestureManager = GestureManager(this@GestureService, this)
+            globalPressDragSource = GlobalPressDragSource(
+                this@GestureService, this@GestureService,
+                PressContentCapture(this@GestureService, this@GestureService::takeScreenshot),
+            ) { externalDropFloating }.also { it.start() }
             observeExternalDropSettings()
             DynamicColorUtils.themeRevision.collect {
                 gestureManager?.refreshOverlayThemes()
@@ -95,25 +108,46 @@ class GestureService : AccessibilityService(), CoroutineScope {
                 this@GestureService
             )
             RecentAppsRecorder.initLauncherPackagesInDB(applicationContext)
-            initShizukuService(applicationContext)
         }
     }
 
     private fun observeExternalDropSettings() {
+        data class DropSettings(val showTools: Boolean, val showEngines: Boolean, val position: String,
+            val conversion: Boolean)
         externalDropSettingsJob?.cancel()
         externalDropSettingsJob = launch(Dispatchers.Main) {
+            var previousSettings: DropSettings? = null
             settingsStore.data.map { preferences ->
-                Triple(
+                DropSettings(
                     preferences.readKey(KEY_EXTERNAL_DROP_ENABLED, true),
                     preferences.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true),
                     preferences.readKey(KEY_EXTERNAL_DROP_POSITION, EXTERNAL_DROP_POSITION_BOTTOM),
+                    preferences.readKey(KEY_EXTERNAL_DROP_CONVERSION, false),
                 )
             }.distinctUntilChanged().combine(DynamicColorUtils.themeRevision) { settings, _ ->
                 settings
-            }.collect { (showTools, showEngines, position) ->
+            }.collect { settings ->
+                val (showTools, showEngines, position) = settings
+                // Cold dynamic-color publication must not replace the panel mid-press.
+                if (previousSettings == settings) {
+                    while (globalPressDragSource?.isGestureActive == true) delay(50)
+                }
+                previousSettings = settings
+                globalPressDragSource?.cancel("panel_settings_rebuild")
                 externalDropFloating?.destroy()
                 externalDropFloating = if (showTools || showEngines) {
-                    ExternalDropFloating(this@GestureService, position, showTools).also { it.start() }
+                    val decoder = DropImageDecoder(this@GestureService)
+                    val dispatcher = DropContentDispatcher(
+                        this@GestureService, decoder,
+                        showTextPin = { PictureFloating.build(this@GestureService, it) },
+                        showImagePin = { PictureFloating.build(this@GestureService, it) },
+                    )
+                    ExternalDropFloating(this@GestureService, this@GestureService, position, showTools, dispatcher,
+                        DragContentConverter(this@GestureService, decoder)).also {
+                        it.onSystemDragStarted = { globalPressDragSource?.onSystemDragStarted() }
+                        it.onSystemDragEnded = { globalPressDragSource?.onSystemDragEnded() }
+                        it.start()
+                    }
                 } else null
             }
         }
@@ -148,6 +182,8 @@ class GestureService : AccessibilityService(), CoroutineScope {
         AppLogger.event(
             LogModule.SERVICE, "accessibility_destroyed",
             LogLevel.WARN)
+        globalPressDragSource?.close()
+        globalPressDragSource = null
         externalDropSettingsJob?.cancel()
         externalDropSettingsJob = null
         externalDropFloating?.destroy()
@@ -168,6 +204,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
+        globalPressDragSource?.cancel("configuration_changed")
         val nightMode = newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
         if (nightMode != lastNightMode) {
             lastNightMode = nightMode
@@ -385,6 +422,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
         var isReceiverRegistered = false
         override fun onReceive(context: Context, intent: Intent) {
             Log.d(TAG, "onReceive: ${intent.action}")
+            globalPressDragSource?.onScreenChanged()
             when (intent.action) {
 
                 Intent.ACTION_USER_PRESENT -> {

@@ -17,8 +17,8 @@ android {
         applicationId = "io.github.lumiagg.gestureevo"
         minSdk = 24
         targetSdk = 36
-        versionCode = 261110001
-        versionName = "2.2-1110001"
+        versionCode = 261115001
+        versionName = "2.2-1115001"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -126,6 +126,10 @@ val prepareProjectDocuments by tasks.registering(Copy::class) {
     from(rootProject.file("LICENSE")) {
         into("licenses")
         rename { "project_license.txt" }
+    }
+    from(layout.projectDirectory.file("src/main/java/io/github/lumiagg/gestureevo/drop/MMGG-NOTICE")) {
+        into("licenses")
+        rename { "MMGG-NOTICE.txt" }
     }
 }
 

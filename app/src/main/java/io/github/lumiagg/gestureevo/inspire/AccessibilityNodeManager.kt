@@ -8,17 +8,14 @@ import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.annotation.RequiresApi
-import io.github.lumiagg.gestureevo.gesture.GestureService
+import android.accessibilityservice.AccessibilityService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
-data class ScreenContentNode(val bound: Rect, val content: String?) {
-    val area: Int
-        get() = bound.width() * bound.height()
-}
+data class ScreenContentNode(val bound: Rect, val content: String?)
 
-private class AccessibilityNodeSnapshot(val info: AccessibilityNodeInfo, val parentIndex: Int?) {
+internal class AccessibilityNodeSnapshot(val info: AccessibilityNodeInfo, val parentIndex: Int?) {
     val bounds = Rect()
     var text: String? = null
     var fromDescription = false
@@ -33,8 +30,8 @@ private class AccessibilityNodeSnapshot(val info: AccessibilityNodeInfo, val par
 }
 
 @Suppress("DEPRECATION") // Accessibility node pooling is still used before Android 13.
-private suspend fun <T> withAccessibilityNodes(
-    service: GestureService,
+internal suspend fun <T> withAccessibilityNodes(
+    service: AccessibilityService,
     readText: Boolean = true,
     block: (List<AccessibilityNodeSnapshot>) -> T,
 ): T = withContext(Dispatchers.Default) {
@@ -70,53 +67,61 @@ private suspend fun <T> withAccessibilityNodes(
     }
 }
 
-suspend fun getScreenContent(service: GestureService, rect: Rect): List<ScreenContentNode> =
-    withAccessibilityNodes(service) { snapshots ->
-        val entries = snapshots.map { AccessibilityTextEntry(it.parentIndex, it.text, it.readable) }
-        val intersecting = mutableSetOf<Int>()
-        val fullyContained = mutableSetOf<Int>()
-        snapshots.forEachIndexed { index, snapshot ->
-            if (snapshot.text != null) {
-                if (snapshot.intersectsSelection(rect)) intersecting.add(index)
-                if (rect.contains(snapshot.bounds)) fullyContained.add(index)
-            }
-        }
-        selectedAccessibilityTextIndices(entries, intersecting, fullyContained).mapNotNull { index ->
-            val snapshot = snapshots[index]
-            val content = ScreenContentNode(snapshot.bounds, snapshot.text)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !snapshot.fromDescription) {
-                getCharacterLocations(snapshot.info, content, rect)
-            } else {
-                content
-            }
+/** Shared text selection: hierarchy deduplication, character clipping and reading order. */
+internal fun selectScreenContent(
+    snapshots: List<AccessibilityNodeSnapshot>, rect: Rect, excluded: Set<Int>,
+): List<ScreenContentNode> {
+    val entries = snapshots.mapIndexed { index, snapshot ->
+        AccessibilityTextEntry(snapshot.parentIndex, snapshot.text, snapshot.readable && index !in excluded)
+    }
+    val intersecting = mutableSetOf<Int>()
+    val fullyContained = mutableSetOf<Int>()
+    snapshots.forEachIndexed { index, snapshot ->
+        if (snapshot.text != null) {
+            if (snapshot.intersectsSelection(rect)) intersecting.add(index)
+            if (rect.contains(snapshot.bounds)) fullyContained.add(index)
         }
     }
-
-suspend fun getScreenContentText(service: GestureService, rect: Rect): String =
-    joinAccessibilityTextInReadingOrder(getScreenContent(service, rect).mapNotNull { node ->
-        node.content?.let { AccessibilityTextFragment(it, node.bound.top, node.bound.bottom) }
-    })
-
-suspend fun getScreenView(
-    service: GestureService,
-    rect: Rect,
-    clickMode: Boolean,
-): List<ScreenContentNode> = withAccessibilityNodes(service, readText = !clickMode) { snapshots ->
-    snapshots.mapNotNull { snapshot ->
-        val isTarget = clickMode || snapshot.text != null || snapshot.info.className == "android.widget.ImageView"
-        if (snapshot.readable && isTarget && Rect.intersects(rect, snapshot.bounds)) {
-            ScreenContentNode(snapshot.bounds, null)
-        } else {
-            null
-        }
+    return selectedAccessibilityTextIndices(entries, intersecting, fullyContained).mapNotNull { index ->
+        val snapshot = snapshots[index]
+        val content = ScreenContentNode(snapshot.bounds, snapshot.text)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !snapshot.fromDescription) {
+            getCharacterLocations(snapshot.info, content, rect)
+        } else content
     }
 }
 
-private fun getWindowRoots(service: GestureService): List<AccessibilityNodeInfo> = buildList {
-    for (window in service.windows) {
-        if (window.type == AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY) continue
-        window.root?.let(::add)
+/** Exclude passwords, their descendants and ancestor summaries from extracted text. */
+internal fun protectedAccessibilityNodes(nodes: List<AccessibilityNodeSnapshot>): Set<Int> {
+    val excluded = mutableSetOf<Int>()
+    val inPassword = BooleanArray(nodes.size)
+    nodes.forEachIndexed { index, node ->
+        inPassword[index] = node.info.isPassword || (node.parentIndex?.let { inPassword[it] } == true)
+        if (inPassword[index]) excluded += index
+        if (node.info.isPassword) {
+            var ancestor = node.parentIndex
+            while (ancestor != null) { excluded += ancestor; ancestor = nodes[ancestor].parentIndex }
+        }
     }
+    return excluded
+}
+
+internal fun screenContentText(nodes: List<ScreenContentNode>): String =
+    joinAccessibilityTextInReadingOrder(nodes.mapNotNull { node ->
+        node.content?.let { AccessibilityTextFragment(it, node.bound.top, node.bound.bottom) }
+    })
+
+@Suppress("DEPRECATION")
+private fun getWindowRoots(service: AccessibilityService): List<AccessibilityNodeInfo> {
+    val windows = service.windows
+    return try {
+        buildList {
+            for (window in windows) {
+                if (window.type == AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY) continue
+                window.root?.let(::add)
+            }
+        }
+    } finally { windows.forEach { it.recycle() } }
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -175,9 +180,11 @@ fun Bitmap.cropByRect(rect: Rect): Bitmap? {
     // Ensure crop bounds are valid
     return if (safeRect.width() > 0 && safeRect.height() > 0) {
         try {
-            Bitmap.createBitmap(
+            val cropped = Bitmap.createBitmap(
                 this, safeRect.left, safeRect.top, safeRect.width(), safeRect.height()
             )
+            // A full-image crop can return its immutable input; callers own the returned bitmap.
+            if (cropped === this) copy(Bitmap.Config.ARGB_8888, false) else cropped
         } catch (e: Exception) {
             e.printStackTrace()
             null
