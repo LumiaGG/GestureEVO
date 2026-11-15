@@ -723,7 +723,7 @@ object SettingsSearchRegistry {
             pageTitleResId = R.string.inspire_settings_title,
             targetActivity = InspireSettingsActivity::class.java,
             targetViewId = R.id.globalPressCard,
-            keywords = listOf("全局长按拖放", "文字", "图片", "Shizuku", "长按时间", "排除应用", "global long press drag drop", "duration", "excluded apps")
+            keywords = listOf("全局长按拖放", "文字", "图片", "Shizuku", "长按时间", "白名单", "允许应用", "global long press drag drop", "duration", "allowlist", "allowed apps")
         ),
         entry(
             id = "inspire_external_drop_conversion",

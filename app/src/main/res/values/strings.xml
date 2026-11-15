@@ -1342,13 +1342,13 @@
     <string name="global_press_status_standard_ready">Shizuku 已连接</string>
     <string name="global_press_status_unavailable">连接失败：检查 Shizuku 服务、授权及触屏权限</string>
     <string name="global_press_title">全局长按拖放</string>
-    <string name="global_press_description">按住文字或可见图片，轻振后移动，再拖向面板投放。\n仅长按不弹出面板；轻振需开启振动。</string>
+    <string name="global_press_description">仅对白名单中的应用生效。\n按住文字或可见图片，轻振后移动，再拖向面板投放。\n仅长按不弹出面板；轻振需开启振动。</string>
     <string name="global_press_timeout">移动前按住时长</string>
-    <string name="global_press_excluded">长按拖放排除应用</string>
+    <string name="global_press_allowed">长按拖放白名单</string>
     <string name="global_press_milliseconds">%1$d 毫秒</string>
-    <string name="global_press_excluded_none">未排除应用</string>
-    <plurals name="global_press_excluded_count">
-        <item quantity="other">已排除 %1$d 个应用</item>
+    <string name="global_press_allowed_none">未选择应用（不启用长按拖放）</string>
+    <plurals name="global_press_allowed_count">
+        <item quantity="other">已允许 %1$d 个应用</item>
     </plurals>
     <string name="global_press_permission_required">全局长按拖放需要开启 EVO 无障碍服务、运行并授权 Shizuku，且能读取触屏输入。图片仅取屏幕可见区域；拖拽时会尝试取消原应用触摸，效果受系统限制，失败时原应用仍可能响应长按和滑动。</string>
     <string name="external_drop_conversion_title">拖拽图文转换</string>

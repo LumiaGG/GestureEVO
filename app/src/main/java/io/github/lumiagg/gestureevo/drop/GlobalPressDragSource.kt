@@ -16,7 +16,7 @@ import io.github.lumiagg.gestureevo.ITouchInterruptionGuard
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ENABLED
-import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_EXCLUDED
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ALLOWED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_TIMEOUT
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_SELECTION_VIBRATE
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
@@ -39,7 +39,7 @@ internal class GlobalPressDragSource(
     private val capture: PressContentCapture,
     private val panel: () -> ContentDragTarget?,
 ) {
-    private data class Settings(val enabled: Boolean, val timeout: Int, val excluded: Set<String>, val vibrate: Boolean)
+    private data class Settings(val enabled: Boolean, val timeout: Int, val whitelist: Set<String>, val vibrate: Boolean)
     private val main = Handler(Looper.getMainLooper())
     private val detector = PressTriggerDetector(ViewConfiguration.get(context).scaledTouchSlop.toFloat())
     private val blocker = BackgroundTouchBlocker(context, scope)
@@ -78,14 +78,15 @@ internal class GlobalPressDragSource(
 
     fun start() {
         settingsJob = scope.launch(Dispatchers.Main) {
+            DropPreferences.ensureGlobalPressWhitelist(context)
             context.settingsStore.data.map {
                 Settings(it.readKey(KEY_GLOBAL_PRESS_ENABLED, false), it.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500).coerceIn(200, 2000),
-                    it.readKey(KEY_GLOBAL_PRESS_EXCLUDED, "").split('|').filter(String::isNotBlank).toSet(),
+                    it.readKey(KEY_GLOBAL_PRESS_ALLOWED, "").split('|').filter(String::isNotBlank).toSet(),
                     it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true))
             }.distinctUntilChanged().collect { updated ->
                 cancel("source_settings_changed")
                 settings = updated
-                if (updated.enabled && screenReady()) input.start() else input.stop()
+                if (updated.enabled && updated.whitelist.isNotEmpty() && screenReady()) input.start() else input.stop()
             }
         }
     }
@@ -135,8 +136,8 @@ internal class GlobalPressDragSource(
             }
             try {
                 val origin = capture.sourceAt(x, y)
-                if (origin == null || origin.packageName in settings.excluded || capture.excludedPackage(origin.packageName)) {
-                    withContext(Dispatchers.Main) { if (generation == request) cancel("source_unavailable_or_excluded") }
+                if (origin == null || origin.packageName !in settings.whitelist || capture.excludedPackage(origin.packageName)) {
+                    withContext(Dispatchers.Main) { if (generation == request) cancel("source_unavailable_or_not_allowed") }
                     return@launch
                 }
                 withContext(Dispatchers.Main) { if (generation == request) source = origin }
@@ -274,7 +275,7 @@ internal class GlobalPressDragSource(
     fun onSystemDragEnded() { systemDrag = false }
     fun onScreenChanged() {
         cancel("screen_changed")
-        if (settings.enabled && screenReady()) input.start() else input.stop()
+        if (settings.enabled && settings.whitelist.isNotEmpty() && screenReady()) input.start() else input.stop()
     }
     fun cancel(reason: String = "lifecycle") {
         if (active || shown || preparing) DropDiagnostics.event("drop_source_cancelled", "internal", generation.toInt(),

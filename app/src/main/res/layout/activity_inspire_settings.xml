@@ -73,8 +73,8 @@
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/global_press_timeout_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/global_press_timeout">
                         <TextView android:id="@+id/selected_global_press_timeout_text" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
-                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/global_press_excluded_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/global_press_excluded">
-                        <TextView android:id="@+id/selected_global_press_excluded_text" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/global_press_allowed_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/global_press_allowed">
+                        <TextView android:id="@+id/selected_global_press_allowed_text" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
                 </LinearLayout>
             </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>

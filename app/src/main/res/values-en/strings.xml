@@ -1339,14 +1339,14 @@
     <string name="global_press_status_standard_ready">Shizuku connected</string>
     <string name="global_press_status_unavailable">Failed: check Shizuku, authorization and touch access</string>
     <string name="global_press_title">Global long-press drag and drop</string>
-    <string name="global_press_description">Hold text or a visible image, move after the light vibration, then drag to the panel to drop.\nHolding alone shows no panel. Haptic feedback requires vibration to be enabled.</string>
+    <string name="global_press_description">Only apps in the allowlist can start a long-press drag.\nHold text or a visible image, move after the light vibration, then drag to the panel to drop.\nHolding alone shows no panel. Haptic feedback requires vibration to be enabled.</string>
     <string name="global_press_timeout">Hold duration before moving</string>
-    <string name="global_press_excluded">Apps excluded from long-press drag</string>
+    <string name="global_press_allowed">Long-press drag app allowlist</string>
     <string name="global_press_milliseconds">%1$d ms</string>
-    <string name="global_press_excluded_none">No apps excluded</string>
-    <plurals name="global_press_excluded_count">
-        <item quantity="one">%1$d app excluded</item>
-        <item quantity="other">%1$d apps excluded</item>
+    <string name="global_press_allowed_none">No apps selected (long-press drag inactive)</string>
+    <plurals name="global_press_allowed_count">
+        <item quantity="one">%1$d app allowed</item>
+        <item quantity="other">%1$d apps allowed</item>
     </plurals>
     <string name="global_press_permission_required">Global long-press drag requires EVO accessibility and a running, authorized Shizuku service with touchscreen access. Images use the visible screen region. Dragging attempts to cancel the source touch; system restrictions may prevent cancellation, so the source app may still respond to holding and moving.</string>
     <string name="external_drop_conversion_title">Drag text/image conversion</string>

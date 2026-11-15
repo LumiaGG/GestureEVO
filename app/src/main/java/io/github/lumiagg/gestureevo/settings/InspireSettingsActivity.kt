@@ -2,7 +2,7 @@ package io.github.lumiagg.gestureevo.settings
 
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ENABLED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_TIMEOUT
-import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_EXCLUDED
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ALLOWED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_ENABLED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_CONVERSION
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_POSITION
@@ -133,6 +133,7 @@ class InspireSettingsActivity : AppCompatActivity() {
     }
 
     private suspend fun initializeViews() {
+        io.github.lumiagg.gestureevo.drop.DropPreferences.ensureGlobalPressWhitelist(this)
         // Initialize OCR-priority switch state
         val ocrPriority = settingsStore.readKey(KEY_OCR_PRIORITY, true)
         binding.ocrPrioritySwitch.isChecked = ocrPriority
@@ -162,7 +163,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         binding.selectedGlobalPressTimeoutText.text = getString(
             R.string.global_press_milliseconds, settingsStore.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500)
         )
-        updateGlobalPressExcludedText(settingsStore.readKey(KEY_GLOBAL_PRESS_EXCLUDED, "").split('|'))
+        updateGlobalPressAllowedText(settingsStore.readKey(KEY_GLOBAL_PRESS_ALLOWED, "").split('|'))
         binding.externalDropSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_ENABLED, true)
         binding.externalDropConversionSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_CONVERSION, false)
         binding.externalDropEnginesSwitch.isChecked = settingsStore.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true)
@@ -362,19 +363,19 @@ class InspireSettingsActivity : AppCompatActivity() {
                     }.show()
             }
         }
-        binding.globalPressExcludedRow.setOnClickListener {
+        binding.globalPressAllowedRow.setOnClickListener {
             lifecycleScope.launch {
-                val packages = settingsStore.readKey(KEY_GLOBAL_PRESS_EXCLUDED, "").split('|').filter(String::isNotBlank).toMutableList()
+                val packages = settingsStore.readKey(KEY_GLOBAL_PRESS_ALLOWED, "").split('|').filter(String::isNotBlank).toMutableList()
                 io.github.lumiagg.gestureevo.settings.ui.BlackListWithNoDBSelectAPPBottomSheet(
                     this@InspireSettingsActivity, lifecycleScope,
                     object : io.github.lumiagg.gestureevo.settings.ui.BlackListWithNoDBSelectAPPBottomSheet.BlackListSelectAPPCallBack {
                         override fun selectCompleted(blackList: List<String>) {
                             lifecycleScope.launch {
-                                settingsStore.saveKey(KEY_GLOBAL_PRESS_EXCLUDED, blackList.joinToString("|"))
-                                updateGlobalPressExcludedText(blackList)
+                                settingsStore.saveKey(KEY_GLOBAL_PRESS_ALLOWED, blackList.joinToString("|"))
+                                updateGlobalPressAllowedText(blackList)
                             }
                         }
-                    }, packages,
+                    }, packages, whitelist = true,
                 ).show()
             }
         }
@@ -662,12 +663,12 @@ class InspireSettingsActivity : AppCompatActivity() {
         textView.text = value
     }
 
-    private fun updateGlobalPressExcludedText(packages: List<String>) {
+    private fun updateGlobalPressAllowedText(packages: List<String>) {
         val count = packages.filter(String::isNotBlank).distinct().size
-        binding.selectedGlobalPressExcludedText.text = if (count == 0) {
-            getString(R.string.global_press_excluded_none)
+        binding.selectedGlobalPressAllowedText.text = if (count == 0) {
+            getString(R.string.global_press_allowed_none)
         } else {
-            resources.getQuantityString(R.plurals.global_press_excluded_count, count, count)
+            resources.getQuantityString(R.plurals.global_press_allowed_count, count, count)
         }
     }
 
@@ -682,7 +683,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         val enabled = binding.globalPressSwitch.isChecked
         listOf(
             binding.globalPressTimeoutRow,
-            binding.globalPressExcludedRow
+            binding.globalPressAllowedRow
         ).forEach { row ->
             row.isEnabled = enabled
             row.alpha = if (enabled) 1f else 0.5f

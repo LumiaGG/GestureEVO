@@ -1,10 +1,19 @@
 package io.github.lumiagg.gestureevo.drop
 
+import android.content.Context
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import io.github.lumiagg.gestureevo.utils.readKey
+import io.github.lumiagg.gestureevo.utils.settingsStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+
 /** Persisted drag settings. Keep key values stable across upgrades. */
 internal object DropPreferences {
     const val KEY_GLOBAL_PRESS_ENABLED = "key_global_press_enabled"
     const val KEY_GLOBAL_PRESS_TIMEOUT = "key_global_press_timeout"
-    const val KEY_GLOBAL_PRESS_EXCLUDED = "key_global_press_excluded"
+    const val KEY_GLOBAL_PRESS_ALLOWED = "key_global_press_allowed"
     const val KEY_EXTERNAL_DROP_ENABLED = "key_external_drop_enabled"
     const val KEY_EXTERNAL_DROP_CONVERSION = "key_external_drop_conversion"
     const val KEY_EXTERNAL_DROP_POSITION = "key_external_drop_position"
@@ -20,4 +29,24 @@ internal object DropPreferences {
     const val KEY_EXTERNAL_DROP_BACKGROUND_BLUR = "key_external_drop_background_blur"
     const val KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR = "key_external_drop_system_drag_blur"
     const val KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR = "key_external_drop_card_background_blur"
+
+    /** Preserve the existing installed-app scope once; future installs require explicit opt-in. */
+    suspend fun ensureGlobalPressWhitelist(context: Context) {
+        val allowedKey = stringPreferencesKey(KEY_GLOBAL_PRESS_ALLOWED)
+        val legacyKey = stringPreferencesKey("key_global_press_excluded")
+        val snapshot = context.settingsStore.data.first()
+        if (snapshot.contains(allowedKey)) return
+        val legacy = snapshot.contains(legacyKey) || snapshot.readKey(KEY_GLOBAL_PRESS_ENABLED, false)
+        val installed = if (legacy) withContext(Dispatchers.IO) {
+            context.packageManager.getInstalledApplications(0).map { it.packageName }.toSet()
+        } else emptySet()
+        context.settingsStore.edit { preferences ->
+            // A settings page and the service may arrive here together. Never replace a saved whitelist.
+            if (!preferences.contains(allowedKey)) {
+                val excluded = preferences[legacyKey].orEmpty().split('|').filter(String::isNotBlank).toSet()
+                preferences[allowedKey] = (installed - excluded).sorted().joinToString("|")
+                preferences.remove(legacyKey)
+            }
+        }
+    }
 }
