@@ -18,7 +18,6 @@ import kotlinx.coroutines.CoroutineScope
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ENABLED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_EXCLUDED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_TIMEOUT
-import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_PROTECT
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_SELECTION_VIBRATE
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.readKey
@@ -40,8 +39,7 @@ internal class GlobalPressDragSource(
     private val capture: PressContentCapture,
     private val panel: () -> ContentDragTarget?,
 ) {
-    private data class Settings(val enabled: Boolean, val timeout: Int, val excluded: Set<String>, val vibrate: Boolean,
-        val protect: Boolean = false)
+    private data class Settings(val enabled: Boolean, val timeout: Int, val excluded: Set<String>, val vibrate: Boolean)
     private val main = Handler(Looper.getMainLooper())
     private val detector = PressTriggerDetector(ViewConfiguration.get(context).scaledTouchSlop.toFloat())
     private val blocker = BackgroundTouchBlocker(context, scope)
@@ -52,7 +50,6 @@ internal class GlobalPressDragSource(
     private var windowCheck: Job? = null
     private var interruption: Job? = null
     private var interruptionAllowed: AtomicBoolean? = null
-    private val interruptionState = PressTouchInterruptionState()
     private val ownOverlayIds = mutableSetOf<Int>()
     private var source: PressContentCapture.Source? = null
     private var cached: ClipData? = null
@@ -61,7 +58,6 @@ internal class GlobalPressDragSource(
     private var shown = false
     private var preparing = false
     private var readyNotified = false
-    private var popupNotified = false
     val isGestureActive: Boolean get() = active || shown || preparing
     private var systemDrag = false
     private var downX = 0f
@@ -77,7 +73,6 @@ internal class GlobalPressDragSource(
             notifyReady()
         }
     }
-    private val protect = Runnable { protectLongPress() }
     private val expiry = Runnable { cancel("gesture_timeout") }
 
     fun start() {
@@ -85,8 +80,7 @@ internal class GlobalPressDragSource(
             context.settingsStore.data.map {
                 Settings(it.readKey(KEY_GLOBAL_PRESS_ENABLED, false), it.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500).coerceIn(200, 2000),
                     it.readKey(KEY_GLOBAL_PRESS_EXCLUDED, "").split('|').filter(String::isNotBlank).toSet(),
-                    it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true),
-                    it.readKey(KEY_GLOBAL_PRESS_PROTECT, false))
+                    it.readKey(KEY_INSPIRE_SELECTION_VIBRATE, true))
             }.distinctUntilChanged().collect { updated ->
                 cancel("source_settings_changed")
                 settings = updated
@@ -112,8 +106,6 @@ internal class GlobalPressDragSource(
             detector.start(x, y, time, settings.timeout.toLong())
             main.postAtTime(classify, detector.classificationDeadline())
             main.postAtTime(arm, detector.deadline())
-            if (settings.protect) main.postAtTime(protect,
-                detector.protectionDeadline(ViewConfiguration.getLongPressTimeout().toLong()))
             main.postDelayed(expiry, 15_000)
             return
         }
@@ -154,7 +146,6 @@ internal class GlobalPressDragSource(
                     if (content == null) { cancel("content_unavailable"); return@withContext }
                     cached = content
                     android.util.Log.i("EVO-Press", "content_ready generation=$request elapsedMs=${SystemClock.uptimeMillis() - detector.downTime()} threshold=${settings.timeout}")
-                    protectLongPress()
                     notifyReady()
                     if (detector.isFired) display()
                 }
@@ -170,17 +161,8 @@ internal class GlobalPressDragSource(
         }
     }
 
-    private fun protectLongPress() {
-        if (!settings.protect || cached == null || !allowed() ||
-            !detector.canProtectLongPress(SystemClock.uptimeMillis(), ViewConfiguration.getLongPressTimeout().toLong())) return
-        val interruptionRequest = interruptionState.beginProtection() ?: return
-        android.util.Log.i("EVO-Press", "press_protect generation=$generation elapsedMs=${SystemClock.uptimeMillis() - detector.downTime()}")
-        interruptSource(interruptionRequest)
-    }
-
     private fun notifyReady() {
         if (readyNotified || !detector.isReady || cached == null || !allowed()) return
-        protectLongPress()
         readyNotified = true
         android.util.Log.i("EVO-Press", "press_ready generation=$generation elapsedMs=${SystemClock.uptimeMillis() - detector.downTime()}")
         if (settings.vibrate) VibratorUtils.vibrator(context, true)
@@ -188,19 +170,12 @@ internal class GlobalPressDragSource(
 
     private fun display() {
         if (shown || preparing || !allowed()) return
-        val content = cached ?: return
-        val request = generation
+        if (cached == null) return
         preparing = true
-        if (interruptionState.succeeded) {
-            beginPanel(content, request)
-            return
-        }
-        // If early protection is still pending, its completion will open the panel after movement.
-        val interruptionRequest = interruptionState.beginDrag() ?: return
-        interruptSource(interruptionRequest)
+        interruptSource()
     }
 
-    private fun interruptSource(interruptionRequest: Int) {
+    private fun interruptSource() {
         val request = generation
         interruptionAllowed?.set(false)
         val origin = source ?: run { cancel("source_unavailable"); return }
@@ -226,8 +201,7 @@ internal class GlobalPressDragSource(
             }
             withContext(Dispatchers.Main) {
                 if (generation != request || !permitted.get() || !allowed()) return@withContext
-                if (!interruptionState.complete(interruptionRequest, success)) return@withContext
-                android.util.Log.i("EVO-TouchBlock", "shizuku_cancel_result success=$success protection=${interruptionState.protectionRequested}")
+                android.util.Log.i("EVO-TouchBlock", "shizuku_cancel_result success=$success")
                 if (preparing && detector.isFired) {
                     blocker.reportCancellationResult(success)
                     cached?.let { beginPanel(it, request) } ?: cancel("content_unavailable")
@@ -275,19 +249,12 @@ internal class GlobalPressDragSource(
                     if (generation != request || !active) return@withContext
                     windows.filter { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY &&
                         it.packageName == context.packageName }.forEach { ownOverlayIds += it.id }
-                    val allowSourceMenu = settings.protect && interruptionState.protectionRequested &&
-                        (cached != null || shown || preparing)
                     val reason = PressWindowPolicy.cancellationReason(origin.windowId, origin.packageName, origin.bounds,
                         windows, eventId, eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, false,
-                        context.packageName, ownOverlayIds, allowSourceMenu)
+                        context.packageName, ownOverlayIds)
                     if (reason != null) {
                         cancel("$reason:event=$eventType,window=$eventId,changes=$changes")
                         return@withContext
-                    }
-                    if (allowSourceMenu && !popupNotified && windows.none { it.id == origin.windowId }) {
-                        popupNotified = true
-                        android.util.Log.i("EVO-Press", "source_covered_by_menu generation=$request elapsedMs=${SystemClock.uptimeMillis() - detector.downTime()}")
-                        DropDiagnostics.event("drop_source_popup_tolerated", "internal", generation.toInt(), reason = "source_covered")
                     }
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
@@ -316,18 +283,15 @@ internal class GlobalPressDragSource(
         interruptionAllowed = null
         interruption?.cancel()
         interruption = null
-        interruptionState.clear()
         active = false
         shown = false
         preparing = false
         readyNotified = false
-        popupNotified = false
         source = null
         cached = null
         detector.cancel()
         main.removeCallbacks(classify)
         main.removeCallbacks(arm)
-        main.removeCallbacks(protect)
         main.removeCallbacks(expiry)
         lookup?.cancel()
         lookup = null

@@ -8,7 +8,6 @@ public final class PressTriggerDetector {
     private boolean active;
     private boolean armed;
     private boolean fired;
-    private boolean movedBeforeHold;
     private float downX;
     private float downY;
     private float lastX;
@@ -27,7 +26,6 @@ public final class PressTriggerDetector {
         active = true;
         armed = false;
         fired = false;
-        movedBeforeHold = false;
         lastX = downX = x;
         lastY = downY = y;
         downTime = time;
@@ -41,9 +39,6 @@ public final class PressTriggerDetector {
         if (action != 2 || pointerCount != 1) { cancel(); return; }
         lastX = x;
         lastY = y;
-        float fromDownX = x - downX;
-        float fromDownY = y - downY;
-        if (!armed && fromDownX * fromDownX + fromDownY * fromDownY > dragThreshold * dragThreshold) movedBeforeHold = true;
         if (fired) return;
         if (armed) {
             float dx = x - anchorX;
@@ -75,15 +70,6 @@ public final class PressTriggerDetector {
         armed = false;
         deadline = -1L;
         classificationDeadline = -1L;
-    }
-
-    public long protectionDeadline(long systemLongPressMillis) {
-        // Reserve time for early touch interruption; never shorten the user's confirmation deadline.
-        return downTime + Math.min(deadline - downTime, Math.max(120L, systemLongPressMillis - 250L));
-    }
-
-    public boolean canProtectLongPress(long now, long systemLongPressMillis) {
-        return active && !fired && !movedBeforeHold && now >= protectionDeadline(systemLongPressMillis);
     }
 
     public boolean isActive() { return active; }

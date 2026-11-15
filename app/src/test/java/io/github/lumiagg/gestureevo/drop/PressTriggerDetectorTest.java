@@ -10,11 +10,8 @@ public final class PressTriggerDetectorTest {
     private final PressTriggerDetector detector = new PressTriggerDetector(8f);
 
     @Test
-    public void protectionDoesNotShortenLargeConfirmationThreshold() {
+    public void largeConfirmationThresholdRequiresHoldAndMovement() {
         detector.start(100f, 100f, 1000L, 1000L);
-        assertEquals(1250L, detector.protectionDeadline(500L));
-        assertFalse(detector.canProtectLongPress(1249L, 500L));
-        assertTrue(detector.canProtectLongPress(1250L, 500L));
         detector.arm(1500L);
         assertFalse(detector.isReady());
         assertFalse(detector.isFired());
@@ -23,18 +20,6 @@ public final class PressTriggerDetectorTest {
         assertFalse(detector.isFired());
         detector.onPointerEvent(2, 109f, 100f, 1);
         assertTrue(detector.isFired());
-    }
-
-    @Test
-    public void scrollingOrReleaseDisqualifiesEarlyProtectionEvenAfterMovingBack() {
-        detector.start(100f, 100f, 0L, 1000L);
-        detector.onPointerEvent(2, 109f, 100f, 1);
-        detector.onPointerEvent(2, 100f, 100f, 1);
-        assertTrue(detector.isActive());
-        assertFalse(detector.canProtectLongPress(300L, 500L));
-        detector.start(100f, 100f, 0L, 1000L);
-        detector.onPointerEvent(1, 100f, 100f, 1);
-        assertFalse(detector.canProtectLongPress(300L, 500L));
     }
 
     @Test

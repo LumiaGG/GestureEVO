@@ -3,7 +3,6 @@ package io.github.lumiagg.gestureevo.drop
 /** Persisted drag settings. Keep key values stable across upgrades. */
 internal object DropPreferences {
     const val KEY_GLOBAL_PRESS_ENABLED = "key_global_press_enabled"
-    const val KEY_GLOBAL_PRESS_PROTECT = "key_global_press_protect"
     const val KEY_GLOBAL_PRESS_TIMEOUT = "key_global_press_timeout"
     const val KEY_GLOBAL_PRESS_EXCLUDED = "key_global_press_excluded"
     const val KEY_EXTERNAL_DROP_ENABLED = "key_external_drop_enabled"

@@ -1,7 +1,6 @@
 package io.github.lumiagg.gestureevo.settings
 
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ENABLED
-import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_PROTECT
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_TIMEOUT
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_EXCLUDED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_ENABLED
@@ -160,7 +159,6 @@ class InspireSettingsActivity : AppCompatActivity() {
         val defaultShareBehavior = settingsStore.readKey(KEY_DEFAULT_SHARE_BEHAVIOR, "tokenization")
         updateDefaultShareBehaviorText(defaultShareBehavior)
         binding.globalPressSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_ENABLED, false)
-        binding.globalPressProtectSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_PROTECT, false)
         updateGlobalPressSettingsEnabled()
         binding.selectedGlobalPressTimeoutText.text = getString(
             R.string.global_press_milliseconds, settingsStore.readKey(KEY_GLOBAL_PRESS_TIMEOUT, 500)
@@ -349,9 +347,6 @@ class InspireSettingsActivity : AppCompatActivity() {
                         .setPositiveButton(android.R.string.ok, null).show()
                 }
             }
-        }
-        binding.globalPressProtectSwitch.setOnCheckedChangeListener { _, enabled ->
-            lifecycleScope.launch { settingsStore.saveKey(KEY_GLOBAL_PRESS_PROTECT, enabled) }
         }
         binding.globalPressTimeoutRow.setOnClickListener {
             lifecycleScope.launch {
@@ -690,9 +685,7 @@ class InspireSettingsActivity : AppCompatActivity() {
 
     private fun updateGlobalPressSettingsEnabled() {
         val enabled = binding.globalPressSwitch.isChecked
-        binding.globalPressProtectSwitch.isEnabled = enabled
         listOf(
-            binding.globalPressProtectRow,
             binding.globalPressTimeoutRow,
             binding.globalPressExcludedRow
         ).forEach { row ->
