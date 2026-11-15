@@ -17,6 +17,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.UserHandle
 import android.os.UserManager
 import android.provider.Settings
 import android.util.Log
@@ -396,11 +397,29 @@ class ActionProxy(private val context: Context, linkString: String) {
             val launcherApps =
                 context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
             try {
+                // Action links store user serial numbers, not Android user IDs.
+                val targetUser = userManager.getUserForSerialNumber(userId)
+                if (!freeform && Rom.isOriginOS() && componentName != null &&
+                    targetUser == UserHandle.getUserHandleForUid(999 * 100000)
+                ) {
+                    val cloneIntent = Intent(Intent.ACTION_MAIN).apply {
+                        addCategory(Intent.CATEGORY_LAUNCHER)
+                        component = componentName
+                        addFlags(FLAG_ACTIVITY_NEW_TASK)
+                        // Route to the selected clone without invoking vivo's picker.
+                        putExtra("android.intent.extra.from_share_box", true)
+                        putExtra("android.intent.extra.clone_cached_userId", 999)
+                        putExtra("clone_cross_state", true)
+                    }
+                    AppLogger.event(LogModule.ACTION, "vivo_clone_launch_requested", trace = trace,
+                        fields = mapOf("method" to "vivo_clone", "component" to componentName.flattenToShortString()))
+                    return@withContext launchIntent(cloneIntent)
+                }
                 AppLogger.event(LogModule.ACTION, "launch_requested", trace = trace,
                     fields = mapOf("method" to "work_profile", "component" to componentName?.flattenToShortString()))
                 launcherApps.startMainActivity(
                     componentName,
-                    userManager.getUserForSerialNumber(userId),
+                    targetUser,
                     null,
                     if (freeform) getActivityOptions().toBundle() else null
                 )
@@ -497,13 +516,38 @@ class ActionProxy(private val context: Context, linkString: String) {
         timeoutMillis: Long = 10_000L  // 10-second timeout
     ): ShareOpenResult {
         val requestId = UUID.randomUUID().toString()
+        val mainUserAppLaunch = userId == 0L &&
+            (event == GestureActionType.OPEN_APP || event == GestureActionType.RECENT_APP) &&
+            targetIntent.action == Intent.ACTION_MAIN &&
+            targetIntent.hasCategory(Intent.CATEGORY_LAUNCHER) && targetIntent.component != null
+        val shareTarget = Intent(targetIntent)
+        if (mainUserAppLaunch) {
+            // Vivo's clone resolver skips its picker when the explicit target user
+            // matches the launch user. This is a ROM Intent field, not an extra.
+            try {
+                try {
+                    Intent::class.java.getMethod("setTargetUserId", Int::class.javaPrimitiveType)
+                        .invoke(shareTarget, 0)
+                } catch (_: NoSuchMethodException) {
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) throw NoSuchMethodException("setTargetUserId")
+                    HiddenApiBypass.invoke(Intent::class.java, shareTarget, "setTargetUserId", 0)
+                }
+                AppLogger.event(LogModule.ACTION, "vivo_share_target_user_applied", trace = trace,
+                    fields = mapOf("component" to shareTarget.component?.flattenToShortString(),
+                        "method" to "setTargetUserId", "count" to 0))
+            } catch (e: Exception) {
+                // Older ROMs can keep using the existing system picker.
+                AppLogger.event(LogModule.ACTION, "vivo_share_target_user_unavailable", LogLevel.WARN,
+                    trace = trace, error = e)
+            }
+        }
 
         val intent = Intent(Intent.ACTION_SEND).apply {
             component = ComponentName(context, ShareOpenAppProxyActivity::class.java)
             type = "text/plain"
             putExtra("REQUEST_ID", requestId)
-            putExtra(Intent.EXTRA_INTENT, targetIntent)
-            putExtra(Intent.EXTRA_TEXT, targetIntent.`package`)
+            putExtra(Intent.EXTRA_INTENT, shareTarget)
+            putExtra(Intent.EXTRA_TEXT, targetIntent.`package` ?: targetIntent.component?.packageName)
             addFlags(FLAG_ACTIVITY_NEW_TASK)
         }
 
