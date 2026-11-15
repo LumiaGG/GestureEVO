@@ -1,5 +1,10 @@
 package io.github.lumiagg.gestureevo.inspire
 
+internal fun accessibilityImageClass(className: CharSequence?): Boolean {
+    val name = className?.toString()?.substringAfterLast('.') ?: return false
+    return name.endsWith("ImageView") || name.endsWith("ImageButton") || name == "Image"
+}
+
 internal fun accessibilityNodeText(
     text: CharSequence?,
     description: CharSequence?,
@@ -10,6 +15,8 @@ internal fun accessibilityNodeText(
     isScrollable: Boolean = false,
     hasTextSelection: Boolean = false,
 ): String? {
+    // Image labels describe pixels; text-selection flags must not turn them into visible text.
+    if (accessibilityImageClass(className)) return null
     // Real text remains eligible even on controls with a separate spoken label.
     if (!text.isNullOrEmpty()) return text.toString()
     if (description.isNullOrBlank()) return null

@@ -3,11 +3,8 @@ package io.github.lumiagg.gestureevo.drop
 import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipDescription
-import android.graphics.BitmapFactory
 import android.graphics.Color
-import android.graphics.ImageDecoder
 import android.graphics.Rect
-import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.view.DragEvent
@@ -22,30 +19,24 @@ import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
-import io.github.lumiagg.gestureevo.gesture.GestureService
+import android.content.Context
+import kotlinx.coroutines.CoroutineScope
 import io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
-import io.github.lumiagg.gestureevo.inspire.InspireContentActivity
-import io.github.lumiagg.gestureevo.inspire.InspireDataHolder
-import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
-import io.github.lumiagg.gestureevo.inspire.OcrImageTextProcessor
-import io.github.lumiagg.gestureevo.inspire.PictureFloating
-import io.github.lumiagg.gestureevo.pin.PinPoolStore
 import io.github.lumiagg.gestureevo.search.QuickSearchEnginePager
-import io.github.lumiagg.gestureevo.search.config.EngineType
 import io.github.lumiagg.gestureevo.search.config.SearchEngine
 import io.github.lumiagg.gestureevo.search.config.SearchEngineDataManager
 import io.github.lumiagg.gestureevo.search.setEngineIcon
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SHOW_ENGINES
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_POSITION_BOTTOM
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_POSITION_LEFT
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_POSITION_RIGHT
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SIDEBAR_MAX_COLUMNS
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SIDEBAR_MAX_HEIGHT_PERCENT
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_EXTERNAL_DROP_SIDEBAR_FILL_PRIORITY
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_FILL_HEIGHT
-import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.EXTERNAL_DROP_FILL_COLUMNS
-import io.github.lumiagg.gestureevo.share.ImageShareLauncher
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_CONVERSION
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SHOW_ENGINES
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_POSITION_BOTTOM
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_POSITION_LEFT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_POSITION_RIGHT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SIDEBAR_MAX_COLUMNS
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SIDEBAR_MAX_HEIGHT_PERCENT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SIDEBAR_FILL_PRIORITY
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_FILL_HEIGHT
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_FILL_COLUMNS
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.ScreenUtil
 import io.github.lumiagg.gestureevo.utils.ToastHelper
@@ -58,19 +49,44 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /** Listens for global drags without occupying a touchable area while idle. */
-class ExternalDropFloating(
-    private val service: GestureService,
+internal class ExternalDropFloating(
+    private val context: Context,
+    private val scope: CoroutineScope,
     private val position: String = EXTERNAL_DROP_POSITION_BOTTOM,
-    private val showTools: Boolean = true,
-) : BaseFloatingWindow(service, service, "ExternalDrop") {
-    private enum class Action { POOL, PIN, TOKENIZE, SEARCH }
+    private val showTools: Boolean,
+    private val dispatcher: DropContentDispatcher,
+    converter: DragContentConverter,
+) : BaseFloatingWindow(context, scope, "ExternalDrop"), ContentDragTarget {
+    private enum class Action { POOL, PIN, TOKENIZE, CONVERT, SEARCH }
+
+    private val toolActions = listOf(R.id.externalDropPool to Action.POOL, R.id.externalDropPin to Action.PIN,
+        R.id.externalDropTokenize to Action.TOKENIZE, R.id.externalDropConvert to Action.CONVERT)
+    private val conversion = DragConversionController(
+        scope = scope,
+        convert = converter::convert,
+        onPreview = { content, hint ->
+            updateConversionLabel(content.description)
+            contentPreview.show(content, contentX, contentY, sidebarBounds(), hint?.let(context::getString))
+        },
+        prepareContent = { configureEngines(it.description) },
+        onConverted = { content ->
+            internalContent = content
+            if (sidebar) {
+                positionSidebar()
+                updateViewLayoutSafely(targets, targetParams)
+            }
+            io.github.lumiagg.gestureevo.utils.VibratorUtils.vibrator(context, false)
+        },
+        onError = ::toast,
+        onFinished = { updateContentDrag(contentX, contentY) },
+    )
 
     private val sidebar = position == EXTERNAL_DROP_POSITION_LEFT || position == EXTERNAL_DROP_POSITION_RIGHT
-    private val themeContext = DynamicColorUtils.dynamicThemedContext(service)
-    private val observer = View(service)
+    private val themeContext = DynamicColorUtils.dynamicThemedContext(context)
+    private val observer = View(context)
+    private val appearance = DropOverlayAppearance(context, scope)
     private val targets = LayoutInflater.from(themeContext)
         .inflate(if (sidebar) R.layout.external_drop_sidebar else R.layout.external_drop_floating, null)
     private val enginePager = targets.findViewById<QuickSearchEnginePager>(R.id.externalDropEngines)
@@ -83,11 +99,17 @@ class ExternalDropFloating(
     private var previewEngine: SearchEngine? = null
     private var previewPageDirection = 0
     private var showImageBadge = true
-    private val imageShareLauncher = ImageShareLauncher(service.applicationContext)
     private var dragGeneration = 0
     private var prepareJob: Job? = null
     private var destroyed = false
     private var dragActive = false
+    private var internalContent: ClipData? = null
+    private val contentPreview = DragContentPreview(context, scope)
+    private val contentSession = ContentDragSession()
+    private var contentX = 0f
+    private var contentY = 0f
+    var onSystemDragStarted: (() -> Unit)? = null
+    var onSystemDragEnded: (() -> Unit)? = null
     private var dropped = false
     private var sidebarEngines: List<SearchEngine> = emptyList()
     private var sidebarRows = 1
@@ -119,7 +141,8 @@ class ExternalDropFloating(
     private val targetParams = WindowManager.LayoutParams().apply {
         configureAccessibilityOverlay(
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             width = if (sidebar) 176.dp2px.toInt() else WindowManager.LayoutParams.MATCH_PARENT,
             height = WindowManager.LayoutParams.WRAP_CONTENT,
             gravity = if (sidebar) Gravity.TOP or Gravity.LEFT else Gravity.BOTTOM,
@@ -161,9 +184,16 @@ class ExternalDropFloating(
         }
         observer.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         observer.setOnDragListener { _, event ->
+            if (destroyed) return@setOnDragListener false
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> {
-                    if (!accepts(event)) false else {
+                    DropDiagnostics.event("drop_system_started", "system", dragGeneration,
+                        reason = if (accepts(event)) "accepted" else "rejected", flags = targetParams.flags)
+                    onSystemDragStarted?.invoke()
+                    cancelContentDrag()
+                    // Observe the end of EVO-origin drags too, without opening targets for them.
+                    if (!accepts(event)) true else {
+                        targetParams.flags = targetParams.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
                         dragActive = true
                         dropped = false
                         val generation = ++dragGeneration
@@ -172,7 +202,7 @@ class ExternalDropFloating(
                         // Attach after the current drag dispatch completes.
                         observer.post {
                             if (!dragActive || destroyed || generation != dragGeneration) return@post
-                            prepareJob = service.launch(Dispatchers.Main) {
+                            prepareJob = scope.launch(Dispatchers.Main) {
                                 try {
                                     configureEngines(description)
                                 } catch (cancelled: CancellationException) {
@@ -191,6 +221,9 @@ class ExternalDropFloating(
                     }
                 }
                 DragEvent.ACTION_DRAG_ENDED -> {
+                    DropDiagnostics.event("drop_system_ended", "system", dragGeneration,
+                        reason = if (dropped) "dropped" else "no_drop", flags = targetParams.flags)
+                    onSystemDragEnded?.invoke()
                     dragActive = false
                     dragGeneration++
                     prepareJob?.cancel()
@@ -200,9 +233,7 @@ class ExternalDropFloating(
                 else -> false
             }
         }
-        bindTarget(R.id.externalDropPool, Action.POOL)
-        bindTarget(R.id.externalDropPin, Action.PIN)
-        bindTarget(R.id.externalDropTokenize, Action.TOKENIZE)
+        toolActions.forEach { (id, action) -> bindTarget(id, action) }
         enginePager.setExternalDropCallbacks(
             accepts = { !destroyed && accepts(it) },
             onDrop = { engine, event, freeform -> receive(event, Action.SEARCH, engine, freeform) },
@@ -237,16 +268,153 @@ class ExternalDropFloating(
     }
 
     fun start() {
+        DropDiagnostics.event("drop_panel_created", "panel", dragGeneration, reason = position)
         if (!destroyed) attachViewSafely(observer, observerParams)
     }
 
     fun destroy() {
+        if (destroyed) return
+        val source = if (internalContent != null) "internal" else "system_or_idle"
+        cancelContentDrag()
+        DropDiagnostics.event("drop_panel_destroyed", source, dragGeneration)
         destroyed = true
         dragActive = false
         dragGeneration++
         prepareJob?.cancel()
         hideTargets()
         detachViewSafely(observer)
+        onSystemDragEnded?.invoke()
+    }
+
+    override fun beginContentDrag(clip: ClipData, x: Float, y: Float, stillCurrent: () -> Boolean,
+        onReady: () -> Unit, onFailed: (String) -> Unit): Boolean {
+        if (destroyed || dragActive || clip.itemCount == 0 || !stillCurrent()) {
+            DropDiagnostics.event("drop_internal_rejected", "internal", dragGeneration,
+                reason = if (destroyed) "destroyed" else if (dragActive) "already_active" else "source_or_content_unavailable")
+            Log.i("EVO-Press", "panel_rejected destroyed=$destroyed active=$dragActive items=${clip.itemCount}")
+            return false
+        }
+        contentX = x
+        contentY = y
+        internalContent = ClipData(clip)
+        conversion.retain(checkNotNull(internalContent))
+        targetParams.flags = targetParams.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        dragActive = true
+        dropped = false
+        val generation = ++dragGeneration
+        val session = contentSession.begin()
+        fun current() = generation == dragGeneration && contentSession.isCurrent(session) &&
+            internalContent != null && !destroyed && stillCurrent()
+        fun fail(reason: String) {
+            if (!contentSession.isCurrent(session)) return
+            DropDiagnostics.event("drop_internal_failed", "internal", generation, reason)
+            Log.i("EVO-Press", "panel_failed reason=$reason generation=$generation")
+            cancelContentDrag()
+            onFailed(reason)
+        }
+        DropDiagnostics.event("drop_internal_preparing", "internal", generation)
+        Log.i("EVO-Press", "panel_preparing generation=$generation")
+        prepareJob = scope.launch(Dispatchers.Main) {
+            try {
+                configureEngines(clip.description)
+                if (!current()) { fail("source_expired"); return@launch }
+                // Cold overlays have no dimensions until their first traversal. Keep both windows hidden until ready.
+                targets.alpha = 0f
+                if (!showTargets()) { fail("panel_attach"); return@launch }
+                val laidOut = kotlinx.coroutines.withTimeoutOrNull(1500) { awaitContentLayout() } == true
+                if (!current()) { fail("source_expired"); return@launch }
+                if (!contentSession.confirm(session, stillCurrent(), laidOut)) { fail("panel_layout"); return@launch }
+                if (!contentPreview.show(clip, contentX, contentY, sidebarBounds())) { fail("preview_attach"); return@launch }
+                targets.alpha = 1f
+                DropDiagnostics.event("drop_internal_ready", "internal", generation, width = targets.width,
+                    height = targets.height, flags = targetParams.flags)
+                Log.i("EVO-Press", "panel_ready generation=$generation width=${targets.width} height=${targets.height}")
+                onReady()
+                updateContentDrag(contentX, contentY)
+            } catch (cancelled: CancellationException) {
+                if (contentSession.isCurrent(session)) { cancelContentDrag(); onFailed("prepare_cancelled") }
+                throw cancelled
+            } catch (error: Exception) {
+                Log.w("EVO-Press", "panel_prepare_error generation=$generation type=${error.javaClass.simpleName}")
+                fail("prepare_error")
+            }
+        }
+        return true
+    }
+
+    private suspend fun awaitContentLayout(): Boolean = kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+        val observer = targets.viewTreeObserver
+        val listener = object : android.view.ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (!targets.isAttachedToWindow || targets.width <= 0 || targets.height <= 0 || targets.isLayoutRequested) return true
+                if (observer.isAlive) observer.removeOnPreDrawListener(this)
+                if (continuation.isActive) continuation.resume(true) { _, _, _ -> }
+                return true
+            }
+        }
+        observer.addOnPreDrawListener(listener)
+        continuation.invokeOnCancellation { if (observer.isAlive) observer.removeOnPreDrawListener(listener) }
+        targets.requestLayout()
+    }
+
+    private fun updateContentPreview() = contentPreview.move(contentX, contentY, sidebarBounds())
+
+    override fun cancelContentDrag() {
+        if (internalContent == null) return
+        contentSession.cancel()
+        conversion.clear()
+        contentPreview.clear()
+        DropDiagnostics.event("drop_internal_ended", "internal", dragGeneration, reason = if (dropped) "dropped" else "cancelled")
+        internalContent = null
+        dragActive = false
+        dragGeneration++
+        prepareJob?.cancel()
+        enginePager.endContentDrag()
+        hideTargets()
+    }
+
+    private fun localPoint(view: View, x: Float, y: Float): Pair<Float, Float> {
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        return (x - location[0]) to (y - location[1])
+    }
+
+    override fun updateContentDrag(x: Float, y: Float, release: Boolean) {
+        val content = internalContent ?: return
+        contentX = x
+        contentY = y
+        updateContentPreview()
+        if (!contentSession.ready || !targets.isAttachedToWindow || destroyed || dropped) {
+            if (release) cancelContentDrag()
+            return
+        }
+        var tool: Action? = null
+        toolActions.forEach { (id, action) ->
+            val card = targets.findViewById<MaterialCardView>(id)
+            val (lx, ly) = localPoint(card, x, y)
+            val active = card.isShown && lx >= 0 && ly >= 0 && lx < card.width && ly < card.height
+            appearance.setHighlighted(card, active)
+            if (active) tool = action
+        }
+        val (px, py) = localPoint(enginePager, x, y)
+        val overEngines = enginePager.isShown && px >= 0 && py >= 0 && px < enginePager.width && py < enginePager.height
+        enginePager.updateContentDrag(if (overEngines) px else -1000f, if (overEngines) py else -1000f)
+        conversion.hover(tool == Action.CONVERT && !release)
+        if (tool != null) showPreview(tool) else if (!overEngines) hidePreview()
+        if (sidebar) {
+            val (tx, ty) = localPoint(targets, x, y)
+            pageHoverX = tx
+            pageHoverY = ty
+            updatePageHover()
+        }
+        if (release) {
+            val engine = if (overEngines) enginePager.contentDragTarget(px, py) else null
+            if (!conversion.busy) {
+                if (tool != null && tool != Action.CONVERT) receiveContent(content, checkNotNull(tool))
+                else if (engine != null) receiveContent(content, Action.SEARCH, engine.first, engine.second)
+            }
+            cancelContentDrag()
+        }
     }
 
     private fun accepts(event: DragEvent): Boolean {
@@ -259,7 +427,7 @@ class ExternalDropFloating(
     }
 
     private suspend fun configureEngines(description: ClipDescription) {
-        val store = service.settingsStore
+        val store = context.settingsStore
         if (sidebar) {
             sidebarMaxColumns = store.readKey(KEY_EXTERNAL_DROP_SIDEBAR_MAX_COLUMNS, 2).coerceIn(1, 3)
             sidebarMaxHeightPercent = store.readKey(KEY_EXTERNAL_DROP_SIDEBAR_MAX_HEIGHT_PERCENT, 50).coerceIn(30, 80)
@@ -267,6 +435,7 @@ class ExternalDropFloating(
                 EXTERNAL_DROP_FILL_COLUMNS
         }
         showImageBadge = store.readKey(SearchEngineSettingsActivity.KEY_SHOW_IMAGE_BADGE, true)
+        appearance.configure()
         val config = QuickSearchEnginePager.Config(
             rowCount = if (sidebar) 1 else store.readKey(SearchEngineSettingsActivity.KEY_ROW_COUNT, 1)
                 .coerceIn(SearchEngineSettingsActivity.MIN_ROW_COUNT, SearchEngineSettingsActivity.MAX_ROW_COUNT),
@@ -276,13 +445,19 @@ class ExternalDropFloating(
             showImageBadge = showImageBadge,
             previewSortMode = false,
         )
-        enginePager.configure(config)
+        enginePager.configureExternalDrop(config)
         if (sidebar) sidebarConfig = config
         val content = ExternalDropPolicy.content(
             (0 until description.mimeTypeCount).map(description::getMimeType)
         )
+        val convert = targets.findViewById<View>(R.id.externalDropConvert)
+        convert.visibility = if (showTools && internalContent != null &&
+            content != ExternalDropPolicy.Content.URI &&
+            store.readKey(KEY_EXTERNAL_DROP_CONVERSION, false))
+            View.VISIBLE else View.GONE
+        updateConversionLabel(description)
         val engines = if (store.readKey(KEY_EXTERNAL_DROP_SHOW_ENGINES, true)) {
-            SearchEngineDataManager.readSearchEngineList(service).filter {
+            SearchEngineDataManager.readSearchEngineList(context).filter {
                 it.showInSearchEngineList && ExternalDropPolicy.showsEngine(content, it)
             }
         } else emptyList()
@@ -326,29 +501,28 @@ class ExternalDropFloating(
             else maxColumns..maxColumns
         val layouts = columnOptions.map { columns ->
             applySidebarColumns(columns)
-            enginePager.configure(config.copy(rowCount = 1, columnCount = columns))
+            enginePager.configureExternalDrop(config.copy(rowCount = 1, columnCount = columns))
             setPagingVisible(false)
-            measureSidebar()
+            var panelHeight = measureSidebar()
             val rowHeight = (enginePager.measuredHeight - enginePager.paddingTop - enginePager.paddingBottom).coerceAtLeast(1)
             var rows = ExternalDropSidebarPolicy.rowCount(
-                maxHeight, targets.measuredHeight - rowHeight, rowHeight, sidebarEngines.size, columns,
+                maxHeight, panelHeight - rowHeight, rowHeight, sidebarEngines.size, columns,
             )
             if (enginesVisible && sidebarEngines.size > rows * columns) {
                 setPagingVisible(true)
-                measureSidebar()
+                panelHeight = measureSidebar()
                 rows = ExternalDropSidebarPolicy.rowCount(
-                    maxHeight, targets.measuredHeight - rowHeight, rowHeight, sidebarEngines.size, columns,
+                    maxHeight, panelHeight - rowHeight, rowHeight, sidebarEngines.size, columns,
                 )
             }
-            enginePager.configure(config.copy(rowCount = rows, columnCount = columns))
-            measureSidebar()
-            ExternalDropSidebarPolicy.Layout(columns, rows, targets.measuredHeight)
+            enginePager.configureExternalDrop(config.copy(rowCount = rows, columnCount = columns))
+            ExternalDropSidebarPolicy.Layout(columns, rows, measureSidebar())
         }
         val layout = ExternalDropSidebarPolicy.choose(layouts, sidebarEngines.size, maxHeight, sidebarPreferColumns)
         sidebarColumns = layout.columns
         sidebarRows = layout.rows
         applySidebarColumns(sidebarColumns)
-        enginePager.configure(config.copy(rowCount = sidebarRows, columnCount = sidebarColumns))
+        enginePager.configureExternalDrop(config.copy(rowCount = sidebarRows, columnCount = sidebarColumns))
         sidebarPage = sidebarPage.coerceIn(0, sidebarPageCount - 1)
         showSidebarPage()
     }
@@ -360,16 +534,16 @@ class ExternalDropFloating(
         }
         val tools = targets.findViewById<GridLayout>(R.id.externalDropTools)
         // Clear specs before reducing columnCount; GridLayout validates old specs immediately.
-        val cards = listOf(R.id.externalDropPool, R.id.externalDropPin, R.id.externalDropTokenize)
-            .map { targets.findViewById<MaterialCardView>(it) }
+        val cards = toolActions.filter { it.second != Action.CONVERT }
+            .map { targets.findViewById<MaterialCardView>(it.first) }
         cards.forEach { it.layoutParams = GridLayout.LayoutParams() }
         tools.columnCount = columns
         val gap = 4.dp2px.toInt()
         val contentWidth = (columns * SIDEBAR_COLUMN_WIDTH_DP + 4).dp2px.toInt()
         cards.forEachIndexed { index, card ->
-            val row = if (columns == 1) index else if (columns == 2 && index == 2) 1 else 0
-            val column = if (columns == 1 || (columns == 2 && index == 2)) 0 else index
-            val span = if (columns == 2 && index == 2) 2 else 1
+            val row = index / columns
+            val column = index % columns
+            val span = if (index == cards.lastIndex) columns - column else 1
             card.layoutParams = GridLayout.LayoutParams(
                 GridLayout.spec(row), GridLayout.spec(column, span),
             ).apply {
@@ -386,18 +560,21 @@ class ExternalDropFloating(
         }
     }
 
-    private fun measureSidebar() {
+    private fun measureSidebar(): Int {
         targets.measure(
             View.MeasureSpec.makeMeasureSpec(targetParams.width, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
         )
+        // The detached conversion card must not consume the main panel's row/column budget.
+        return targets.findViewById<View>(R.id.externalDropPanel).measuredHeight +
+            targets.paddingTop + targets.paddingBottom
     }
 
     private fun sidebarBounds(): Rect {
         val bounds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             Rect(windowManager.currentWindowMetrics.bounds)
         } else {
-            Rect(0, 0, ScreenUtil.getScreenWidth(service), ScreenUtil.getScreenHeight(service))
+            Rect(0, 0, ScreenUtil.getScreenWidth(context), ScreenUtil.getScreenHeight(context))
         }
         val insets = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             WindowInsetsCompat.toWindowInsetsCompat(windowManager.currentWindowMetrics.windowInsets)
@@ -416,17 +593,19 @@ class ExternalDropFloating(
     @SuppressLint("RtlHardcoded")
     private fun positionSidebar() {
         val bounds = sidebarBounds()
-        measureSidebar()
+        val panelHeight = measureSidebar()
         targetParams.x = if (position == EXTERNAL_DROP_POSITION_LEFT) bounds.left
             else (bounds.right - targetParams.width).coerceAtLeast(bounds.left)
         targetParams.height = targets.measuredHeight.coerceAtMost(bounds.height())
-        targetParams.y = bounds.top + ((bounds.height() - targetParams.height) / 2).coerceAtLeast(0)
+        targetParams.y = bounds.top + ExternalDropSidebarPolicy.topOffset(
+            bounds.height(), panelHeight, targetParams.height,
+        )
     }
 
     @SuppressLint("RtlHardcoded")
     private fun positionPreview() {
         if (!sidebar) {
-            previewParams.y = ScreenUtil.getScreenHeight(service) / 3
+            previewParams.y = ScreenUtil.getScreenHeight(context) / 3
             return
         }
         val bounds = sidebarBounds()
@@ -492,7 +671,7 @@ class ExternalDropFloating(
             R.id.externalDropPreviousProgress else R.id.externalDropNextProgress)
         val band = progress.parent as View
         band.setBackgroundColor(DynamicColorUtils.secondaryContainerColor)
-        pageHoverJob = service.launch(Dispatchers.Main) {
+        pageHoverJob = scope.launch(Dispatchers.Main) {
             var waitMillis = 300L
             while (dragActive && !destroyed && !dropped &&
                 ExternalDropSidebarPolicy.canFlip(sidebarPage, direction, sidebarPageCount)) {
@@ -532,21 +711,28 @@ class ExternalDropFloating(
         }
     }
 
-    private fun showTargets() {
-        if (!showTools && !enginesVisible) return
-        listOf(R.id.externalDropPool, R.id.externalDropPin, R.id.externalDropTokenize).forEach {
-            setHighlighted(targets.findViewById(it), false)
-        }
+    private fun showTargets(): Boolean {
+        if (!showTools && !enginesVisible) return false
+        appearance.applyGlassStyle(targets, internalContent != null)
+        toolActions.forEach { (id, _) -> appearance.setHighlighted(targets.findViewById(id), false) }
         if (sidebar) {
             targets.scrollTo(0, 0)
             positionSidebar()
         }
         positionPreview()
-        attachViewSafely(targets, targetParams, shouldRetry = { dragActive && !destroyed })
+        appearance.show { dragActive && !destroyed }
+        val accepted = attachViewSafely(targets, targetParams, shouldRetry = { dragActive && !destroyed })
         attachViewSafely(previewIcon, previewParams, shouldRetry = { dragActive && !destroyed })
+        DropDiagnostics.event("drop_targets_shown", if (internalContent != null) "internal" else "system", dragGeneration,
+            reason = if (appearance.backgroundBlurActive) "blur_enabled" else "blur_disabled", width = targets.width,
+            height = targets.height, flags = targetParams.flags)
+        return accepted
     }
 
     private fun hideTargets() {
+        DropDiagnostics.event("drop_targets_hidden", if (internalContent != null) "internal" else "system_or_idle", dragGeneration)
+        targets.alpha = 1f
+        contentPreview.clear()
         stopPageHover()
         enginePager.animate().cancel()
         enginePager.translationY = 0f
@@ -557,6 +743,7 @@ class ExternalDropFloating(
         previewIcon.alpha = 0f
         detachViewSafely(previewIcon)
         detachViewSafely(targets)
+        appearance.hide()
     }
 
     private fun showPreview(action: Action? = null, engine: SearchEngine? = null, pageDirection: Int = 0) {
@@ -574,7 +761,8 @@ class ExternalDropFloating(
                 Action.POOL -> R.drawable.pinboard_24px
                 Action.PIN -> R.drawable.baseline_push_pin_24
                 Action.TOKENIZE -> R.drawable.outline_center_focus_weak_24
-                else -> if (pageDirection < 0) R.drawable.baseline_arrow_upward_24 else R.drawable.baseline_arrow_downward_24
+                Action.CONVERT -> R.drawable.ic_text_image_convert_24
+                else -> if (pageDirection < 0) R.drawable.ic_chevron_up_24 else R.drawable.ic_chevron_down_24
             }
             previewIcon.setImageWithBackplate(icon)
         }
@@ -597,13 +785,13 @@ class ExternalDropFloating(
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> !destroyed && accepts(event)
                 DragEvent.ACTION_DRAG_ENTERED -> {
-                    setHighlighted(card, true)
+                    appearance.setHighlighted(card, true)
                     showPreview(action)
                     true
                 }
                 DragEvent.ACTION_DRAG_LOCATION -> true
                 DragEvent.ACTION_DRAG_EXITED, DragEvent.ACTION_DRAG_ENDED -> {
-                    setHighlighted(card, false)
+                    appearance.setHighlighted(card, false)
                     hidePreview(action)
                     true
                 }
@@ -613,14 +801,6 @@ class ExternalDropFloating(
         }
     }
 
-    private fun setHighlighted(card: MaterialCardView, active: Boolean) {
-        card.strokeWidth = if (active) 2.dp2px.toInt() else 0
-        card.strokeColor = if (active) DynamicColorUtils.primaryColor else DynamicColorUtils.outlineColor
-        card.setCardBackgroundColor(
-            if (active) DynamicColorUtils.secondaryContainerColor else DynamicColorUtils.surfaceContainerHighColor
-        )
-    }
-
     private fun receive(
         event: DragEvent,
         action: Action,
@@ -628,156 +808,56 @@ class ExternalDropFloating(
         freeform: Boolean = false,
     ): Boolean {
         hidePreview()
-        if (destroyed || dropped) return false
+        if (destroyed || dropped || action == Action.CONVERT) return false
         val clip = event.clipData ?: return false
         if (clip.itemCount == 0) return false
         val permissions = DropUriPermissions.take(event)
-        val content = ClipData(clip)
+        return receiveContent(ClipData(clip), action, engine, freeform) { runCatching { permissions?.release() } }
+    }
+
+    private fun receiveContent(
+        content: ClipData,
+        action: Action,
+        engine: SearchEngine? = null,
+        freeform: Boolean = false,
+        release: () -> Unit = {},
+    ): Boolean {
+        if (destroyed || dropped || action == Action.CONVERT) { release(); return false }
         dropped = true
-        service.launch(Dispatchers.Main, start = CoroutineStart.UNDISPATCHED) {
+        scope.launch(Dispatchers.Main, start = CoroutineStart.UNDISPATCHED) {
             try {
-                if (action == Action.SEARCH) search(content, checkNotNull(engine), freeform)
-                else process(content, action)
+                when (action) {
+                    Action.SEARCH -> dispatcher.search(content, checkNotNull(engine), freeform)
+                    Action.POOL -> dispatcher.process(content, DropContentDispatcher.Tool.POOL)
+                    Action.PIN -> dispatcher.process(content, DropContentDispatcher.Tool.PIN)
+                    Action.TOKENIZE -> dispatcher.process(content, DropContentDispatcher.Tool.TOKENIZE)
+                    Action.CONVERT -> error("Conversion is handled during hover")
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
                 Log.w("ExternalDrop", "Cannot process dropped content", error)
                 toast(R.string.external_drop_failed)
             } finally {
-                runCatching { permissions?.release() }
+                release()
             }
         }
         return true
     }
 
-    private suspend fun isImage(clip: ClipData, uri: Uri?): Boolean =
-        uri != null && withContext(Dispatchers.IO) {
-            val mime = service.contentResolver.getType(uri)
-            if (mime != null) mime.startsWith("image/") else clip.description.hasMimeType("image/*")
-        }
-
-    private suspend fun search(clip: ClipData, engine: SearchEngine, freeform: Boolean) {
-        val images = mutableListOf<Uri>()
-        val texts = mutableListOf<String>()
-        // Dual-mode engines keep both content types for the executor's mode selection.
-        val collectImages = engine.supportsImageShare()
-        val collectTexts = engine.engineType != EngineType.SHARE_IMAGE_TO_APP
-        for (index in 0 until clip.itemCount) {
-            val item = clip.getItemAt(index)
-            val uri = item.uri
-            if (collectImages && isImage(clip, uri)) {
-                decodeImage(checkNotNull(uri))?.use { image ->
-                    // Copy into EVO's sharing cache before the source's transient grant ends.
-                    val payload = withContext(Dispatchers.IO) {
-                        imageShareLauncher.buildPayload(image.requireBitmap(), null)
-                    }
-                    images += checkNotNull(payload).contentUris
-                }
-            } else if (collectTexts && !isImage(clip, uri)) {
-                val text = withContext(Dispatchers.IO) { item.coerceToText(service)?.toString() }
-                if (!text.isNullOrBlank()) texts += text
-            }
-        }
-        if (images.isEmpty() && texts.isEmpty()) {
-            toast(R.string.external_drop_empty)
-            return
-        }
-        DropSearchActivity.start(service, engine.tag, texts.joinToString("\n"), images, freeform)
+    private fun updateConversionLabel(description: ClipDescription) {
+        val image = description.hasMimeType("image/*")
+        val label = if (conversion.busy && image) R.string.external_drop_recognizing
+            else if (conversion.busy) R.string.external_drop_converting
+            else if (image) R.string.external_drop_to_text else R.string.external_drop_to_image
+        val convert = targets.findViewById<MaterialCardView>(R.id.externalDropConvert)
+        convert.contentDescription = context.getString(label)
+        convert.alpha = if (conversion.busy) 0.5f else 1f
     }
 
-    private suspend fun process(clip: ClipData, action: Action) {
-        val tokenText = mutableListOf<String>()
-        var tokenImage: ManagedBitmap? = null
-        var handled = 0
-        try {
-            for (index in 0 until clip.itemCount) {
-                val item = clip.getItemAt(index)
-                val uri = item.uri
-                if (isImage(clip, uri)) {
-                    val image = decodeImage(checkNotNull(uri)) ?: error("Cannot decode dropped image")
-                    image.use {
-                        when (action) {
-                            Action.POOL -> checkNotNull(PinPoolStore.addImagePin(service, it.requireBitmap()))
-                            Action.PIN -> PictureFloating.build(service, checkNotNull(it.acquire()))
-                            Action.TOKENIZE -> {
-                                if (clip.itemCount == 1) tokenImage = it.acquire()
-                                else tokenText += withContext(Dispatchers.Default) {
-                                    OcrImageTextProcessor(service).process(it.requireBitmap()).rawText
-                                }
-                            }
-                            Action.SEARCH -> error("Search is handled separately")
-                        }
-                    }
-                } else {
-                    val text = withContext(Dispatchers.IO) { item.coerceToText(service)?.toString() }
-                        ?.takeIf { it.isNotBlank() } ?: continue
-                    when (action) {
-                        Action.POOL -> checkNotNull(PinPoolStore.addTextPin(service, text))
-                        Action.PIN -> PictureFloating.build(service, text)
-                        Action.TOKENIZE -> tokenText += text
-                        Action.SEARCH -> error("Search is handled separately")
-                    }
-                }
-                handled++
-            }
-            if (handled == 0) {
-                toast(R.string.external_drop_empty)
-            } else if (action == Action.TOKENIZE) {
-                InspireDataHolder.clear()
-                InspireDataHolder.replaceScreenshotBitmap(tokenImage)
-                InspireDataHolder.accessibilityContent = tokenText
-                    .joinToString("\n")
-                    .takeIf { it.isNotEmpty() }
-                InspireContentActivity.start(service)
-            } else if (action == Action.POOL) {
-                toast(R.string.external_drop_added)
-            }
-        } finally {
-            tokenImage?.close()
-        }
-    }
-
-    private suspend fun decodeImage(uri: Uri): ManagedBitmap? {
-        var decoded: ManagedBitmap? = null
-        try {
-            return withContext(Dispatchers.IO) {
-                val resolver = service.contentResolver
-                val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, uri)) { decoder, info, _ ->
-                        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                        val longest = maxOf(info.size.width, info.size.height)
-                        if (longest > MAX_IMAGE_SIDE) {
-                            val scale = MAX_IMAGE_SIDE.toFloat() / longest
-                            decoder.setTargetSize(
-                                (info.size.width * scale).toInt().coerceAtLeast(1),
-                                (info.size.height * scale).toInt().coerceAtLeast(1),
-                            )
-                        }
-                    }
-                } else {
-                    val options = BitmapFactory.Options().apply {
-                        inJustDecodeBounds = true
-                        inSampleSize = 1
-                    }
-                    resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
-                    options.inJustDecodeBounds = false
-                    while (maxOf(options.outWidth, options.outHeight) / options.inSampleSize > MAX_IMAGE_SIDE) {
-                        options.inSampleSize *= 2
-                    }
-                    resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
-                }
-                bitmap?.let(ManagedBitmap::from).also { decoded = it }
-            }
-        } catch (error: Throwable) {
-            decoded?.close()
-            throw error
-        }
-    }
-
-    private fun toast(message: Int) = ToastHelper.showInUIThread(service, service.getString(message))
+    private fun toast(message: Int) = ToastHelper.showInUIThread(context, context.getString(message))
 
     private companion object {
         const val SIDEBAR_COLUMN_WIDTH_DP = 52
-        const val MAX_IMAGE_SIDE = 4096
     }
 }

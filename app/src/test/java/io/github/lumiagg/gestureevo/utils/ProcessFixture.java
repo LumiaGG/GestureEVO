@@ -27,6 +27,10 @@ public final class ProcessFixture {
             case "stdin":
                 System.out.print(System.in.read());
                 break;
+            case "lease":
+                while (System.in.read() != -1) { }
+                System.out.print("lease_closed");
+                break;
             case "wait":
                 Thread.sleep(30000);
                 break;

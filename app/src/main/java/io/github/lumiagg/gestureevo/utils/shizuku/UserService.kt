@@ -5,6 +5,7 @@ import android.content.Context
 import android.util.Log
 import androidx.annotation.Keep
 import io.github.lumiagg.gestureevo.IUserService
+import io.github.lumiagg.gestureevo.drop.TouchStreamHost
 import io.github.lumiagg.gestureevo.utils.ExecuteResult
 import io.github.lumiagg.gestureevo.utils.runProcess
 import java.io.File
@@ -13,6 +14,7 @@ import kotlin.system.exitProcess
 class UserService : IUserService.Stub {
     private val diagnosticStreams = HashMap<String, io.github.lumiagg.gestureevo.diagnostics.DiagnosticRelay>()
     private val cancelledStreams = LinkedHashSet<String>()
+    private val touchStreams = TouchStreamHost()
     constructor() : super()
 
     @Keep
@@ -22,6 +24,7 @@ class UserService : IUserService.Stub {
 
     override fun destroy() {
         synchronized(diagnosticStreams) { diagnosticStreams.values.forEach { it.close() }; diagnosticStreams.clear() }
+        touchStreams.close()
         Log.i(TAG, "destroy")
         exitProcess(0)
     }
@@ -69,6 +72,15 @@ class UserService : IUserService.Stub {
             while (cancelledStreams.size > 16) cancelledStreams.remove(cancelledStreams.first())
         }
     }
+
+    override fun openTouchStream(token: String, owner: android.os.IBinder): android.os.ParcelFileDescriptor =
+        touchStreams.open(token, owner)
+
+    override fun closeTouchStream(token: String) = touchStreams.close(token)
+
+    override fun interruptTouchForDrag(token: String, sourcePackage: String, x: Float, y: Float,
+        displayId: Int, deadlineUptimeMs: Long, guard: io.github.lumiagg.gestureevo.ITouchInterruptionGuard): Boolean =
+        touchStreams.interrupt(token, sourcePackage, x, y, displayId, deadlineUptimeMs, guard)
 
     companion object {
         private const val TAG = "UserService"

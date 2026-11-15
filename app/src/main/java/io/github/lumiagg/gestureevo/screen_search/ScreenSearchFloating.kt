@@ -561,15 +561,15 @@ class ScreenSearchFloating(private val context: GestureService) :
     }
 
     private fun detachViewsIfNeeded() {
-        if (panelAttached) {
+        if (panelAttached || isAttachRequested(binding.root)) {
             safeRemoveView(binding.root)
             panelAttached = false
         }
-        if (indicatorAttached) {
+        if (indicatorAttached || isAttachRequested(indicatorBinding.root)) {
             safeRemoveView(indicatorBinding.root)
             indicatorAttached = false
         }
-        if (highlightAttached) {
+        if (highlightAttached || isAttachRequested(highlightView)) {
             safeRemoveView(highlightView)
             highlightAttached = false
         }

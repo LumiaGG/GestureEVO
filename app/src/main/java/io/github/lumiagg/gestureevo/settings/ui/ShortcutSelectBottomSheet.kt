@@ -97,6 +97,7 @@ class LocalUserShortcutSheet(
         bottomSheetDialog =
             BottomSheetDialog(themedContext, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
         bottomSheetDialog.setContentView(R.layout.app_select_bottomsheet)
+        bottomSheetDialog.findViewById<View>(R.id.selectionTitle)?.visibility = View.GONE
         bottomSheetDialog.setCanceledOnTouchOutside(false)
 
         // Hide filter ChipGroup

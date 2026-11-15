@@ -1,5 +1,8 @@
 package io.github.lumiagg.gestureevo.settings
 
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_BACKGROUND_BLUR
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR
 import io.github.lumiagg.gestureevo.databinding.BottomSheetAppIconOverrideBinding
 import android.os.Bundle
 import android.view.View
@@ -125,6 +128,15 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         binding.screenContentBackgroundBlurSwitch.isChecked = screenContentBackgroundBlurEnabled
         binding.screenContentCardBackgroundBlurSwitch.isChecked =
             settingsStore.readKey(KEY_SCREEN_CONTENT_CARD_BACKGROUND_BLUR, false)
+        val externalDropBackgroundBlurEnabled =
+            settingsStore.readKey(KEY_EXTERNAL_DROP_BACKGROUND_BLUR, false)
+        binding.externalDropBackgroundBlurSwitch.isChecked = externalDropBackgroundBlurEnabled
+        binding.externalDropSystemDragBlurRow.visibility =
+            if (externalDropBackgroundBlurEnabled) View.VISIBLE else View.GONE
+        binding.externalDropSystemDragBlurSwitch.isChecked =
+            settingsStore.readKey(KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR, true)
+        binding.externalDropCardBackgroundBlurSwitch.isChecked =
+            settingsStore.readKey(KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR, false)
         setupIconPackDropdown()
         setupLanguageDropdown()
         setupFluidFeedbackViews()
@@ -318,6 +330,26 @@ class AppearanceSettingsActivity : AppCompatActivity() {
         binding.screenContentCardBackgroundBlurSwitch.setOnCheckedChangeListener { _, isCheck ->
             lifecycleScope.launch {
                 settingsStore.saveKey(KEY_SCREEN_CONTENT_CARD_BACKGROUND_BLUR, isCheck)
+            }
+        }
+
+        binding.externalDropBackgroundBlurSwitch.setOnCheckedChangeListener { _, isCheck ->
+            binding.externalDropSystemDragBlurRow.visibility =
+                if (isCheck) View.VISIBLE else View.GONE
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_EXTERNAL_DROP_BACKGROUND_BLUR, isCheck)
+            }
+        }
+
+        binding.externalDropSystemDragBlurSwitch.setOnCheckedChangeListener { _, isCheck ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_EXTERNAL_DROP_SYSTEM_DRAG_BLUR, isCheck)
+            }
+        }
+
+        binding.externalDropCardBackgroundBlurSwitch.setOnCheckedChangeListener { _, isCheck ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_EXTERNAL_DROP_CARD_BACKGROUND_BLUR, isCheck)
             }
         }
 
