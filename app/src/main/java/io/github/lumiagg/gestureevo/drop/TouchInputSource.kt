@@ -95,8 +95,6 @@ internal class TouchInputSource(private val context: Context, private val scope:
                                         }
                                     }
                                 } else {
-                                    // Accept the terminator emitted by older touch workers until they are replaced.
-                                    if (line.startsWith("GEVO_END")) return@read false
                                     val timestamp = TouchInputProtocol.eventTime(line, SystemClock.uptimeMillis())
                                     if (timestamp == null) {
                                         parser.cancel()

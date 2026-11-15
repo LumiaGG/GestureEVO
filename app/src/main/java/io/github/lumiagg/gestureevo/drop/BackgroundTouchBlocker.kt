@@ -10,7 +10,7 @@ import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 
 /** Blocks new touches after Shizuku completes the source application's DOWN/CANCEL sequence. */
-internal class BackgroundTouchBlocker(private val context: Context, private val scope: CoroutineScope) :
+internal class BackgroundTouchBlocker(private val context: Context, scope: CoroutineScope) :
     BaseFloatingWindow(context, scope, "EVO-TouchBlock") {
 
     private var current: View? = null

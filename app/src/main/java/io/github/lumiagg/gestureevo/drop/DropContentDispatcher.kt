@@ -41,7 +41,8 @@ internal class DropContentDispatcher(
         for (index in 0 until clip.itemCount) {
             val item = clip.getItemAt(index)
             val uri = item.uri
-            if (collectImages && isImage(clip, uri)) {
+            val image = isImage(clip, uri)
+            if (collectImages && image) {
                 imageDecoder.decode(checkNotNull(uri))?.use { image ->
                     // Copy into EVO's sharing cache before the source's transient grant ends.
                     val payload = withContext(Dispatchers.IO) {
@@ -49,7 +50,7 @@ internal class DropContentDispatcher(
                     }
                     images += checkNotNull(payload).contentUris
                 }
-            } else if (collectTexts && !isImage(clip, uri)) {
+            } else if (collectTexts && !image) {
                 val text = withContext(Dispatchers.IO) { item.coerceToText(context)?.toString() }
                 if (!text.isNullOrBlank()) texts += text
             }

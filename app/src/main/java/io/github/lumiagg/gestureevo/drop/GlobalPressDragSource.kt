@@ -47,6 +47,7 @@ internal class GlobalPressDragSource(
     private var settings = Settings(false, 500, emptySet(), true)
     private var settingsJob: Job? = null
     private var lookup: Job? = null
+    private var lookupTimeout: Job? = null
     private var windowCheck: Job? = null
     private var interruption: Job? = null
     private var interruptionAllowed: AtomicBoolean? = null
@@ -145,6 +146,8 @@ internal class GlobalPressDragSource(
                     if (SystemClock.uptimeMillis() - detector.downTime() > 2000) { cancel("capture_expired"); return@withContext }
                     if (content == null) { cancel("content_unavailable"); return@withContext }
                     cached = content
+                    lookupTimeout?.cancel()
+                    lookupTimeout = null
                     android.util.Log.i("EVO-Press", "content_ready generation=$request elapsedMs=${SystemClock.uptimeMillis() - detector.downTime()} threshold=${settings.timeout}")
                     notifyReady()
                     if (detector.isFired) display()
@@ -155,7 +158,7 @@ internal class GlobalPressDragSource(
                 withContext(Dispatchers.Main) { if (generation == request) cancel("capture_failed") }
             } finally { captureGate.unlock() }
         }
-        scope.launch(Dispatchers.Main) {
+        lookupTimeout = scope.launch(Dispatchers.Main) {
             delay(1800)
             if (generation == request && cached == null && !shown && !preparing) cancel("capture_timeout")
         }
@@ -295,6 +298,8 @@ internal class GlobalPressDragSource(
         main.removeCallbacks(expiry)
         lookup?.cancel()
         lookup = null
+        lookupTimeout?.cancel()
+        lookupTimeout = null
         windowCheck?.cancel()
         windowCheck = null
         ownOverlayIds.clear()

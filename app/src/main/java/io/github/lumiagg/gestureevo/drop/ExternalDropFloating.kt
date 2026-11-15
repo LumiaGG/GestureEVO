@@ -57,7 +57,7 @@ internal class ExternalDropFloating(
     private val position: String = EXTERNAL_DROP_POSITION_BOTTOM,
     private val showTools: Boolean,
     private val dispatcher: DropContentDispatcher,
-    private val converter: DragContentConverter,
+    converter: DragContentConverter,
 ) : BaseFloatingWindow(context, scope, "ExternalDrop"), ContentDragTarget {
     private enum class Action { POOL, PIN, TOKENIZE, CONVERT, SEARCH }
 
@@ -273,12 +273,11 @@ internal class ExternalDropFloating(
     }
 
     fun destroy() {
+        if (destroyed) return
+        val source = if (internalContent != null) "internal" else "system_or_idle"
         cancelContentDrag()
-        DropDiagnostics.event("drop_panel_destroyed", if (internalContent != null) "internal" else "system_or_idle", dragGeneration)
+        DropDiagnostics.event("drop_panel_destroyed", source, dragGeneration)
         destroyed = true
-        contentSession.cancel()
-        internalContent = null
-        contentPreview.clear()
         dragActive = false
         dragGeneration++
         prepareJob?.cancel()
@@ -361,10 +360,10 @@ internal class ExternalDropFloating(
     private fun updateContentPreview() = contentPreview.move(contentX, contentY, sidebarBounds())
 
     override fun cancelContentDrag() {
+        if (internalContent == null) return
         contentSession.cancel()
         conversion.clear()
         contentPreview.clear()
-        if (internalContent == null) return
         DropDiagnostics.event("drop_internal_ended", "internal", dragGeneration, reason = if (dropped) "dropped" else "cancelled")
         internalContent = null
         dragActive = false

@@ -24,7 +24,7 @@ internal object PressWindowPolicy {
         if (windows.any { it.id != sourceId && !ownOverlay(it) && (it.active || it.focused) }) return "source_switched"
         if (stateChanged && eventWindowId != sourceId) {
             val changed = windows.firstOrNull { it.id == eventWindowId }
-            if (changed != null && (ownOverlay(changed))) return null
+            if (changed != null && ownOverlay(changed)) return null
             if (changed == null && eventWindowId in knownOwnOverlays) return null
             return "other_window_state"
         }
