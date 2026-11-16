@@ -4,14 +4,18 @@ import android.annotation.SuppressLint
 import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import com.google.android.material.card.MaterialCardView
+import io.github.lumiagg.gestureevo.R
 import org.lsposed.hiddenapibypass.HiddenApiBypass
 import java.lang.reflect.Method
-import java.util.IdentityHashMap
+import java.util.Collections
+import java.util.WeakHashMap
 import kotlin.math.roundToInt
 
 /**
@@ -22,9 +26,9 @@ internal object CardRegionBlur {
     private const val TAG = "CardRegionBlur"
     const val RADIUS = 40
 
-    private val cards = IdentityHashMap<View, Boolean>()
-    private val cornerFallbacks = IdentityHashMap<View, Float>()
-    private val overlappingRendering = IdentityHashMap<View, Boolean>()
+    // Cards own their hosts. This weak index only lets a reflection failure
+    // disable other configured hosts without keeping their windows/contexts alive.
+    private val hosts = Collections.newSetFromMap(WeakHashMap<BlurHost, Boolean>())
     private var exemptionsInstalled = false
     private var drawableBlocked = false
     private var drawableLogged = false
@@ -36,83 +40,56 @@ internal object CardRegionBlur {
 
     fun update(card: View, enabled: Boolean, cornerRadius: Float) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || !enabled || drawableBlocked) {
-            if (cards.containsKey(card)) remove(card)
+            remove(card)
             return
         }
-        val radius = cornerRadius.coerceAtLeast(0f)
-        val unchanged = cards[card] == true && cornerFallbacks[card] == radius
-        cards[card] = true
-        cornerFallbacks[card] = radius
         val group = card as? ViewGroup ?: return
+        val radius = cornerRadius.coerceAtLeast(0f)
+        val existing = findHost(card)
+        val unchanged = existing?.cornerRadius == radius
+        val host = existing ?: BlurHost(group, radius).also {
+            card.setTag(R.id.cardRegionBlurHost, it)
+        }
+        host.cornerRadius = radius
         // BackgroundBlurDrawable uses SRC to open a hole in the window buffer.
         // An alpha saveLayer confines that hole to the offscreen card layer, so
         // blur only becomes visible when the card's fade finishes.
-        if (!overlappingRendering.containsKey(card)) {
-            overlappingRendering[card] = card.hasOverlappingRendering()
-            card.forceHasOverlappingRendering(false)
-        }
-        val existing = findHost(group)
-        if (unchanged && existing?.blurDrawable != null && existing.isAttachedToWindow) return
-        val host = existing ?: ensureHost(group) ?: return
+        card.forceHasOverlappingRendering(false)
+        if (unchanged && host.blurDrawable != null && host.isAttachedToWindow) return
+        hosts.add(host)
+        if (host.parent == null) host.attachToCard()
         if (host.isAttachedToWindow) bindDrawable(host)
     }
 
     private fun remove(card: View) {
-        cards.remove(card)
-        cornerFallbacks.remove(card)
-        overlappingRendering.remove(card)?.let { card.forceHasOverlappingRendering(it) }
-        removeHost(card)
+        val host = findHost(card) ?: return
+        card.setTag(R.id.cardRegionBlurHost, null)
+        host.release()
     }
 
-    private fun ensureHost(card: ViewGroup): BlurHost? {
-        findHost(card)?.let { return it }
-        val host = BlurHost(card.context)
-        if (card.isInLayout) {
-            card.post {
-                if (!cards.containsKey(card) || findHost(card) != null) return@post
-                card.addView(host, 0, ViewGroup.LayoutParams(0, 0))
-            }
-            return null
-        }
-        card.addView(host, 0, ViewGroup.LayoutParams(0, 0))
-        return host
-    }
-
-    private fun findHost(card: ViewGroup): BlurHost? {
-        for (index in 0 until card.childCount) {
-            val child = card.getChildAt(index)
-            if (child is BlurHost) return child
-        }
-        return null
-    }
-
-    private fun removeHost(card: View) {
-        val group = card as? ViewGroup ?: return
-        val host = findHost(group) ?: return
-        group.removeView(host)
-    }
+    private fun findHost(card: View): BlurHost? = card.getTag(R.id.cardRegionBlurHost) as? BlurHost
 
     private fun bindDrawable(host: BlurHost) {
         if (drawableBlocked) return
-        val card = host.parent as? View ?: return
-        if (!cards.containsKey(card)) return
+        val card = host.card
+        if (!host.isAttachedToWindow || findHost(card) !== host) return
         // Register the system blur aggregator on attach, before the first
         // pre-draw dispatch. Bounds and relative corners are updated after layout.
         if (!host.isHardwareAccelerated) {
-            markDrawableBlocked(card)
+            markDrawableBlocked()
             return
         }
         try {
             if (!installExemptions()) {
-                markDrawableBlocked(card)
+                markDrawableBlocked()
                 return
             }
             val drawable = host.blurDrawable ?: createDrawable(host)?.also { host.blurDrawable = it }
             if (drawable == null) {
-                markDrawableBlocked(card)
+                markDrawableBlocked()
                 return
             }
-            val corners = cornerRadii(card)
+            val corners = cornerRadii(card, host.cornerRadius)
             val color = (card as? MaterialCardView)?.cardBackgroundColor?.defaultColor ?: 0
             if (!sameBlur(host, corners, color)) {
                 configure(drawable, corners, color)
@@ -129,16 +106,20 @@ internal object CardRegionBlur {
             Log.w(TAG, "card blur drawable failed", error)
             host.blurDrawable = null
             host.background = null
-            markDrawableBlocked(card)
+            markDrawableBlocked()
         }
     }
 
-    private fun markDrawableBlocked(card: View) {
+    private fun markDrawableBlocked() {
         if (drawableBlocked) return
         drawableBlocked = true
-        val snapshot = cards.keys.toList()
-        card.post {
-            for (tracked in snapshot) remove(tracked)
+        val snapshot = hosts.toList()
+        // Failure can happen during addView/layout. Clean up on the next main
+        // turn even if the failing card is detached before its callbacks run.
+        Handler(Looper.getMainLooper()).post {
+            for (host in snapshot) {
+                if (findHost(host.card) === host) remove(host.card)
+            }
         }
     }
 
@@ -202,9 +183,9 @@ internal object CardRegionBlur {
         setColor.invoke(drawable, color)
     }
 
-    private fun cornerRadii(card: View): FloatArray {
+    private fun cornerRadii(card: View, fallbackRadius: Float): FloatArray {
         val materialCard = card as? MaterialCardView
-            ?: return FloatArray(4) { cornerFallbacks[card] ?: 0f }
+            ?: return FloatArray(4) { fallbackRadius }
         val bounds = RectF(0f, 0f, card.width.toFloat(), card.height.toFloat())
         val shape = materialCard.shapeAppearanceModel
         val radii = floatArrayOf(
@@ -215,8 +196,7 @@ internal object CardRegionBlur {
         )
         if (radii.all { it <= 0f }) {
             val radius = materialCard.radius.coerceAtLeast(0f).takeIf { it > 0f }
-                ?: cornerFallbacks[card]
-                ?: 0f
+                ?: fallbackRadius
             radii.fill(radius)
         }
         return radii
@@ -251,12 +231,20 @@ internal object CardRegionBlur {
         return getRoot.invoke(view)
     }
 
-    private class BlurHost(context: android.content.Context) : View(context) {
+    private class BlurHost(val card: ViewGroup, var cornerRadius: Float) : View(card.context) {
+        private val originalOverlappingRendering = card.getHasOverlappingRendering()
+        private var released = false
+        private var preDrawObserver: ViewTreeObserver? = null
         var blurDrawable: Drawable? = null
         var appliedCorners: FloatArray? = null
         var appliedColor: Int = Int.MIN_VALUE
         var appliedAlpha: Int = -1
         private var restoringSize = false
+        private val attachRunnable = Runnable {
+            if (!released && !drawableBlocked && findHost(card) === this && parent == null) {
+                card.addView(this, 0, ViewGroup.LayoutParams(0, 0))
+            }
+        }
         private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
             placeToParent()
             // onSizeChanged may already have restored our size. Binding must
@@ -269,6 +257,30 @@ internal object CardRegionBlur {
             isClickable = false
             isFocusable = false
             importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+        }
+
+        fun attachToCard() {
+            card.removeCallbacks(attachRunnable)
+            if (card.isInLayout) card.post(attachRunnable) else attachRunnable.run()
+        }
+
+        fun release() {
+            released = true
+            card.removeCallbacks(attachRunnable)
+            hosts.remove(this)
+            clearDrawable()
+            card.forceHasOverlappingRendering(originalOverlappingRendering)
+            if (parent === card) card.removeView(this)
+        }
+
+        private fun clearDrawable() {
+            preDrawObserver?.takeIf { it.isAlive }?.removeOnPreDrawListener(preDrawListener)
+            preDrawObserver = null
+            appliedCorners = null
+            appliedColor = Int.MIN_VALUE
+            appliedAlpha = -1
+            background = null
+            blurDrawable = null
         }
 
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -287,19 +299,18 @@ internal object CardRegionBlur {
 
         override fun onAttachedToWindow() {
             super.onAttachedToWindow()
-            viewTreeObserver.addOnPreDrawListener(preDrawListener)
+            if (released || drawableBlocked || findHost(card) !== this) return
+            hosts.add(this)
+            card.forceHasOverlappingRendering(false)
+            preDrawObserver = viewTreeObserver.also { it.addOnPreDrawListener(preDrawListener) }
             placeToParent()
             bindDrawable(this)
         }
 
         override fun onDetachedFromWindow() {
-            val observer = viewTreeObserver
-            if (observer.isAlive) observer.removeOnPreDrawListener(preDrawListener)
-            appliedCorners = null
-            appliedColor = Int.MIN_VALUE
-            appliedAlpha = -1
-            background = null
-            blurDrawable = null
+            card.removeCallbacks(attachRunnable)
+            clearDrawable()
+            card.forceHasOverlappingRendering(originalOverlappingRendering)
             super.onDetachedFromWindow()
         }
 

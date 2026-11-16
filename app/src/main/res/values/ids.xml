@@ -7,4 +7,5 @@
     <item name="engineRecyclerItemSpacing" type="id"/>
     <item name="engineRecyclerItemWidth" type="id"/>
     <item name="engineRecyclerSpacingInstalled" type="id"/>
+    <item name="cardRegionBlurHost" type="id"/>
 </resources>
