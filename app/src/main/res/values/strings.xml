@@ -172,7 +172,7 @@
     <string name="appearance_settings_screen_content_card_background_blur">卡片背景模糊</string>
     <string name="appearance_settings_external_drop_title">拖放悬浮窗设置</string>
     <string name="appearance_settings_external_drop_description">调整拖放悬浮窗的背景模糊和卡片外观</string>
-    <string name="appearance_settings_external_drop_background_blur">背景模糊（需 Android 12+）</string>
+    <string name="appearance_settings_external_drop_background_blur">背景模糊（限制系统）</string>
     <string name="appearance_settings_external_drop_system_drag_blur">系统拖拽背景模糊</string>
     <string name="appearance_settings_external_drop_system_drag_blur_summary">拖拽来自其他应用时同样显示背景模糊</string>
     <string name="appearance_settings_external_drop_card_background_blur">卡片背景模糊</string>
