@@ -1153,7 +1153,7 @@
     <string name="appearance_settings_screen_content_card_background_blur">Card background blur</string>
     <string name="appearance_settings_external_drop_title">Drag overlay settings</string>
     <string name="appearance_settings_external_drop_description">Adjust drag overlay background blur and card appearance</string>
-    <string name="appearance_settings_external_drop_background_blur">Background blur (Android 12+)</string>
+    <string name="appearance_settings_external_drop_background_blur">Background blur (limited system support)</string>
     <string name="appearance_settings_external_drop_system_drag_blur">System drag background blur</string>
     <string name="appearance_settings_external_drop_system_drag_blur_summary">Also show the background blur for drags started by other apps</string>
     <string name="appearance_settings_external_drop_card_background_blur">Card background blur</string>
