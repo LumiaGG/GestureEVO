@@ -90,7 +90,9 @@ class GestureManager(
         LinkRadarOverlay(
             gestureService,
             pointerStateProvider = {
-                if (pointerFloatingLazy.isInitialized() && !pointerFloating.isPointerDragSelecting) {
+                // The radar yields for the whole drag selection mode, not just while a box is
+                // being drawn: hit areas and the capsule would otherwise cover the crosshair.
+                if (pointerFloatingLazy.isInitialized() && !pointerFloating.isPointerDragMode) {
                     pointerFloating.currentPointerSnapshot()
                 } else null
             },
