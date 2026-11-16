@@ -614,6 +614,8 @@ class InspireFloating(private val context: GestureService) :
     }
 
     private fun launchInspireContentActivity() {
+        val source = io.github.lumiagg.gestureevo.utils.CurrentPackageProvider.resolveCurrentPackageName()
+        if (source != null && source != context.packageName) InspireDataHolder.sourcePackage = source
         activityLaunching = true
         cancelTransition()
         InspireContentActivity.start(context)

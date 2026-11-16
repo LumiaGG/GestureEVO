@@ -40,6 +40,12 @@
             app:title="@string/settings_features_title"
             app:summary="@string/settings_tools_summary" />
         <Preference
+            android:icon="@drawable/link_20px"
+            android:key="preferenceLink"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/link_settings_title"
+            app:summary="@string/link_settings_summary" />
+        <Preference
             android:icon="@drawable/search_24px"
             android:key="preferenceSearch"
             android:layout="@layout/custom_preference_widget_layout"

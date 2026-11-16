@@ -101,6 +101,30 @@ class PointerFloating(
     private var pointerVisibleRequested = false
     var triggerSide: String? = null
 
+    /** Pointer icon state for the link radar: screen-space center plus icon radius. */
+    data class PointerSnapshot(val centerX: Float, val centerY: Float, val radiusPx: Float)
+
+    /**
+     * True only while a drag selection box is actually being drawn, so the radar stands down
+     * for real selections but keeps highlighting links while the pointer merely hovers in
+     * drag mode (hover-stability auto-enters drag mode and would otherwise kill the radar).
+     */
+    val isPointerDragSelecting: Boolean
+        get() = pointerManger.isDragMode && pointerManger.isDragSelectionStarted
+
+    /** Current pointer center/radius in screen coordinates, null while the icon is hidden. */
+    fun currentPointerSnapshot(): PointerSnapshot? = pointerManger.currentPointerSnapshot()
+
+    /**
+     * Lets the link radar consume the pointer's tap: with a link targeted, tapping the
+     * pointer dispatches through the rules instead of clicking the screen. Return true to
+     * skip the synthesized screen click.
+     */
+    var onPointerTapInterceptor: (() -> Boolean)? = null
+    var onPointerLinkTargeted: (() -> Boolean)? = null
+    var onPointerPositionChanged: ((PointerSnapshot?) -> Unit)? = null
+    var onPointerHidden: (() -> Unit)? = null
+
     init {
         initView()
         initFloatingWindow()
@@ -296,6 +320,7 @@ class PointerFloating(
 
     fun hide() = context.postOnMain {
         pointerVisibleRequested = false
+        onPointerHidden?.invoke()
         pointerManger.viewPositionMonitor.stop()
         if (pointerManger.isDragMode) {
             pointerManger.exitDragMode()
@@ -461,6 +486,10 @@ class PointerFloating(
         var touchViewX = 0f
         var touchViewY = 0f
         var isDragMode = false
+
+        /** True only once the drag selection box is actually being drawn (not mere drag mode). */
+        val isDragSelectionStarted: Boolean
+            get() = hasStartedDragSelection
         /** Set when the pointer is leaving because of a tap, so hide plays the tap exit. */
         var tapExitPending = false
         /** True once the icon's layout or backplate has been changed away from the stock XML. */
@@ -480,6 +509,18 @@ class PointerFloating(
         private var lastPotentialThinRect: Rect? = null
         private val moveTouchHandler = MoveTouchHandler()
         val viewPositionMonitor = ViewPositionMonitor()
+
+        /** Snapshot for the link radar; null whenever the icon is invisible or not laid out. */
+        fun currentPointerSnapshot(): PointerSnapshot? {
+            if (view.visibility != View.VISIBLE || view.alpha <= 0f || view.width <= 0) return null
+            val location = IntArray(2)
+            view.getLocationOnScreen(location)
+            return PointerSnapshot(
+                location[0] + view.width / 2f,
+                location[1] + view.height / 2f,
+                minOf(view.width, view.height) / 2f
+            )
+        }
 
         init {
             val layoutParams = LayoutParams(
@@ -937,13 +978,29 @@ class PointerFloating(
             }
 
             fun handleActionUp(event: MotionEvent) {
+                if (event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                    hoverLongPressJob?.cancel()
+                    hoverLongPressJob = null
+                    pendingHoverLongPress = false
+                    pendingHoverPoint = null
+                    resetHoverLongPressHint()
+                    if (isDragMode) exitDragMode()
+                    return
+                }
                 if (!isLongPressRunning) {
                     hoverLongPressJob?.cancel()
                     hoverLongPressJob = null
                 }
+                // A radar target keeps the same release action even after a long hover.
+                // Actual text selection still wins; cancelled gestures returned above.
+                if (!isPointerDragSelecting && onPointerTapInterceptor?.invoke() == true) {
+                    resetHoverLongPressHint()
+                    if (isDragMode) exitDragMode()
+                    trailView.clearTrail()
+                    return
+                }
                 if (isDragMode) {
                     resetHoverLongPressHint()
-                    view.visibility = View.INVISIBLE
                     val currentSelectionRect = highlightRectView.currentSelectionRect(computePosition())
                     val previewSelectionRect = potentialDragSelectRect
                         ?.takeIf { potentialDragSelectSourceRect == currentSelectionRect }
@@ -954,6 +1011,7 @@ class PointerFloating(
                     potentialDragSelectSourceRect = null
                     pendingPotentialDragSelectRect = null
                     highlightRectView.hidePotentialRect()
+                    view.visibility = View.INVISIBLE
                     context.launch {
                         val resolvedSelectionRect = if (!hasStartedDragSelection) {
                             previewSelectionRect ?: resolveScreenContentRect(context, currentSelectionRect, allowRegion = false)
@@ -1033,6 +1091,10 @@ class PointerFloating(
             private fun onStableChange(isStable: Boolean, stablePoint: Point) {
                 // Dispatch UI operations to the main thread
                 context.postOnMain {
+                    if (isStable && onPointerLinkTargeted?.invoke() == true) {
+                        resetHoverLongPressHint()
+                        return@postOnMain
+                    }
                     if (isStable && !isDragMode) {
                         if (dragModeEnabled) {
                             enterDragMode()
@@ -1177,6 +1239,13 @@ class PointerFloating(
                                     withContext(Dispatchers.Main) {
                                         x = currentView.x + currentView.width / 2
                                         y = currentView.y + currentView.height / 2
+                                        onPointerPositionChanged?.invoke(
+                                            if (pointerVisibleRequested && !isPointerDragSelecting) currentPointerSnapshot() else null
+                                        )
+                                        if (onPointerLinkTargeted?.invoke() == true &&
+                                            (pendingHoverLongPress || isHoverLongPressActive)) {
+                                            resetHoverLongPressHint()
+                                        }
                                     }
                                     if (x >= 0 && y >= 0) {
                                         synchronized(historyPoints) {

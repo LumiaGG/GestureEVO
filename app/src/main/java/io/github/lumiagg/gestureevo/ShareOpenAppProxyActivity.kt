@@ -90,36 +90,23 @@ class ShareOpenAppProxyActivity : AppCompatActivity() {
 
     private fun openIntent(sourceIntent: Intent): Boolean {
         val pkg = sourceIntent.getStringExtra(Intent.EXTRA_TEXT)
-        if (!pkg.isNullOrEmpty()) {
-            val targetIntent = sourceIntent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-            if (targetIntent != null) {
-                val launchIntent = Intent(targetIntent)
-                try {
-                    startActivity(launchIntent)
-                    finishWithResult(success = true)
-                    return true
-                } catch (_: ActivityNotFoundException) {
-                    ToastHelper.showInUIThread(this, getString(R.string.share_open_app_failed))
-                } catch (_: SecurityException) {
-                }
-            } else {
-                // Attempt to resolve launch Intent for the target package
-                val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
-                if (launchIntent != null) {
-                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    try {
-                        startActivity(launchIntent)
-                        finishWithResult(success = true)
-                        return true
-                    } catch (_: ActivityNotFoundException) {
-                        ToastHelper.showInUIThread(this, getString(R.string.share_open_app_failed))
-                    } catch (_: SecurityException) {
-                    }
-                } else {
-                    // Target application is not installed or has no launcher activity
-                    ToastHelper.showInUIThread(this, getString(R.string.share_open_app_failed))
-                }
+        val targetIntent = sourceIntent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+        // A generic ACTION_VIEW Intent can use the system handler without a package.
+        // Only package-only requests need a launcher Intent.
+        val launchIntent = targetIntent?.let(::Intent) ?: pkg?.takeIf { it.isNotBlank() }?.let {
+            packageManager.getLaunchIntentForPackage(it)?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+        }
+        if (launchIntent != null) {
+            try {
+                startActivity(launchIntent)
+                finishWithResult(success = true)
+                return true
+            } catch (_: ActivityNotFoundException) {
+                ToastHelper.showInUIThread(this, getString(R.string.share_open_app_failed))
+            } catch (_: SecurityException) {
             }
+        } else if (!pkg.isNullOrBlank()) {
+            ToastHelper.showInUIThread(this, getString(R.string.share_open_app_failed))
         }
 
         finishWithResult(success = false)

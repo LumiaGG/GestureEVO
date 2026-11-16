@@ -1,7 +1,5 @@
 package io.github.lumiagg.gestureevo.inspire
 
-import android.content.Intent
-import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.gesture.EventBusManager.produceInspireEvent
 import io.github.lumiagg.gestureevo.gesture.InspireEvent
 import io.github.lumiagg.gestureevo.inspire.ui.BigBangActionWrapper
@@ -38,9 +36,11 @@ internal class InspireActionDispatcher(
         onBigBangCopy = ::copySelectedText,
         onBigBangShare = ::shareSelectedText,
         onBigBangURL = ::openSelectedUrl,
+        onBigBangURLLongClick = ::openSelectedUrlDirect,
         onBigBangPin = ::pinSelectedText,
         onBigBangTranslation = ::translateSelectedText,
         onParticipleURLClick = ::openCurrentContentUrl,
+        onParticipleURLLongClick = ::openCurrentContentUrlDirect,
         onParticipleReselectClick = ::reselectScreenContent,
         onParticipleSaveImageClick = ::saveImage,
         onParticipleOpenImageClick = ::openImage,
@@ -87,6 +87,20 @@ internal class InspireActionDispatcher(
         }
     }
 
+    /** Long press: skip the dispatch rules and open with the system default handler. */
+    private fun openSelectedUrlDirect() {
+        scope.launch {
+            if (InspireHelperUtils.extractAndOpenURLDirect(
+                    activity,
+                    contentView.getSelectedTextNotEmpty()
+                )
+            ) {
+                InspireDataHolder.clear()
+                activity.finish()
+            }
+        }
+    }
+
     private fun pinSelectedText() {
         val content = contentView.getSelectedTextNotEmpty()
         contentView.clearSelectedText()
@@ -104,6 +118,17 @@ internal class InspireActionDispatcher(
         scope.launch {
             val query = contentView.getCurrentContent()?.joinToString("").orEmpty()
             if (InspireHelperUtils.extractAndOpenURL(activity, query)) {
+                InspireDataHolder.clear()
+                activity.finish()
+            }
+        }
+    }
+
+    /** Long press: skip the dispatch rules and open with the system default handler. */
+    private fun openCurrentContentUrlDirect() {
+        scope.launch {
+            val query = contentView.getCurrentContent()?.joinToString("").orEmpty()
+            if (InspireHelperUtils.extractAndOpenURLDirect(activity, query)) {
                 InspireDataHolder.clear()
                 activity.finish()
             }

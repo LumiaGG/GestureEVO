@@ -70,6 +70,12 @@
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/globalPressSwitch" android:checked="false" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                     <TextView android:id="@+id/global_press_status_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginHorizontal="14dp" android:layout_marginTop="6dp" android:text="@string/global_press_status_stopped" android:textAppearance="?attr/textAppearanceBodySmall" android:textColor="?attr/colorOnSurfaceVariant" android:maxLines="1" android:ellipsize="end" android:accessibilityLiveRegion="polite" />
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/globalPressEarlyTextRow" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsRowTitle="@string/global_press_early_text" app:settingsRowSummary="@string/global_press_early_text_description">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/globalPressEarlyTextSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/globalPressImmediateRow" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsRowTitle="@string/global_press_immediate" app:settingsRowSummary="@string/global_press_immediate_description">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/globalPressImmediateSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/global_press_timeout_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/global_press_timeout">
                         <TextView android:id="@+id/selected_global_press_timeout_text" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
@@ -97,7 +103,6 @@
                         <TextView android:id="@+id/selected_default_share_image_app_text" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/inspire_settings_current_not_selected" />
                         <com.google.android.material.button.MaterialButton android:id="@+id/clear_default_share_image_app_button" style="@style/Widget.Material3.Button.IconButton" android:layout_width="40dp" android:layout_height="40dp" android:contentDescription="@string/inspire_settings_clear" android:visibility="gone" app:icon="@drawable/baseline_clear_24" app:iconGravity="textStart" app:iconPadding="0dp" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
-                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/link_open_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_default_link_open_title" app:settingsRowSummary="@string/inspire_settings_default_link_open_desc" />
                 </LinearLayout>
             </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
             <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/PointerCard" android:layout_width="match_parent" android:layout_marginTop="@dimen/settings_card_spacing" app:settingsCardTitle="@string/inspire_settings_pointer_settings_title" app:settingsCardSummary="@string/inspire_settings_pointer_settings_description" app:settingsCardExpanded="false" android:layout_height="wrap_content">

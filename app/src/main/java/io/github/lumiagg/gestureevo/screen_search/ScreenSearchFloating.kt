@@ -8,7 +8,6 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
-import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.EditorInfo
 import androidx.core.content.withStyledAttributes
 import io.github.lumiagg.gestureevo.R
@@ -16,8 +15,9 @@ import io.github.lumiagg.gestureevo.databinding.ScreenSearchFloatingViewBinding
 import io.github.lumiagg.gestureevo.databinding.ScreenSearchIndicatorViewBinding
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
 import io.github.lumiagg.gestureevo.gesture.GestureService
-import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
 import io.github.lumiagg.gestureevo.inspire.cropByRect
+import io.github.lumiagg.gestureevo.inspire.preferredScreenTextIndices
+import io.github.lumiagg.gestureevo.inspire.withAccessibilityNodes
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.MlKitOcr
 import io.github.lumiagg.gestureevo.utils.ToastHelper
@@ -277,9 +277,7 @@ class ScreenSearchFloating(private val context: GestureService) :
     private suspend fun captureAndMatchAccessibility(
         keyword: String,
         reducedScope: Boolean
-    ): CaptureResult = withContext(Dispatchers.Main) {
-        val root = context.rootInActiveWindow
-            ?: return@withContext CaptureResult(matches = emptyList(), failed = true)
+    ): CaptureResult {
         val metrics = context.resources.displayMetrics
         val cropRect = if (reducedScope) {
             buildRevealCropRect(metrics.widthPixels, metrics.heightPixels, scrollDirection)
@@ -287,41 +285,15 @@ class ScreenSearchFloating(private val context: GestureService) :
             Rect(0, 0, metrics.widthPixels, metrics.heightPixels)
         }
 
-        val matches = mutableListOf<Rect>()
-        val stack = ArrayDeque<AccessibilityNodeInfo>()
-        stack.add(root)
-        try {
-            while (stack.isNotEmpty()) {
-                val node = stack.removeLast()
-                try {
-                    if (node.isVisibleToUser) {
-                        val text = node.text ?: node.contentDescription
-                        val content = text?.toString()?.trim().orEmpty()
-                        if (content.contains(keyword, ignoreCase = true)) {
-                            val rect = Rect()
-                            node.getBoundsInScreen(rect)
-                            if (Rect.intersects(rect, cropRect)) {
-                                matches.add(rect)
-                            }
-                        }
-                    }
-                    val childCount = node.childCount
-                    for (i in 0 until childCount) {
-                        node.getChild(i)?.let { child ->
-                            stack.add(child)
-                        }
-                    }
-                } finally {
-                    if (node !== root) {
-                        node.recycle()
-                    }
-                }
+        return withAccessibilityNodes(context) { nodes ->
+            val matches = preferredScreenTextIndices(nodes).mapNotNull { index ->
+                val node = nodes[index]
+                if (node.text?.contains(keyword, ignoreCase = true) == true && Rect.intersects(node.bounds, cropRect)) {
+                    Rect(node.bounds)
+                } else null
             }
-        } finally {
-            root.recycle()
+            CaptureResult(matches = matches, failed = nodes.isEmpty())
         }
-
-        CaptureResult(matches = matches, failed = false)
     }
 
     private suspend fun captureAndMatch(keyword: String, reducedScope: Boolean): CaptureResult {

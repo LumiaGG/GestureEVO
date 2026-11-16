@@ -23,6 +23,20 @@ object VibratorUtils {
         }
     }
 
+    @SuppressLint("MissingPermission")
+    fun accessibilityFeedback(context: Context) {
+        val service = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        val attributes = android.media.AudioAttributes.Builder()
+            .setUsage(android.media.AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            service.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE), attributes)
+        } else {
+            @Suppress("DEPRECATION")
+            service.vibrate(30, attributes)
+        }
+    }
+
     private fun createDoubleVibration() {
         vibrator?.let { v ->
             when {

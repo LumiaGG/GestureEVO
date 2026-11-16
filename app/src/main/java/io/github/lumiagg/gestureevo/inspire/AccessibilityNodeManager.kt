@@ -2,12 +2,9 @@ package io.github.lumiagg.gestureevo.inspire
 
 import android.graphics.Bitmap
 import android.graphics.Rect
-import android.graphics.RectF
 import android.os.Build
-import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
-import androidx.annotation.RequiresApi
 import android.accessibilityservice.AccessibilityService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -18,6 +15,7 @@ data class ScreenContentNode(val bound: Rect, val content: String?)
 internal class AccessibilityNodeSnapshot(val info: AccessibilityNodeInfo, val parentIndex: Int?) {
     val bounds = Rect()
     var text: String? = null
+    var nativeText: CharSequence? = null
     var fromDescription = false
     var readable = false
 
@@ -33,29 +31,32 @@ internal class AccessibilityNodeSnapshot(val info: AccessibilityNodeInfo, val pa
 internal suspend fun <T> withAccessibilityNodes(
     service: AccessibilityService,
     readText: Boolean = true,
+    nodeLimit: Int = Int.MAX_VALUE,
+    depthLimit: Int = Int.MAX_VALUE,
     block: (List<AccessibilityNodeSnapshot>) -> T,
 ): T = withContext(Dispatchers.Default) {
     val snapshots = mutableListOf<AccessibilityNodeSnapshot>()
-    val pending = ArrayDeque<Pair<AccessibilityNodeInfo, Int?>>()
+    val pending = ArrayDeque<Triple<AccessibilityNodeInfo, Int?, Int>>()
     try {
-        getWindowRoots(service).asReversed().forEach { pending.addLast(it to null) }
-        while (pending.isNotEmpty()) {
+        getWindowRoots(service).asReversed().forEach { pending.addLast(Triple(it, null, 0)) }
+        while (pending.isNotEmpty() && snapshots.size < nodeLimit) {
             ensureActive()
-            val (node, parentIndex) = pending.removeLast()
+            val (node, parentIndex, depth) = pending.removeLast()
             val snapshot = AccessibilityNodeSnapshot(node, parentIndex)
             val index = snapshots.size
             snapshots.add(snapshot)
             node.getBoundsInScreen(snapshot.bounds)
             snapshot.readable = node.isVisibleToUser && !snapshot.bounds.isEmpty
             if (readText && snapshot.readable) {
-                val nativeText = node.text?.toString()
+                snapshot.nativeText = node.text
+                val nativeText = snapshot.nativeText?.toString()
                 snapshot.fromDescription = nativeText.isNullOrEmpty()
                 snapshot.text = node.readAccessibleText(nativeText)
             }
             // Do not prune by container visibility or selection: Flutter virtual
             // containers can have empty bounds while their descendants are visible.
-            for (childIndex in node.childCount - 1 downTo 0) {
-                node.getChild(childIndex)?.let { pending.addLast(it to index) }
+            if (depth < depthLimit) for (childIndex in node.childCount - 1 downTo 0) {
+                node.getChild(childIndex)?.let { pending.addLast(Triple(it, index, depth + 1)) }
             }
         }
         block(snapshots)
@@ -85,7 +86,7 @@ internal fun selectScreenContent(
     return selectedAccessibilityTextIndices(entries, intersecting, fullyContained).mapNotNull { index ->
         val snapshot = snapshots[index]
         val content = ScreenContentNode(snapshot.bounds, snapshot.text)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !snapshot.fromDescription) {
+        if (!snapshot.fromDescription) {
             getCharacterLocations(snapshot.info, content, rect)
         } else content
     }
@@ -106,6 +107,15 @@ internal fun protectedAccessibilityNodes(nodes: List<AccessibilityNodeSnapshot>)
     return excluded
 }
 
+/** The whole-screen counterpart to selectScreenContent, with identical text protection. */
+internal fun preferredScreenTextIndices(
+    nodes: List<AccessibilityNodeSnapshot>, protected: Set<Int> = protectedAccessibilityNodes(nodes),
+): List<Int> {
+    return preferredAccessibilityTextIndices(nodes.mapIndexed { index, node ->
+        AccessibilityTextEntry(node.parentIndex, node.text, node.readable && index !in protected)
+    })
+}
+
 internal fun screenContentText(nodes: List<ScreenContentNode>): String =
     joinAccessibilityTextInReadingOrder(nodes.mapNotNull { node ->
         node.content?.let { AccessibilityTextFragment(it, node.bound.top, node.bound.bottom) }
@@ -124,28 +134,18 @@ private fun getWindowRoots(service: AccessibilityService): List<AccessibilityNod
     } finally { windows.forEach { it.recycle() } }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 private fun getCharacterLocations(
     node: AccessibilityNodeInfo,
     fallback: ScreenContentNode,
     selection: Rect,
 ): ScreenContentNode? {
     val text = fallback.content ?: return fallback
-    val key = AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_KEY
-    if (key !in node.availableExtraData) return fallback
-    val arguments = Bundle().apply {
-        putInt(AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_ARG_START_INDEX, 0)
-        putInt(AccessibilityNodeInfo.EXTRA_DATA_TEXT_CHARACTER_LOCATION_ARG_LENGTH, text.length)
-    }
-    if (!node.refreshWithExtraData(key, arguments)) return fallback
-    // The selected snapshot no longer describes this node if its text has changed.
-    if (node.text?.toString() != text) return null
-    @Suppress("DEPRECATION") // The untyped overload also supports Android 8-12.
-    val locations = node.extras.getParcelableArray(key) ?: return fallback
-    if (locations.any { it != null && it !is RectF }) return fallback
-    val selectionBounds = RectF(selection)
+    val data = readAccessibilityCharacterLocations(node, text)
+    if (data.textChanged) return null
+    val locations = data.bounds ?: return fallback
+    val selectionBounds = android.graphics.RectF(selection)
     val selectedText = selectAccessibilityCharacters(text, locations) {
-        RectF.intersects(selectionBounds, it as RectF)
+        android.graphics.RectF.intersects(selectionBounds, it)
     } ?: return fallback
     return ScreenContentNode(fallback.bound, selectedText)
 }
