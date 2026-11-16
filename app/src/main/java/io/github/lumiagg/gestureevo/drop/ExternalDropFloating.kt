@@ -739,6 +739,7 @@ internal class ExternalDropFloating(
         enginePager.alpha = 1f
         previewAction = null
         previewEngine = null
+        previewPageDirection = 0
         previewIcon.animate().cancel()
         previewIcon.alpha = 0f
         detachViewSafely(previewIcon)
@@ -772,6 +773,8 @@ internal class ExternalDropFloating(
     private fun hidePreview(action: Action? = null) {
         // An exit from the previous target must not clear a newer target's preview.
         if (action != null && previewAction != action) return
+        // Pointer moves outside targets must not keep restarting the fade-out.
+        if (previewAction == null && previewEngine == null && previewPageDirection == 0) return
         previewAction = null
         previewEngine = null
         previewPageDirection = 0
