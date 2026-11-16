@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:layout_marginTop="8dp"
+  android:background="@drawable/bg_link_settings_item"
+  android:padding="12dp"
+  android:orientation="horizontal"
+  android:gravity="center_vertical"
+  android:clickable="true"
+  android:focusable="true">
+  <io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
+    android:id="@+id/appIcon"
+    android:layout_width="40dp"
+    android:layout_height="40dp"
+    android:layout_marginEnd="12dp"
+    android:importantForAccessibility="no" />
+  <LinearLayout
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:orientation="vertical">
+    <com.google.android.material.textview.MaterialTextView
+      android:id="@+id/templateName"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:maxLines="2"
+      android:ellipsize="end"
+      android:textAppearance="?attr/textAppearanceTitleSmall"
+      android:textColor="?attr/colorOnSurface" />
+    <com.google.android.material.textview.MaterialTextView
+      android:id="@+id/templatePattern"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:maxLines="1"
+      android:ellipsize="end"
+      android:textAppearance="?attr/textAppearanceBodySmall"
+      android:textColor="?attr/colorOnSurfaceVariant" />
+    <com.google.android.material.textview.MaterialTextView
+      android:id="@+id/templateStatus"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:textAppearance="?attr/textAppearanceLabelSmall"
+      android:textColor="?attr/colorPrimary" />
+  </LinearLayout>
+  <com.google.android.material.checkbox.MaterialCheckBox
+    android:id="@+id/selectedCheck"
+    android:layout_width="48dp"
+    android:layout_height="48dp"
+    android:clickable="false"
+    android:focusable="false"
+    android:importantForAccessibility="no" />
+</LinearLayout>

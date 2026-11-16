@@ -4,12 +4,15 @@ import io.github.lumiagg.gestureevo.utils.ioResult
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.annotation.SuppressLint
+import android.view.MotionEvent
+import androidx.activity.OnBackPressedCallback
+import androidx.core.view.ViewCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -19,6 +22,7 @@ import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.ActivityLinkRuleSettingsBinding
 import io.github.lumiagg.gestureevo.databinding.ItemLinkRuleBinding
 import io.github.lumiagg.gestureevo.link.LinkConfigTransfer
+import io.github.lumiagg.gestureevo.link.LinkMatchType
 import io.github.lumiagg.gestureevo.link.LinkDispatchRule
 import io.github.lumiagg.gestureevo.link.LinkRuleRepository
 import io.github.lumiagg.gestureevo.link.LinkLauncher
@@ -56,7 +60,10 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLinkRuleSettingsBinding
     private lateinit var adapter: RuleAdapter
-    private var actionMode: androidx.appcompat.view.ActionMode? = null
+    private lateinit var touchHelper: ItemTouchHelper
+    private val selectionBackCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() = finishSelection()
+    }
     private val allRules = mutableListOf<LinkDispatchRule>()
     private var filteredRules = listOf<LinkDispatchRule>()
     private var searchQuery = ""
@@ -68,7 +75,10 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        binding.toolbar.setNavigationOnClickListener { finish() }
+        binding.toolbar.setNavigationOnClickListener {
+            if (adapter.selectionMode) finishSelection() else finish()
+        }
+        onBackPressedDispatcher.addCallback(this, selectionBackCallback)
 
         setupRulesList()
         setupEntries()
@@ -113,10 +123,17 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
             },
             onToggle = { rule, enabled -> persistRule(rule.copy(isEnabled = enabled)) },
             onEnterSelection = { rule -> startSelectionWith(rule) },
-            onToggleSelection = { rule -> adapter.toggleSelection(rule.id) }
+            onToggleSelection = { rule -> adapter.toggleSelection(rule.id) },
+            onStartDrag = { holder ->
+                if (searchQuery.isBlank() && !adapter.selectionMode) touchHelper.startDrag(holder)
+            }
         )
         adapter.onSelectionCountChanged = { count ->
-            actionMode?.title = getString(R.string.link_selection_title, count)
+            binding.selectionToolbar.visibility = if (adapter.selectionMode) View.VISIBLE else View.GONE
+            binding.linkScrollView.setPadding(0, 0, 0, if (adapter.selectionMode) 96f.dp2px.toInt() else 0)
+            binding.selectionCount.text = getString(R.string.link_selection_title, count)
+            binding.deleteSelected.isEnabled = count > 0
+            selectionBackCallback.isEnabled = adapter.selectionMode
         }
         binding.rulesRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.rulesRecyclerView.adapter = adapter
@@ -124,11 +141,15 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
 
         // Dragging is only meaningful on the unfiltered, non-selecting list, otherwise the new
         // order would be ambiguous.
-        val touchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+        touchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
         ) {
-            override fun isLongPressDragEnabled(): Boolean =
-                searchQuery.isBlank() && !adapter.selectionMode
+            override fun isLongPressDragEnabled(): Boolean = false
+
+            override fun getMovementFlags(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int =
+                if (searchQuery.isBlank() && !adapter.selectionMode) {
+                    makeMovementFlags(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0)
+                } else 0
 
             override fun onMove(
                 recyclerView: RecyclerView,
@@ -150,6 +171,9 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
             }
         })
         touchHelper.attachToRecyclerView(binding.rulesRecyclerView)
+        binding.closeSelection.setOnClickListener { finishSelection() }
+        binding.selectAll.setOnClickListener { adapter.selectAll() }
+        binding.deleteSelected.setOnClickListener { confirmBatchDelete(adapter.selectedRules()) }
 
         binding.searchInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -165,48 +189,17 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
         })
     }
 
-    /** Long press enters multi-select; the action mode hosts select-all and batch delete. */
+    /** Keep multi-selection inside the rule section so the screen layout stays stable. */
     private fun startSelectionWith(firstRule: LinkDispatchRule) {
-        // One controlled buzz instead of the system haptic plus the drag-start haptic.
         VibratorUtils.vibrator(this, false)
+        binding.searchInput.clearFocus()
+        androidx.core.view.WindowCompat.getInsetsController(window, binding.root)
+            .hide(androidx.core.view.WindowInsetsCompat.Type.ime())
         adapter.enterSelection(firstRule.id)
-        actionMode = startSupportActionMode(selectionModeCallback)
     }
 
     private fun finishSelection() {
-        actionMode?.finish()
-        actionMode = null
         adapter.clearSelection()
-    }
-
-    private val selectionModeCallback = object : androidx.appcompat.view.ActionMode.Callback {
-        override fun onCreateActionMode(mode: androidx.appcompat.view.ActionMode, menu: android.view.Menu): Boolean {
-            mode.menuInflater.inflate(R.menu.menu_link_rule_selection, menu)
-            return true
-        }
-
-        override fun onPrepareActionMode(mode: androidx.appcompat.view.ActionMode, menu: android.view.Menu): Boolean = false
-
-        override fun onActionItemClicked(mode: androidx.appcompat.view.ActionMode, item: android.view.MenuItem): Boolean {
-            return when (item.itemId) {
-                R.id.action_select_all -> {
-                    adapter.selectAll()
-                    true
-                }
-
-                R.id.action_delete_selected -> {
-                    confirmBatchDelete(adapter.selectedRules())
-                    true
-                }
-
-                else -> false
-            }
-        }
-
-        override fun onDestroyActionMode(mode: androidx.appcompat.view.ActionMode) {
-            adapter.clearSelection()
-            actionMode = null
-        }
     }
 
     private fun confirmBatchDelete(rules: List<LinkDispatchRule>) {
@@ -273,7 +266,15 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
                     rule.targetPackage.contains(query, ignoreCase = true)
             }
         }
-        adapter.submit(filteredRules, appNameCache)
+        adapter.submit(filteredRules, appNameCache, searchQuery.isBlank())
+        binding.rulesSummary.text = if (searchQuery.isBlank()) {
+            getString(R.string.link_rules_summary, allRules.size, allRules.count { it.isEnabled })
+        } else {
+            getString(R.string.link_rules_filtered_summary, filteredRules.size, allRules.size)
+        }
+        binding.rulesEmptyView.setText(
+            if (searchQuery.isBlank()) R.string.link_rule_empty_help else R.string.link_rules_no_results
+        )
         binding.rulesEmptyView.visibility =
             if (filteredRules.isEmpty()) View.VISIBLE else View.GONE
     }
@@ -292,6 +293,11 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
         // Update the row in place: a full reload re-binds every row and cancels the switch
         // animation, which read as lag.
         replaceInLists(rule)
+        if (searchQuery.isBlank()) {
+            binding.rulesSummary.text = getString(
+                R.string.link_rules_summary, allRules.size, allRules.count { it.isEnabled }
+            )
+        }
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 LinkRuleRepository.updateRules(this@LinkRuleSettingsActivity) { current ->
@@ -368,11 +374,13 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
         private val onClick: (LinkDispatchRule) -> Unit,
         private val onToggle: (LinkDispatchRule, Boolean) -> Unit,
         private val onEnterSelection: (LinkDispatchRule) -> Unit,
-        private val onToggleSelection: (LinkDispatchRule) -> Unit
+        private val onToggleSelection: (LinkDispatchRule) -> Unit,
+        private val onStartDrag: (RecyclerView.ViewHolder) -> Unit
     ) : RecyclerView.Adapter<RuleAdapter.Holder>() {
 
         private val items = mutableListOf<LinkDispatchRule>()
         private var names: Map<String, String> = emptyMap()
+        private var canReorder = true
 
         var selectionMode = false
             private set
@@ -385,20 +393,21 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
             selectionMode = true
             selectedIds.clear()
             selectedIds.add(firstId)
-            notifyDataSetChanged()
+            notifyItemRangeChanged(0, itemCount, SelectionChanged)
             onSelectionCountChanged(selectionCount)
         }
 
         fun toggleSelection(id: String) {
             if (selectedIds.contains(id)) selectedIds.remove(id) else selectedIds.add(id)
-            notifyDataSetChanged()
+            val index = items.indexOfFirst { it.id == id }
+            if (index >= 0) notifyItemChanged(index, SelectionChanged)
             onSelectionCountChanged(selectionCount)
         }
 
         fun selectAll() {
             selectedIds.clear()
             selectedIds.addAll(items.map { it.id })
-            notifyDataSetChanged()
+            notifyItemRangeChanged(0, itemCount, SelectionChanged)
             onSelectionCountChanged(selectionCount)
         }
 
@@ -406,17 +415,20 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
             if (!selectionMode && selectedIds.isEmpty()) return
             selectionMode = false
             selectedIds.clear()
-            notifyDataSetChanged()
+            notifyItemRangeChanged(0, itemCount, SelectionChanged)
             onSelectionCountChanged(0)
         }
 
         fun selectedRules(): List<LinkDispatchRule> = items.filter { it.id in selectedIds }
 
-        fun submit(rules: List<LinkDispatchRule>, appNames: Map<String, String>) {
+        fun submit(rules: List<LinkDispatchRule>, appNames: Map<String, String>, canReorder: Boolean) {
+            this.canReorder = canReorder
+            selectedIds.retainAll(rules.map { it.id }.toSet())
             items.clear()
             items.addAll(rules)
             names = appNames.toMap()
             notifyDataSetChanged()
+            onSelectionCountChanged(selectionCount)
         }
 
         fun currentRules(): List<LinkDispatchRule> = items.toList()
@@ -454,8 +466,21 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
                 onClick,
                 onToggle,
                 onEnterSelection,
-                onToggleSelection
+                onToggleSelection,
+                canReorder,
+                onStartDrag
             )
+        }
+
+        private object SelectionChanged
+
+        override fun onBindViewHolder(holder: Holder, position: Int, payloads: MutableList<Any>) {
+            if (payloads.isNotEmpty() && payloads.all { it === SelectionChanged }) {
+                holder.bindSelection(items[position], selectionMode, items[position].id in selectedIds,
+                    canReorder, onClick, onEnterSelection, onToggleSelection)
+            } else {
+                onBindViewHolder(holder, position)
+            }
         }
 
         override fun getItemCount(): Int = items.size
@@ -463,6 +488,7 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
         class Holder(private val rowBinding: ItemLinkRuleBinding) :
             RecyclerView.ViewHolder(rowBinding.root) {
 
+            @SuppressLint("ClickableViewAccessibility")
             fun bind(
                 rule: LinkDispatchRule,
                 appNames: Map<String, String>,
@@ -472,39 +498,41 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
                 onClick: (LinkDispatchRule) -> Unit,
                 onToggle: (LinkDispatchRule, Boolean) -> Unit,
                 onEnterSelection: (LinkDispatchRule) -> Unit,
-                onToggleSelection: (LinkDispatchRule) -> Unit
+                onToggleSelection: (LinkDispatchRule) -> Unit,
+                canReorder: Boolean,
+                onStartDrag: (RecyclerView.ViewHolder) -> Unit
             ) {
                 val context = rowBinding.root.context
                 rowBinding.ruleName.text = rule.name.ifBlank { rule.pattern }
 
-                val appLabel = appNames[rule.targetPackage] ?: rule.targetPackage
+                val appLabel = if (rule.targetPackage.isBlank()) {
+                    context.getString(R.string.link_rule_redispatch_target)
+                } else appNames[rule.targetPackage] ?: rule.targetPackage
+                rowBinding.ruleTarget.text = appLabel
+                rowBinding.rulePattern.text = rule.pattern
                 val hitLabel = if (rule.hitCount > 0) {
                     context.getString(R.string.link_rule_hit_stats, rule.hitCount)
                 } else {
                     context.getString(R.string.link_rule_never_hit)
                 }
-                rowBinding.ruleDetail.text = "$appLabel · $hitLabel"
-                rowBinding.ruleDetail.alpha = if (rule.isEnabled || selectionMode) 1f else 0.5f
-
-                // A custom icon wins over the target app icon so a user can tell two rules for
-                // the same app apart. The cache keeps scroll smooth with many rules.
+                val matchLabel = context.getString(when (rule.matchType) {
+                    LinkMatchType.CONTAINS -> R.string.link_rule_match_contains_short
+                    LinkMatchType.REGEX -> R.string.link_rule_match_regex_short
+                    LinkMatchType.EXACT -> R.string.link_rule_match_exact_short
+                })
+                val status = if (rule.isEnabled) hitLabel else context.getString(R.string.link_rule_disabled)
+                rowBinding.ruleDetail.text = "$matchLabel · $status"
+                rowBinding.ruleIdentity.alpha = if (rule.isEnabled) 1f else 0.65f
+                rowBinding.rulePattern.alpha = if (rule.isEnabled) 1f else 0.65f
                 rowBinding.appIcon.bindAppIcon(iconScope, rule.targetPackage, rule.iconPath.orEmpty())
 
-                // Selection mode swaps the enable switch for the selected highlight.
-                rowBinding.enabledSwitch.visibility =
-                    if (selectionMode) View.GONE else View.VISIBLE
-                rowBinding.root.background = if (selected) {
-                    android.graphics.drawable.GradientDrawable().apply {
-                        setColor(
-                            com.google.android.material.color.MaterialColors.getColor(
-                                rowBinding.root,
-                                com.google.android.material.R.attr.colorSecondaryContainer
-                            )
-                        )
-                        cornerRadius = 12f.dp2px
+                rowBinding.enabledSwitch.contentDescription = context.getString(R.string.link_rule_enable_named, rule.name.ifBlank { rule.pattern })
+                bindSelection(rule, selectionMode, selected, canReorder, onClick, onEnterSelection, onToggleSelection)
+                rowBinding.dragHandle.setOnTouchListener { _, event ->
+                    if (event.actionMasked == MotionEvent.ACTION_DOWN && canReorder && !selectionMode) {
+                        onStartDrag(this)
                     }
-                } else {
-                    ContextCompat.getDrawable(context, R.drawable.bg_settings_tile)
+                    false
                 }
 
                 // Rows opt out of the system long-press haptic: entering selection vibrates
@@ -516,6 +544,27 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
                 rowBinding.enabledSwitch.setOnCheckedChangeListener { _, checked ->
                     onToggle(rule, checked)
                 }
+            }
+
+            fun bindSelection(
+                rule: LinkDispatchRule,
+                selectionMode: Boolean,
+                selected: Boolean,
+                canReorder: Boolean,
+                onClick: (LinkDispatchRule) -> Unit,
+                onEnterSelection: (LinkDispatchRule) -> Unit,
+                onToggleSelection: (LinkDispatchRule) -> Unit
+            ) {
+                val context = rowBinding.root.context
+                // A fixed trailing slot prevents text reflow when switching to multi-selection.
+                rowBinding.enabledSwitch.visibility = if (selectionMode) View.GONE else View.VISIBLE
+                rowBinding.selectionCheck.visibility = if (selectionMode) View.VISIBLE else View.GONE
+                rowBinding.selectionCheck.isChecked = selected
+                rowBinding.root.isActivated = selected
+                ViewCompat.setStateDescription(rowBinding.root, if (selectionMode) {
+                    context.getString(if (selected) R.string.link_rule_selected else R.string.link_rule_not_selected)
+                } else null)
+                rowBinding.dragHandle.visibility = if (selectionMode || !canReorder) View.INVISIBLE else View.VISIBLE
                 if (selectionMode) {
                     rowBinding.root.setOnClickListener { onToggleSelection(rule) }
                     rowBinding.root.setOnLongClickListener(null)
