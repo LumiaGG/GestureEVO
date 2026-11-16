@@ -81,7 +81,9 @@ jobs:
           trap 'rm -f -- "$GESTUREEVO_KEYSTORE_FILE"' EXIT
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$GESTUREEVO_KEYSTORE_FILE"
           chmod 600 "$GESTUREEVO_KEYSTORE_FILE"
-          sh gradlew :app:testDebugUnitTest :app:assembleRelease --no-daemon --no-configuration-cache
+          # Bound compiler memory and compile the two variants sequentially.
+          sh gradlew :app:testDebugUnitTest --no-daemon --no-configuration-cache --max-workers=2 -Pkotlin.daemon.jvmargs=-Xmx4096m
+          sh gradlew :app:assembleRelease --no-daemon --no-configuration-cache --max-workers=2 -Pkotlin.daemon.jvmargs=-Xmx4096m
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk > "$RUNNER_TEMP/signing-certificate.txt"
           python - <<'PY'
