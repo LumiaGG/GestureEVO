@@ -1342,7 +1342,7 @@
     <string name="global_press_status_standard_ready">Shizuku 已连接</string>
     <string name="global_press_status_unavailable">连接失败：检查 Shizuku 服务、授权及触屏权限</string>
     <string name="global_press_title">全局长按拖放</string>
-    <string name="global_press_description">仅对白名单中的应用生效。\n按住文字或可见图片，轻振后移动开始识别，内容就绪后拖向面板投放。\n仅长按不弹出面板；轻振需开启振动。</string>
+    <string name="global_press_description">仅对白名单中的应用生效。\n按住文字或可见图片，轻振后移动开始识别，内容就绪后拖向面板投放。\n可开启“长按超时后直接开始”，无需移动即可识别；轻振需开启振动。</string>
     <string name="global_press_timeout">移动前按住时长</string>
     <string name="global_press_allowed">长按拖放白名单</string>
     <string name="global_press_milliseconds">%1$d 毫秒</string>
@@ -1373,4 +1373,8 @@
     <string name="app_select_save_failed">应用设置保存失败，请重试</string>
     <string name="app_select_load_failed">无法加载应用列表，请重试</string>
     <string name="app_select_bulk_actions">批量操作（当前列表）</string>
+    <string name="global_press_immediate">长按超时后直接开始</string>
+    <string name="global_press_immediate_description">开启后无需移动即开始识别并显示拖放面板；关闭后需移动才开始。</string>
+    <string name="global_press_early_text">提前读取长按文字</string>
+    <string name="global_press_early_text_description">收到应用长按事件时保存其文字，拖放时优先使用，减少弹出菜单的影响。不提前截图；应用未提供文字时仍在触发后识别。</string>
 </resources>

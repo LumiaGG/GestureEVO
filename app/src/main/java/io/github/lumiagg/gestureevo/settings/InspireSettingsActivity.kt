@@ -1,5 +1,6 @@
 package io.github.lumiagg.gestureevo.settings
 
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_EARLY_TEXT
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ENABLED
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_TIMEOUT
 import io.github.lumiagg.gestureevo.drop.DropPreferences.DEFAULT_GLOBAL_PRESS_TIMEOUT_MS
@@ -159,6 +160,8 @@ class InspireSettingsActivity : AppCompatActivity() {
         // Default share behavior
         val defaultShareBehavior = settingsStore.readKey(KEY_DEFAULT_SHARE_BEHAVIOR, "tokenization")
         updateDefaultShareBehaviorText(defaultShareBehavior)
+        binding.globalPressEarlyTextSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_EARLY_TEXT, false)
+        binding.globalPressImmediateSwitch.isChecked = settingsStore.readKey(io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_IMMEDIATE, false)
         binding.globalPressSwitch.isChecked = settingsStore.readKey(KEY_GLOBAL_PRESS_ENABLED, false)
         updateGlobalPressSettingsEnabled()
         binding.selectedGlobalPressTimeoutText.text = getString(
@@ -348,6 +351,12 @@ class InspireSettingsActivity : AppCompatActivity() {
                         .setPositiveButton(android.R.string.ok, null).show()
                 }
             }
+        }
+        binding.globalPressEarlyTextSwitch.setOnCheckedChangeListener { _, enabled ->
+            lifecycleScope.launch { settingsStore.saveKey(KEY_GLOBAL_PRESS_EARLY_TEXT, enabled) }
+        }
+        binding.globalPressImmediateSwitch.setOnCheckedChangeListener { _, enabled ->
+            lifecycleScope.launch { settingsStore.saveKey(io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_IMMEDIATE, enabled) }
         }
         binding.globalPressTimeoutRow.setOnClickListener {
             lifecycleScope.launch {
@@ -683,6 +692,10 @@ class InspireSettingsActivity : AppCompatActivity() {
     private fun updateGlobalPressSettingsEnabled() {
         val enabled = binding.globalPressSwitch.isChecked
         listOf(
+            binding.globalPressEarlyTextRow,
+            binding.globalPressEarlyTextSwitch,
+            binding.globalPressImmediateRow,
+            binding.globalPressImmediateSwitch,
             binding.globalPressTimeoutRow,
             binding.globalPressAllowedRow
         ).forEach { row ->

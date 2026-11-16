@@ -1371,4 +1371,8 @@
     <string name="app_select_save_failed">Could not save app settings. Please try again.</string>
     <string name="app_select_load_failed">Could not load apps. Please try again.</string>
     <string name="app_select_bulk_actions">Bulk actions for this list</string>
+    <string name="global_press_immediate">Start immediately after holding</string>
+    <string name="global_press_immediate_description">Start capture and show the drop panel after the hold timeout. When off, move to start.</string>
+    <string name="global_press_early_text">Read long-press text early</string>
+    <string name="global_press_early_text_description">Save text from app long-click events for dragging to reduce menu interference. No early screenshots; capture on trigger if no text is provided.</string>
 </resources>
