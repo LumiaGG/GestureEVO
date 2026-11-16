@@ -24,7 +24,7 @@ Windows 使用 `gradlew.bat :app:assembleDebug`。所需 Android SDK 组件为 S
 
 ## 参与与许可
 
-欢迎提交 Issue 或 Pull Request，详见[贡献指南](CONTRIBUTING.md)。安全问题请参阅[安全说明](SECURITY.md)。
+欢迎提交 Issue 或 Pull Request，请先阅读[贡献指南](CONTRIBUTING.md)和[开发规范](docs/development-guidelines.md)。安全问题请参阅[安全说明](SECURITY.md)。
 
 主项目采用 [GPL-3.0-only](LICENSE)，第三方组件保留各自许可，见 [NOTICE](NOTICE)。
 
