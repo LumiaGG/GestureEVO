@@ -7,8 +7,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.squareup.moshi.JsonClass
 import io.github.lumiagg.gestureevo.utils.MoshiUtils
 import io.github.lumiagg.gestureevo.utils.readKey
-import io.github.lumiagg.gestureevo.utils.saveKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
+import kotlinx.coroutines.flow.first
 
 /**
  * Persists the link routing table in the shared settings DataStore.
@@ -32,9 +32,41 @@ object LinkRuleRepository {
             .sortedBy { it.priority }
     }
 
-    suspend fun saveRules(context: Context, rules: List<LinkDispatchRule>) {
+    suspend fun updateRules(context: Context, update: (List<LinkDispatchRule>) -> List<LinkDispatchRule>) {
         migrateLegacyDomains(context)
-        context.settingsStore.saveKey(KEY_RULES, MoshiUtils.toJson(rules))
+        context.settingsStore.updateLinkList<LinkDispatchRule>(KEY_RULES) { update(it.sortedBy(LinkDispatchRule::priority)) }
+    }
+
+    suspend fun updateExtractPatterns(context: Context, update: (List<LinkExtractPattern>) -> List<LinkExtractPattern>) {
+        seedBuiltinExtractsIfNeeded(context)
+        context.settingsStore.updateLinkList(KEY_EXTRACTS, update)
+    }
+
+    suspend fun updateExemptDomains(context: Context, update: (List<LinkExemptDomain>) -> List<LinkExemptDomain>) {
+        context.settingsStore.updateLinkList(KEY_EXEMPTS, update)
+    }
+
+    suspend fun snapshot(context: Context): LinkConfigBackup {
+        migrateLegacyDomains(context)
+        seedBuiltinExtractsIfNeeded(context)
+        val prefs = context.settingsStore.data.first()
+        return LinkConfigBackup(rules = prefs.readLinkList(KEY_RULES),
+            exempts = prefs.readLinkList(KEY_EXEMPTS), extracts = prefs.readLinkList(KEY_EXTRACTS))
+    }
+
+    suspend fun importConfig(context: Context, incoming: LinkConfigBackup): LinkImportResult {
+        migrateLegacyDomains(context)
+        seedBuiltinExtractsIfNeeded(context)
+        var result = LinkImportResult(0, 0, 0)
+        context.settingsStore.edit { prefs ->
+            val (merged, added) = LinkConfigCodec.merge(prefs.readLinkList(KEY_RULES),
+                prefs.readLinkList(KEY_EXEMPTS), prefs.readLinkList(KEY_EXTRACTS), incoming)
+            prefs[stringPreferencesKey(KEY_RULES)] = MoshiUtils.toJson(merged.rules)
+            prefs[stringPreferencesKey(KEY_EXEMPTS)] = MoshiUtils.toJson(merged.exempts)
+            prefs[stringPreferencesKey(KEY_EXTRACTS)] = MoshiUtils.toJson(merged.extracts)
+            result = added
+        }
+        return result
     }
 
     private suspend fun migrateLegacyDomains(context: Context) {
@@ -74,18 +106,10 @@ object LinkRuleRepository {
             ?: LinkExtractPattern.builtinDefaults()
     }
 
-    suspend fun saveExtractPatterns(context: Context, patterns: List<LinkExtractPattern>) {
-        context.settingsStore.saveKey(KEY_EXTRACTS, MoshiUtils.toJson(patterns))
-    }
-
     suspend fun loadExemptDomains(context: Context): List<LinkExemptDomain> {
         val json = context.settingsStore.readKey(KEY_EXEMPTS, "")
         if (json.isEmpty()) return emptyList()
         return MoshiUtils.toModel<List<LinkExemptDomain>>(json).orEmpty()
-    }
-
-    suspend fun saveExemptDomains(context: Context, domains: List<LinkExemptDomain>) {
-        context.settingsStore.saveKey(KEY_EXEMPTS, MoshiUtils.toJson(domains))
     }
 
     /**
@@ -94,14 +118,13 @@ object LinkRuleRepository {
      */
     private suspend fun seedBuiltinExtractsIfNeeded(context: Context) {
         if (context.settingsStore.readKey(KEY_SEEDED, false)) return
-        val existing = context.settingsStore.readKey(KEY_EXTRACTS, "")
-        if (existing.isEmpty()) {
-            context.settingsStore.saveKey(
-                KEY_EXTRACTS,
-                MoshiUtils.toJson(LinkExtractPattern.builtinDefaults())
-            )
+        context.settingsStore.edit { prefs ->
+            val seeded = booleanPreferencesKey(KEY_SEEDED)
+            if (prefs[seeded] == true) return@edit
+            val extracts = stringPreferencesKey(KEY_EXTRACTS)
+            if (prefs[extracts].isNullOrEmpty()) prefs[extracts] = MoshiUtils.toJson(LinkExtractPattern.builtinDefaults())
+            prefs[seeded] = true
         }
-        context.settingsStore.saveKey(KEY_SEEDED, true)
     }
 }
 

@@ -10,7 +10,7 @@
     android:paddingVertical="12dp"
     tools:ignore="Overdraw">
 
-    <com.google.android.material.imageview.ShapeableImageView
+    <io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
         android:id="@+id/appIcon"
         android:layout_width="40dp"
         android:layout_height="40dp"

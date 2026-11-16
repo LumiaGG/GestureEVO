@@ -17,10 +17,10 @@
         android:paddingHorizontal="12dp"
         android:paddingVertical="6dp">
 
-        <ImageView
+        <io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
             android:id="@+id/targetIcon"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:contentDescription="@string/link_radar_selection_target_icon" />
 
         <LinearLayout

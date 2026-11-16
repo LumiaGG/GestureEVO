@@ -1,11 +1,32 @@
 package io.github.lumiagg.gestureevo.link
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Import must be additive and idempotent: the same backup applied twice adds nothing. */
 class LinkConfigCodecTest {
+
+    @Test fun skippedBuiltinCannotHideAnImportableCustomPattern() {
+        val existing = listOf(LinkExtractPattern(id = "builtin", pattern = "edited", isBuiltin = true))
+        val incoming = LinkConfigBackup(extracts = listOf(
+            LinkExtractPattern(id = "builtin", pattern = "new", isBuiltin = true),
+            LinkExtractPattern(id = "custom", pattern = "new"),
+        ))
+        val (merged, result) = LinkConfigCodec.merge(emptyList(), emptyList(), existing, incoming)
+        assertEquals(1, result.extractsAdded)
+        assertEquals(listOf("edited", "new"), merged.extracts.map { it.pattern })
+    }
+
+    @Test fun importingRulesAppendsWithoutChangingExistingPriority() {
+        val existing = LinkDispatchRule(pattern = "existing", priority = 20)
+        val incoming = LinkConfigBackup(rules = listOf(LinkDispatchRule(pattern = "new", priority = -100)))
+        val merged = LinkConfigCodec.merge(listOf(existing), emptyList(), emptyList(), incoming).first
+        assertEquals(listOf(20, 21), merged.rules.map { it.priority })
+    }
+
+    @Test fun unsupportedBackupVersionIsRejected() {
+        assertEquals(null, LinkConfigCodec.decode("{\"version\":999,\"rules\":[]}"))
+    }
 
     private fun rule(pattern: String, pkg: String = "com.example") =
         LinkDispatchRule(pattern = pattern, targetPackage = pkg)

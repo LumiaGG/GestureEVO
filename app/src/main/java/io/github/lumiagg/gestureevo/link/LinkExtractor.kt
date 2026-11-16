@@ -23,15 +23,7 @@ object LinkExtractor {
     fun extract(text: String, patterns: List<LinkExtractPattern>): String? {
         if (text.isBlank()) return null
 
-        val fromPatterns = patterns
-            .asSequence()
-            .filter { it.isEnabled && it.pattern.isNotBlank() }
-            .mapNotNull { pattern ->
-                val regex = compile(pattern.pattern) ?: return@mapNotNull null
-                regex.find(text)?.value?.trim()
-            }
-            .filter { it.isNotEmpty() }
-            .maxByOrNull { it.length }
+        val fromPatterns = configuredMatches(text, patterns).maxByOrNull { it.url.length }?.url
 
         if (fromPatterns != null) return fromPatterns
 
@@ -45,8 +37,49 @@ object LinkExtractor {
         return extract(text, patterns)
     }
 
+    /** All non-overlapping ranges, using the same configured patterns and URL detector. */
+    internal fun findAll(text: String, patterns: List<LinkExtractPattern>): List<LinkTextMatch> {
+        val selected = selectLinkTextMatches(emptyList(), configuredMatches(text, patterns).toList())
+        var offset = 0
+        val detected = UrlDetector.findUrls(text).mapNotNull { url ->
+            val start = text.indexOf(url, offset)
+            if (start < 0) null else {
+                offset = start + url.length
+                LinkTextMatch(url, start, offset)
+            }
+        }
+        return selectLinkTextMatches(selected, detected)
+    }
+
+    private fun configuredMatches(text: String, patterns: List<LinkExtractPattern>): Sequence<LinkTextMatch> =
+        patterns.asSequence().filter { it.isEnabled && it.pattern.isNotBlank() }.flatMap { pattern ->
+            compile(pattern.pattern)?.findAll(text)?.mapNotNull { match ->
+                val value = match.value.trim()
+                value.takeIf { it.isNotEmpty() }?.let {
+                    val start = match.range.first + match.value.indexOf(value)
+                    LinkTextMatch(value, start, start + value.length)
+                }
+            } ?: emptySequence()
+        }
+
     private fun compile(pattern: String): Regex? =
         cachedRegex.getOrPut(pattern) {
             runCatching { Regex(pattern) }.getOrDefault(INVALID_PATTERN)
         }.takeIf { it !== INVALID_PATTERN }
+}
+
+internal data class LinkTextMatch(val url: String, val start: Int, val end: Int)
+
+/** URL spans/custom rules take precedence; longer overlapping regex matches win. */
+internal fun selectLinkTextMatches(
+    preferred: List<LinkTextMatch>, candidates: List<LinkTextMatch>,
+): List<LinkTextMatch> {
+    val selected = preferred.filter { it.start >= 0 && it.end > it.start && it.url.isNotBlank() }.toMutableList()
+    candidates.sortedByDescending { it.end - it.start }.forEach { candidate ->
+        if (candidate.start >= 0 && candidate.end > candidate.start && candidate.url.isNotBlank() &&
+            selected.none { candidate.start < it.end && candidate.end > it.start }) {
+            selected += candidate
+        }
+    }
+    return selected.sortedBy { it.start }
 }

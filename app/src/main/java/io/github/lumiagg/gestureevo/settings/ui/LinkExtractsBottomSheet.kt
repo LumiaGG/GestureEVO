@@ -6,7 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.Toast
+import io.github.lumiagg.gestureevo.utils.ToastHelper
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.drake.brv.utils.models
@@ -83,7 +83,7 @@ class LinkExtractsBottomSheet(
                     alpha = if (pattern.isBuiltin) 0.4f else 1f
                     setOnClickListener {
                         if (pattern.isBuiltin) {
-                            toast(R.string.link_extract_builtin_locked)
+                            ToastHelper.showInUIThread(activity, R.string.link_extract_builtin_locked)
                         } else {
                             confirmDelete(pattern)
                         }
@@ -133,9 +133,9 @@ class LinkExtractsBottomSheet(
                 val name = nameInput.text?.toString()?.trim().orEmpty()
                 val pattern = patternInput.text?.toString()?.trim().orEmpty()
                 when {
-                    pattern.isEmpty() -> toast(R.string.link_rule_pattern_required)
+                    pattern.isEmpty() -> ToastHelper.showInUIThread(activity, R.string.link_rule_pattern_required)
                     runCatching { Regex(pattern) }.isFailure ->
-                        toast(R.string.link_extract_invalid)
+                        ToastHelper.showInUIThread(activity, R.string.link_extract_invalid)
 
                     else -> {
                         val updated = (original ?: LinkExtractPattern()).copy(
@@ -153,10 +153,12 @@ class LinkExtractsBottomSheet(
     private fun persist(pattern: LinkExtractPattern) {
         coroutineScope.launch {
             withContext(Dispatchers.IO) {
-                val current = LinkRuleRepository.loadExtractPatterns(activity).toMutableList()
-                val index = current.indexOfFirst { it.id == pattern.id }
-                if (index >= 0) current[index] = pattern else current.add(pattern)
-                LinkRuleRepository.saveExtractPatterns(activity, current)
+                LinkRuleRepository.updateExtractPatterns(activity) { stored ->
+                    val current = stored.toMutableList()
+                    val index = current.indexOfFirst { it.id == pattern.id }
+                    if (index >= 0) current[index] = pattern else current.add(pattern)
+                    current
+                }
             }
             reload()
         }
@@ -169,9 +171,7 @@ class LinkExtractsBottomSheet(
             .setPositiveButton(R.string.link_open_action_delete) { _, _ ->
                 coroutineScope.launch {
                     withContext(Dispatchers.IO) {
-                        val current = LinkRuleRepository.loadExtractPatterns(activity)
-                            .filterNot { it.id == pattern.id }
-                        LinkRuleRepository.saveExtractPatterns(activity, current)
+                        LinkRuleRepository.updateExtractPatterns(activity) { it.filterNot { current -> current.id == pattern.id } }
                     }
                     reload()
                 }
@@ -180,7 +180,4 @@ class LinkExtractsBottomSheet(
             .show()
     }
 
-    private fun toast(resId: Int) {
-        Toast.makeText(activity, resId, Toast.LENGTH_SHORT).show()
-    }
 }

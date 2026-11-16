@@ -141,13 +141,6 @@
                         app:settingsRowSummary="@string/link_settings_extracts_summary"
                         app:settingsRowTitle="@string/link_extract_title" />
 
-                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
-                        android:id="@+id/historyRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        app:settingsRowSummary="@string/link_settings_history_summary"
-                        app:settingsRowTitle="@string/link_history_title" />
                 </LinearLayout>
             </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
 

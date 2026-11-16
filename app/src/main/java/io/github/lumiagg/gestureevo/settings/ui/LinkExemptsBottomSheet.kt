@@ -1,11 +1,12 @@
 package io.github.lumiagg.gestureevo.settings.ui
 
+import io.github.lumiagg.gestureevo.utils.ioResult
 import android.app.Activity
 import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.EditText
-import android.widget.Toast
+import io.github.lumiagg.gestureevo.utils.ToastHelper
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.drake.brv.utils.models
@@ -105,7 +106,7 @@ class LinkExemptsBottomSheet(
             items.map { it.sourcePackage }.filter { it.isNotEmpty() }.distinct().forEach { pkg ->
                 if (appNameCache.containsKey(pkg)) return@forEach
                 val name = withContext(Dispatchers.IO) {
-                    runCatching { appDisplayNameFromDatabase(activity, pkg) }.getOrNull()
+                    ioResult { appDisplayNameFromDatabase(activity, pkg) }.getOrNull()
                 }.orEmpty()
                 if (name.isNotEmpty()) appNameCache[pkg] = name
             }
@@ -126,9 +127,9 @@ class LinkExemptsBottomSheet(
                 val raw = input.text?.toString()?.trim().orEmpty()
                 val domain = normalizeDomain(raw)
                 when {
-                    domain == null -> toast(R.string.link_rule_exempt_invalid)
+                    domain == null -> ToastHelper.showInUIThread(activity, R.string.link_rule_exempt_invalid)
                     exempts.any { it.domain == domain && it.sourcePackage.isEmpty() } ->
-                        toast(R.string.link_rule_exempt_duplicate)
+                        ToastHelper.showInUIThread(activity, R.string.link_rule_exempt_duplicate)
 
                     else -> addExempt(
                         LinkExemptDomain(domain = domain, sourcePackage = "")
@@ -158,9 +159,7 @@ class LinkExemptsBottomSheet(
     private fun addExempt(exempt: LinkExemptDomain) {
         coroutineScope.launch {
             withContext(Dispatchers.IO) {
-                val current = LinkRuleRepository.loadExemptDomains(activity).toMutableList()
-                current.add(exempt)
-                LinkRuleRepository.saveExemptDomains(activity, current)
+                LinkRuleRepository.updateExemptDomains(activity) { it + exempt }
             }
             reload()
         }
@@ -169,11 +168,8 @@ class LinkExemptsBottomSheet(
     private fun updateExempt(exempt: LinkExemptDomain) {
         coroutineScope.launch {
             withContext(Dispatchers.IO) {
-                val current = LinkRuleRepository.loadExemptDomains(activity).toMutableList()
-                val index = current.indexOfFirst { it.id == exempt.id }
-                if (index >= 0) {
-                    current[index] = exempt
-                    LinkRuleRepository.saveExemptDomains(activity, current)
+                LinkRuleRepository.updateExemptDomains(activity) { current ->
+                    current.map { if (it.id == exempt.id) exempt else it }
                 }
             }
             reload()
@@ -187,9 +183,7 @@ class LinkExemptsBottomSheet(
             .setPositiveButton(R.string.link_open_action_delete) { _, _ ->
                 coroutineScope.launch {
                     withContext(Dispatchers.IO) {
-                        val current = LinkRuleRepository.loadExemptDomains(activity)
-                            .filterNot { it.id == exempt.id }
-                        LinkRuleRepository.saveExemptDomains(activity, current)
+                        LinkRuleRepository.updateExemptDomains(activity) { it.filterNot { current -> current.id == exempt.id } }
                     }
                     reload()
                 }
@@ -198,7 +192,4 @@ class LinkExemptsBottomSheet(
             .show()
     }
 
-    private fun toast(resId: Int) {
-        Toast.makeText(activity, resId, Toast.LENGTH_SHORT).show()
-    }
 }

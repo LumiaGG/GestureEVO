@@ -94,6 +94,9 @@ class GestureManager(
                     pointerFloating.currentPointerSnapshot()
                 } else null
             },
+            triggerSideProvider = {
+                if (pointerFloatingLazy.isInitialized()) pointerFloating.triggerSide else null
+            },
         )
     }
     private val linkRadarFloating: LinkRadarOverlay
@@ -253,9 +256,15 @@ class GestureManager(
                     pointerFloating.onPointerHidden = {
                         if (linkRadarFloatingLazy.isInitialized()) linkRadarFloating.stopSession()
                     }
-                    pointerFloating.onPointerTapInterceptor = { x, y ->
+                    pointerFloating.onPointerPositionChanged = { snapshot ->
+                        if (linkRadarFloatingLazy.isInitialized()) linkRadarFloating.onPointerPositionChanged(snapshot)
+                    }
+                    pointerFloating.onPointerLinkTargeted = {
+                        linkRadarFloatingLazy.isInitialized() && linkRadarFloating.hasTarget()
+                    }
+                    pointerFloating.onPointerTapInterceptor = {
                         linkRadarFloatingLazy.isInitialized() &&
-                            linkRadarFloating.onPointerTapRequested(x, y)
+                            linkRadarFloating.onPointerTapRequested()
                     }
                     pointerFloating.enable = it.enable
                     pointerFloating.needShowTouchView = it.needShowTouchView
@@ -263,13 +272,13 @@ class GestureManager(
                         pointerFloating.triggerSide = it.side
                     }
                 }
-                // 链接雷达跟随指针会话：只在指针开启时扫描，设置开关在取词设置页。
+                // 链接雷达跟随指针会话，开关位于链接分发设置。
                 if (it.enable) {
                     val radarEnabled = context.settingsStore.readKey(
                         LinkRuleSettingsActivity.KEY_LINK_RADAR_ENABLED,
                         LinkRuleSettingsActivity.DEFAULT_LINK_RADAR_ENABLED
                     )
-                    if (radarEnabled) {
+                    if (radarEnabled && pointerFloating.enable) {
                         linkRadarFloating.startSession()
                     } else if (linkRadarFloatingLazy.isInitialized()) {
                         linkRadarFloating.stopSession()
@@ -590,13 +599,6 @@ class GestureManager(
             currentPackage = packageName,
             currentActivity = className
         )
-    }
-
-    /** Feeds window/content events to the link radar for throttled rescans. */
-    fun onRadarAccessibilityEvent(event: AccessibilityEvent) {
-        if (linkRadarFloatingLazy.isInitialized()) {
-            linkRadarFloating.onAccessibilityEvent(event)
-        }
     }
 
     fun inactiveAllFloating() = lifecycleScope.launch(Dispatchers.Main) {

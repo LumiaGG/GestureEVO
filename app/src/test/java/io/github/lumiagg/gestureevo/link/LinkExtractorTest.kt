@@ -63,4 +63,37 @@ class LinkExtractorTest {
     fun textWithoutLinkReturnsNull() {
         assertNull(LinkExtractor.extract("没有链接的一段话", LinkExtractPattern.builtinDefaults()))
     }
+
+    @Test fun allLinksKeepCorrectOffsetsAndRepeatedOccurrences() {
+        val text = "https://example.com/a and https://example.com/a"
+        val links = LinkExtractor.findAll(text, LinkExtractPattern.builtinDefaults())
+        assertEquals(2, links.size)
+        links.forEach { assertEquals(it.url, text.substring(it.start, it.end)) }
+        assertEquals(0, links.first().start)
+        assertEquals(text.lastIndexOf("https://"), links.last().start)
+    }
+
+    @Test fun namedUrlSpanTakesPrecedenceOverRegexAtSameRange() {
+        val preferred = listOf(LinkTextMatch("https://example.com/hidden", 0, 10))
+        val matches = selectLinkTextMatches(preferred, listOf(LinkTextMatch("https://other.com", 0, 10)))
+        assertEquals(preferred, matches)
+    }
+
+    @Test fun customSchemesAndBareDomainsCanCoexist() {
+        val text = "magnet:?xt=urn:btih:ABC and example.com/path"
+        val links = LinkExtractor.findAll(text, listOf(pattern("magnet:\\S+")))
+        assertEquals(listOf("magnet:?xt=urn:btih:ABC", "example.com/path"), links.map { it.url })
+    }
+
+    @Test fun zeroWidthAndDisabledMatchesDoNotProduceTargets() {
+        val links = LinkExtractor.findAll("plain text", listOf(pattern("(?=text)"), pattern("plain", enabled = false)))
+        assertEquals(emptyList<LinkTextMatch>(), links)
+    }
+
+    @Test fun longestOverlappingRangeWinsWithoutHidingOtherLinks() {
+        val links = selectLinkTextMatches(emptyList(), listOf(
+            LinkTextMatch("short", 2, 6), LinkTextMatch("full", 0, 10), LinkTextMatch("second", 20, 26)
+        ))
+        assertEquals(listOf("full", "second"), links.map { it.url })
+    }
 }

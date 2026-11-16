@@ -13,7 +13,7 @@ import io.github.lumiagg.gestureevo.utils.MoshiUtils
  * 2. Templates use LinkGo placeholders — `{url}`, `{1}` capture groups and the transform
  *    suffixes `_url_dec` / `_b64_enc` / `_url_dec_b64_dec`.
  * 3. A few rules act as pure resolvers: they have no target app and only follow a short link,
- *    then re-run dispatch. Those are kept with an empty package and skipped during matching.
+ *    then re-run dispatch. Those keep an empty package and never launch an app directly.
  */
 object LinkGoRuleConverter {
 
@@ -39,10 +39,10 @@ object LinkGoRuleConverter {
     fun parse(json: String): List<LinkDispatchRule> {
         val trimmed = json.trim()
         if (trimmed.isEmpty()) return emptyList()
-        val goRules: List<LinkGoRule> = if (trimmed.contains("\"linkgo_rules\"")) {
-            MoshiUtils.toModel<LinkGoExport>(trimmed)?.linkgo_rules.orEmpty()
-        } else {
+        val goRules: List<LinkGoRule> = if (trimmed.startsWith('[')) {
             MoshiUtils.toModel<List<LinkGoRule>>(trimmed).orEmpty()
+        } else {
+            MoshiUtils.toModel<LinkGoExport>(trimmed)?.linkgo_rules.orEmpty()
         }
         return goRules.mapIndexed { index, rule -> convert(rule, index) }
     }

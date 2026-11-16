@@ -48,7 +48,8 @@ object InspireHelperUtils {
      * [LinkLauncher], so this only extracts the text and forwards it.
      */
     suspend fun extractAndOpenURL(context: Context, text: String, side: String? = null): Boolean {
-        return LinkLauncher.openFromText(context, text)
+        return LinkLauncher.openFromText(context, text, sourcePackage = InspireDataHolder.sourcePackage.orEmpty(),
+            side = side ?: InspireDataHolder.triggerSide)
     }
 
     /**
@@ -56,7 +57,7 @@ object InspireHelperUtils {
      * is the long-press escape hatch when a rule misfires.
      */
     suspend fun extractAndOpenURLDirect(context: Context, text: String): Boolean {
-        return LinkLauncher.openFromText(context, text, bypassRules = true)
+        return LinkLauncher.openFromText(context, text, bypassRules = true, side = InspireDataHolder.triggerSide)
     }
 
 

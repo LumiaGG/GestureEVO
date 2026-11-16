@@ -56,7 +56,7 @@ object LinkConfigCodec {
     }
 
     fun decode(json: String): LinkConfigBackup? = runCatching {
-        MoshiUtils.toModel<LinkConfigBackup>(json)
+        MoshiUtils.toModel<LinkConfigBackup>(json)?.takeIf { it.version == LinkConfigBackup.CURRENT_VERSION }
     }.getOrNull()
 
     /**
@@ -76,15 +76,19 @@ object LinkConfigCodec {
         val knownExtractIds = existingExtracts.map { it.id }.toMutableSet()
         val knownExtractPatterns = existingExtracts.map { it.pattern }.toMutableSet()
 
+        val nextPriority = (existingRules.maxOfOrNull { it.priority } ?: -1) + 1
         val newRules = incoming.rules.filter { rule ->
             rule.pattern.isNotBlank() && knownPatterns.add(rule.pattern)
-        }.map { it.copy(id = UUID.randomUUID().toString()) }
+        }.mapIndexed { index, rule -> rule.copy(id = UUID.randomUUID().toString(),
+            priority = nextPriority + index) }
         val newExempts = incoming.exempts.filter { exempt ->
             exempt.domain.isNotBlank() && knownDomains.add(exempt.domain.lowercase() to exempt.sourcePackage)
         }.map { it.copy(id = UUID.randomUUID().toString()) }
         val newExtracts = incoming.extracts.filter { pattern ->
-            pattern.pattern.isNotBlank() && knownExtractPatterns.add(pattern.pattern) &&
-                (!pattern.isBuiltin || knownExtractIds.add(pattern.id))
+            if (pattern.pattern.isBlank() || (pattern.isBuiltin && pattern.id in knownExtractIds)) return@filter false
+            if (!knownExtractPatterns.add(pattern.pattern)) return@filter false
+            if (pattern.isBuiltin) knownExtractIds.add(pattern.id)
+            true
         }.map {
             if (it.isBuiltin) it else it.copy(id = UUID.randomUUID().toString())
         }

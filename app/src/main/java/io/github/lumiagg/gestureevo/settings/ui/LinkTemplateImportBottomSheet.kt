@@ -1,7 +1,7 @@
 package io.github.lumiagg.gestureevo.settings.ui
 
 import android.app.Activity
-import android.widget.Toast
+import io.github.lumiagg.gestureevo.utils.ToastHelper
 import androidx.lifecycle.LifecycleCoroutineScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.lumiagg.gestureevo.R
@@ -15,10 +15,8 @@ import kotlinx.coroutines.withContext
 /**
  * Offers ready-made rules for apps that are actually installed.
  *
- * Two groups are available: the generic templates (browsers, video, shopping) and the LinkGo
- * rule set bundled as an asset, which carries deep-link templates for domestic apps. Templates
- * whose target app is missing are never offered, and ones already present are pre-cleared, so
- * importing can be repeated without creating duplicates or dead rules.
+ * Uses the bundled LinkGo rule set. Missing apps and existing rules are marked and left
+ * unchecked; the user can explicitly select them before importing.
  */
 class LinkTemplateImportBottomSheet(
     private val activity: Activity,
@@ -42,11 +40,6 @@ class LinkTemplateImportBottomSheet(
 
             val offers = withContext(Dispatchers.IO) {
                 LinkGoRuleConverter.loadBuiltin(activity).map { rule ->
-                    val appLabel = runCatching {
-                        io.github.lumiagg.gestureevo.utils.app.appDisplayNameFromDatabase(
-                            activity, rule.targetPackage
-                        )
-                    }.getOrNull().orEmpty()
                     Offer(
                         label = rule.name.ifBlank { rule.pattern },
                         rule = rule,
@@ -57,11 +50,7 @@ class LinkTemplateImportBottomSheet(
             }
 
             if (offers.none { it.installed && !it.alreadyPresent }) {
-                Toast.makeText(
-                    activity,
-                    activity.getString(R.string.link_rule_import_none_installed),
-                    Toast.LENGTH_SHORT
-                ).show()
+                ToastHelper.showInUIThread(activity, R.string.link_rule_import_none_installed)
                 return@launch
             }
 
@@ -99,22 +88,13 @@ class LinkTemplateImportBottomSheet(
         if (rules.isEmpty()) return
         coroutineScope.launch {
             val added = withContext(Dispatchers.IO) {
-                val current = LinkRuleRepository.loadRules(activity).toMutableList()
-                val known = current.map { it.pattern }.toSet()
-                var count = 0
-                rules.forEach { rule ->
-                    if (rule.pattern in known) return@forEach
-                    current.add(rule.copy(priority = current.size))
-                    count++
-                }
-                if (count > 0) LinkRuleRepository.saveRules(activity, current)
-                count
+                LinkRuleRepository.importConfig(activity,
+                    io.github.lumiagg.gestureevo.link.LinkConfigBackup(rules = rules)).rulesAdded
             }
-            Toast.makeText(
+            ToastHelper.showInUIThread(
                 activity,
-                activity.getString(R.string.link_rule_import_done, added),
-                Toast.LENGTH_SHORT
-            ).show()
+                activity.getString(R.string.link_rule_import_done, added)
+            )
             onImported()
         }
     }

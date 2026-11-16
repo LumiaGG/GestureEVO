@@ -1,20 +1,15 @@
 package io.github.lumiagg.gestureevo.link.radar
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
+import io.github.lumiagg.gestureevo.utils.ClipboardUtils
 import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity
 import io.github.lumiagg.gestureevo.utils.GlassEffectUtils
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
+import io.github.lumiagg.gestureevo.utils.icon.setAppIcon
 import io.github.lumiagg.gestureevo.R
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -22,14 +17,14 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.MaterialColors
 import io.github.lumiagg.gestureevo.databinding.ActivityLinkSelectionBinding
 import io.github.lumiagg.gestureevo.databinding.ItemLinkSelectionBinding
-import io.github.lumiagg.gestureevo.link.LinkDispatcher
+import io.github.lumiagg.gestureevo.link.previewLinkTarget
 import io.github.lumiagg.gestureevo.link.LinkLauncher
-import io.github.lumiagg.gestureevo.link.LinkRuleRepository
-import io.github.lumiagg.gestureevo.utils.icon.IconHelper
-import io.github.lumiagg.gestureevo.utils.UrlDetector
+import io.github.lumiagg.gestureevo.gesture.TriggerSide
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
+import io.github.lumiagg.gestureevo.utils.ToastHelper
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /**
@@ -46,13 +41,12 @@ class LinkSelectionActivity : AppCompatActivity() {
     private var urls: List<String> = emptyList()
     private val selected = mutableSetOf<String>()
     private var sourcePackage = ""
+    private var sourcePackages: List<String> = emptyList()
+    private var sourceTexts: List<String> = emptyList()
+    private var triggerSide: String? = null
 
     /** url → (预测目标名, 目标图标) */
     private val predictions = mutableMapOf<String, Pair<String, Drawable?>>()
-
-    /** 与取词面板同源的玻璃模糊设置 */
-    private var backgroundBlurEnabled = false
-    private var cardBackgroundBlurEnabled = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,12 +55,13 @@ class LinkSelectionActivity : AppCompatActivity() {
 
         urls = intent.getStringArrayListExtra(EXTRA_URLS) ?: emptyList()
         sourcePackage = intent.getStringExtra(EXTRA_SOURCE_PACKAGE) ?: ""
+        sourcePackages = intent.getStringArrayListExtra(EXTRA_SOURCE_PACKAGES).orEmpty()
+        sourceTexts = intent.getStringArrayListExtra(EXTRA_SOURCE_TEXTS).orEmpty()
+        triggerSide = intent.getStringExtra(TriggerSide.EXTRA_TRIGGER_SIDE)
         if (urls.isEmpty()) {
             finish()
             return
         }
-
-        applyGlassStyle()
 
         adapter = LinkSelectionAdapter(
             onOpen = { url ->
@@ -79,9 +74,8 @@ class LinkSelectionActivity : AppCompatActivity() {
                 updateSelectAllLabel()
             },
             onCopy = { url ->
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText("URL", url))
-                Toast.makeText(this, getString(R.string.link_radar_selection_copied), Toast.LENGTH_SHORT).show()
+                ClipboardUtils.copyText(this, url)
+                ToastHelper.showInUIThread(this, R.string.link_radar_selection_copied)
             },
         )
         binding.linkList.layoutManager = LinearLayoutManager(this)
@@ -108,10 +102,10 @@ class LinkSelectionActivity : AppCompatActivity() {
     /** 与取词/识别面板同源的玻璃样式：窗口背景模糊 + 卡片材质（跟随外观设置）。 */
     private fun applyGlassStyle() {
         lifecycleScope.launch {
-            backgroundBlurEnabled = settingsStore.readKey(
+            val backgroundBlurEnabled = settingsStore.readKey(
                 AppearanceSettingsActivity.KEY_SCREEN_CONTENT_BACKGROUND_BLUR, false
             )
-            cardBackgroundBlurEnabled = settingsStore.readKey(
+            val cardBackgroundBlurEnabled = settingsStore.readKey(
                 AppearanceSettingsActivity.KEY_SCREEN_CONTENT_CARD_BACKGROUND_BLUR, false
             )
             GlassEffectUtils.applyWindowBlurProgress(
@@ -143,38 +137,19 @@ class LinkSelectionActivity : AppCompatActivity() {
         )
     }
 
-    /** 逐条预测打开目标（LinkGo predictTargetFlow 的同步简化版：本地规则匹配 + 系统默认解析）。 */
+    /** Predict locally without resolving short links until the user chooses to open one. */
     private fun loadPredictions() {
         lifecycleScope.launch {
-            val rules = runCatching { LinkRuleRepository.loadRules(this@LinkSelectionActivity) }
-                .getOrDefault(emptyList())
-            for (url in urls) {
-                val normalized = UrlDetector.normalizeForOpening(url) ?: url
-                val rule = LinkDispatcher.findRule(normalized, rules, sourcePackage)
-                val targetPackage = rule?.targetPackage?.takeIf { it.isNotEmpty() }
-                if (targetPackage != null) {
-                    val label = runCatching {
-                        val pm = packageManager
-                        pm.getApplicationLabel(pm.getApplicationInfo(targetPackage, 0)).toString()
-                    }.getOrDefault(targetPackage)
-                    val icon = runCatching { IconHelper.getIcon(this@LinkSelectionActivity, targetPackage) }.getOrNull()
-                    predictions[url] = label to icon
-                } else {
-                    // 无规则命中：展示系统默认解析目标
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(normalized))
-                    val resolveInfo = runCatching { packageManager.resolveActivity(intent, 0) }.getOrNull()
-                    val pkg = resolveInfo?.activityInfo?.packageName
-                    if (pkg != null && pkg != "android") {
-                        val label = runCatching {
-                            val pm = packageManager
-                            pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
-                        }.getOrDefault(pkg)
-                        val icon = runCatching { packageManager.getApplicationIcon(pkg) }.getOrNull()
-                        predictions[url] = label to icon
-                    } else {
-                        predictions[url] = getString(R.string.link_radar_selection_system_default) to null
-                    }
+            for ((index, url) in urls.withIndex()) {
+                val source = sourcePackages.getOrNull(index) ?: sourcePackage
+                val target = try {
+                    previewLinkTarget(this@LinkSelectionActivity, url, source, sourceTexts.getOrNull(index))
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    null
                 }
+                predictions[url] = (target?.label ?: getString(R.string.link_radar_choose_app)) to target?.icon
             }
             adapter.notifyDataSetChanged()
         }
@@ -192,7 +167,9 @@ class LinkSelectionActivity : AppCompatActivity() {
     private fun openUrls(list: List<String>) {
         lifecycleScope.launch {
             list.forEach { url ->
-                LinkLauncher.openUrl(this@LinkSelectionActivity, url, sourcePackage)
+                val index = urls.indexOf(url)
+                LinkLauncher.openUrl(this@LinkSelectionActivity, url,
+                    sourcePackages.getOrNull(index) ?: sourcePackage, sourceTexts.getOrNull(index), side = triggerSide)
                 delay(100)
             }
             finish()
@@ -220,11 +197,10 @@ class LinkSelectionActivity : AppCompatActivity() {
             holder.binding.urlText.text = url
 
             val icon = prediction?.second
-                ?: runCatching { packageManager.getApplicationIcon(applicationInfo) }.getOrNull()
-            holder.binding.targetIcon.setImageDrawable(icon)
+            holder.binding.targetIcon.setAppIcon(icon, R.drawable.ic_baseline_insert_link_24)
 
             holder.binding.targetLabel.text = prediction?.first
-                ?: getString(R.string.link_radar_selection_system_default)
+                ?: getString(R.string.link_radar_open_link)
 
             holder.binding.radio.isChecked = selected.contains(url)
             holder.binding.itemCard.strokeWidth =
@@ -254,5 +230,7 @@ class LinkSelectionActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_URLS = "URLS"
         const val EXTRA_SOURCE_PACKAGE = "SOURCE_PACKAGE"
+        const val EXTRA_SOURCE_PACKAGES = "SOURCE_PACKAGES"
+        const val EXTRA_SOURCE_TEXTS = "SOURCE_TEXTS"
     }
 }

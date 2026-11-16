@@ -1,9 +1,10 @@
 package io.github.lumiagg.gestureevo.settings.ui
 
+import io.github.lumiagg.gestureevo.utils.ioResult
 import android.app.Activity
 import android.view.LayoutInflater
 import android.widget.ArrayAdapter
-import android.widget.Toast
+import io.github.lumiagg.gestureevo.utils.ToastHelper
 import androidx.lifecycle.LifecycleCoroutineScope
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -138,7 +139,7 @@ class LinkRuleEditBottomSheet(
         binding.targetAppRow.setTitle(pkg)
         coroutineScope.launch {
             val label = withContext(Dispatchers.IO) {
-                runCatching { appDisplayNameFromDatabase(activity, pkg) }.getOrNull()
+                ioResult { appDisplayNameFromDatabase(activity, pkg) }.getOrNull()
             }.orEmpty().ifEmpty { pkg }
             binding.targetAppRow.setTitle(label)
         }
@@ -160,19 +161,19 @@ class LinkRuleEditBottomSheet(
     private fun save() {
         val pattern = binding.patternInput.text?.toString()?.trim().orEmpty()
         if (pattern.isEmpty()) {
-            toast(R.string.link_rule_pattern_required)
+            ToastHelper.showInUIThread(activity, R.string.link_rule_pattern_required)
             return
         }
         if (selectedMatchType == LinkMatchType.REGEX) {
             val compiled = runCatching { Regex(pattern, RegexOption.IGNORE_CASE) }
             if (compiled.isFailure) {
-                toast(R.string.link_rule_pattern_invalid)
+                ToastHelper.showInUIThread(activity, R.string.link_rule_pattern_invalid)
                 return
             }
         }
         if (selectedPackage.isEmpty() &&
             !(binding.resolveShortSwitch.isChecked && selectedStrategy == LinkResolveStrategy.REDISPATCH)) {
-            toast(R.string.link_rule_target_required)
+            ToastHelper.showInUIThread(activity, R.string.link_rule_target_required)
             return
         }
 
@@ -195,15 +196,18 @@ class LinkRuleEditBottomSheet(
 
         coroutineScope.launch {
             withContext(Dispatchers.IO) {
-                val current = LinkRuleRepository.loadRules(activity).toMutableList()
-                val index = current.indexOfFirst { it.id == rule.id }
-                if (index >= 0) {
-                    current[index] = rule
-                } else {
-                    // New rules go to the end so an existing order is never reshuffled.
-                    current.add(rule.copy(priority = current.size))
+                LinkRuleRepository.updateRules(activity) { stored ->
+                    val current = stored.toMutableList()
+                    val index = current.indexOfFirst { it.id == rule.id }
+                    if (index >= 0) {
+                        current[index] = rule.copy(hitCount = current[index].hitCount,
+                            lastHitAt = current[index].lastHitAt, priority = current[index].priority)
+                    } else {
+                        // New rules go to the end so an existing order is never reshuffled.
+                        current.add(rule.copy(priority = (current.maxOfOrNull { it.priority } ?: -1) + 1))
+                    }
+                    current
                 }
-                LinkRuleRepository.saveRules(activity, current)
             }
             dialog.dismiss()
             onSaved()
@@ -218,9 +222,7 @@ class LinkRuleEditBottomSheet(
             .setPositiveButton(R.string.link_rule_delete) { _, _ ->
                 coroutineScope.launch {
                     withContext(Dispatchers.IO) {
-                        val current = LinkRuleRepository.loadRules(activity)
-                            .filterNot { it.id == rule.id }
-                        LinkRuleRepository.saveRules(activity, current)
+                        LinkRuleRepository.updateRules(activity) { it.filterNot { current -> current.id == rule.id } }
                     }
                     dialog.dismiss()
                     onSaved()
@@ -230,7 +232,4 @@ class LinkRuleEditBottomSheet(
             .show()
     }
 
-    private fun toast(resId: Int) {
-        Toast.makeText(activity, resId, Toast.LENGTH_SHORT).show()
-    }
 }

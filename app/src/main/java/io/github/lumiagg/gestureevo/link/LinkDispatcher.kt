@@ -92,7 +92,7 @@ object LinkDispatcher {
             }
             val key = match.groupValues[2]
             val raw = if (key == "url") url else
-                extractGroups.getOrNull(key.toInt() - 1) ?: return@replace ""
+                key.toIntOrNull()?.takeIf { it > 0 }?.let { extractGroups.getOrNull(it - 1) } ?: return@replace ""
             applyTransform(raw, match.groupValues[3].ifEmpty { null })
         }
     }
@@ -133,20 +133,19 @@ object LinkDispatcher {
     fun findRule(
         url: String,
         rules: List<LinkDispatchRule>,
-        sourcePackage: String = ""
     ): LinkDispatchRule? = rules
         .asSequence()
         .filter { it.isEnabled }
         .filter { rule ->
             // Rules without a target are pure short-link resolvers (e.g. t.cn): they only make
             // sense when they re-dispatch, so they participate in matching but never launch.
-            if (rule.targetPackage.isEmpty() && rule.resolveStrategy != LinkResolveStrategy.REDISPATCH) {
+            if (rule.targetPackage.isBlank() &&
+                !(rule.resolveShortLink && rule.resolveStrategy == LinkResolveStrategy.REDISPATCH)) {
                 return@filter false
             }
             matchRule(url, rule)
         }
-        .sortedBy { it.priority }
-        .firstOrNull()
+        .minByOrNull { it.priority }
 
     /**
      * Runs the full routing pipeline: exemption check, rule match, short link resolution and
@@ -159,13 +158,15 @@ object LinkDispatcher {
         context: Context,
         rawUrl: String,
         sourcePackage: String = "",
-        sourceText: String? = null
+        sourceText: String? = null,
+        resolveShortLinks: Boolean = true,
     ): LinkDispatchResult = withContext(Dispatchers.IO) {
         val normalized = UrlDetector.normalizeForOpening(rawUrl) ?: rawUrl
         val rules = LinkRuleRepository.loadRules(context)
         val exempts = LinkRuleRepository.loadExemptDomains(context)
 
-        routeWithRules(normalized, rules, exempts, sourcePackage, sourceText)
+        if (resolveShortLinks) routeWithRules(normalized, rules, exempts, sourcePackage, sourceText)
+        else routeWithRules(normalized, rules, exempts, sourcePackage, sourceText, resolver = { null })
     }
 
     internal suspend fun routeWithRules(
@@ -182,7 +183,7 @@ object LinkDispatcher {
             if (!visited.add(target)) return LinkDispatchResult.Failed
             coroutineContext.ensureActive()
             isExempt(target, sourcePackage, exempts)?.let { return LinkDispatchResult.Exempted(it, target) }
-            val rule = findRule(target, rules, sourcePackage)
+            val rule = findRule(target, rules)
                 ?: return if (target == url) LinkDispatchResult.NoRule else
                     LinkDispatchResult.SystemDefault(target)
             if (rule.resolveShortLink && rule.resolveStrategy != LinkResolveStrategy.NONE) {
@@ -194,10 +195,11 @@ object LinkDispatcher {
                 target = resolved ?: target
             }
             if (rule.targetPackage.isBlank()) return LinkDispatchResult.SystemDefault(target)
-            // Radar calls have no source text; the URL itself must still supply captures.
+            // Use source text when available, otherwise take captures from the URL.
             val groups = rule.extractPattern?.let { pattern ->
-                compile(pattern)?.find(sourceText ?: target)?.groupValues?.drop(1)
-                    ?: compile(pattern)?.find(target)?.groupValues?.drop(1)
+                val regex = compile(pattern)
+                val match = sourceText?.let { regex?.find(it) } ?: regex?.find(target)
+                match?.groupValues?.drop(1)
             }.orEmpty()
             val finalUrl = applyTemplate(target, rule, groups)
             return if (finalUrl.isBlank()) LinkDispatchResult.Failed else
@@ -254,7 +256,7 @@ object LinkDispatcher {
                 else -> null
             }
         } catch (error: Exception) {
-            Log.w(TAG, "Short link probe failed for ${url.take(60)}", error)
+            Log.w(TAG, "Short link probe failed", error)
             null
         } finally {
             connection.disconnect()

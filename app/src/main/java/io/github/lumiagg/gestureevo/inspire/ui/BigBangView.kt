@@ -20,19 +20,19 @@ import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.BigbangFunctionItemBinding
 import io.github.lumiagg.gestureevo.databinding.BigbangSelectBgBinding
-import io.github.lumiagg.gestureevo.link.LinkDispatcher
-import io.github.lumiagg.gestureevo.link.LinkRuleRepository
+import io.github.lumiagg.gestureevo.link.LinkExtractor
+import io.github.lumiagg.gestureevo.link.previewLinkTarget
+import io.github.lumiagg.gestureevo.inspire.InspireDataHolder
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.GlassEffectUtils
 import io.github.lumiagg.gestureevo.utils.UrlDetector
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
-import io.github.lumiagg.gestureevo.utils.icon.IconHelper
+import io.github.lumiagg.gestureevo.utils.icon.setAppIcon
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.math.max
 
 class BigBangView : ViewGroup, NestedScrollingChild {
@@ -580,52 +580,33 @@ class BigBangView : ViewGroup, NestedScrollingChild {
     }
 
     private fun checkURL() {
-        showURLBt(UrlDetector.hasUrl(makeSelectedText().trim { it <= ' ' }))
+        updateUrlButtonIcon(makeSelectedText())
     }
 
-    private fun showURLBt(isShow: Boolean) {
-        functionItemBinding.openUrl.visibility = if (isShow) VISIBLE else GONE
-        if (isShow) {
-            updateUrlButtonIcon(makeSelectedText())
-        }
+    private fun measureFunctionRow() {
         val measureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
         functionItemBinding.root.measure(measureSpec, measureSpec)
-
     }
 
-    /**
-     * 分词工具条的链接图标跟随分发规则：命中规则时显示目标应用图标
-     * （优先使用规则自定义的 iconPath），无规则时回退通用链接图标并着主题色。
-     */
+    /** Same extraction, target preview and app-icon binding as the link radar. */
     private fun updateUrlButtonIcon(text: String) {
-        val url = UrlDetector.findFirstUrl(text) ?: return
         urlIconJob?.cancel()
+        val target = functionItemBinding.openUrl
+        target.visibility = if (UrlDetector.hasUrl(text)) VISIBLE else GONE
+        target.setAppIcon(null, R.drawable.ic_baseline_insert_link_24)
+        measureFunctionRow()
         val scope = findViewTreeLifecycleOwner()?.lifecycleScope ?: return
         urlIconJob = scope.launch {
-            val icon = withContext(Dispatchers.IO) {
-                runCatching {
-                    val rules = LinkRuleRepository.loadRules(context)
-                    val rule = LinkDispatcher.findRule(url, rules, "") ?: return@runCatching null
-                    val pkg = rule.targetPackage.takeIf { it.isNotEmpty() }
-                        ?: return@runCatching null
-                    IconHelper.getIconDrawable(context, pkg, rule.iconPath ?: "")
-                }.getOrNull()
-            }
-            withContext(Dispatchers.Main) {
-                val target = functionItemBinding.openUrl
-                if (icon != null) {
-                    // 规则命中：显示应用原色图标（必须清除 XML 里的视图级 tint，
-                    // 否则整个图标被染成主题色，实心图标会变成纯色方块）
-                    target.imageTintList = null
-                    target.clearColorFilter()
-                    target.setImageDrawable(icon)
-                } else {
-                    // 无规则：通用链接图标 + 主题色（恢复 XML 的 tint 行为）
-                    target.imageTintList = android.content.res.ColorStateList.valueOf(
-                        DynamicColorUtils.primaryColor
-                    )
-                    target.setImageResource(R.drawable.ic_baseline_insert_link_24)
-                }
+            try {
+                val url = LinkExtractor.extractWithStoredPatterns(context, text)
+                target.visibility = if (url == null) GONE else VISIBLE
+                val preview = url?.let { previewLinkTarget(context, it, InspireDataHolder.sourcePackage.orEmpty(), text) }
+                target.setAppIcon(preview?.icon, R.drawable.ic_baseline_insert_link_24)
+                measureFunctionRow()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                android.util.Log.w("BigBangView", "Link target preview failed", error)
             }
         }
     }

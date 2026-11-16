@@ -1,5 +1,6 @@
 package io.github.lumiagg.gestureevo.settings
 
+import io.github.lumiagg.gestureevo.utils.ioResult
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -28,15 +29,15 @@ import io.github.lumiagg.gestureevo.utils.settingsStore
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.settings.ui.LinkExemptsBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.LinkExtractsBottomSheet
-import io.github.lumiagg.gestureevo.settings.ui.LinkHistoryBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.LinkTemplateImportBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.LinkRuleEditBottomSheet
 import io.github.lumiagg.gestureevo.utils.app.appDisplayNameFromDatabase
-import io.github.lumiagg.gestureevo.utils.icon.IconHelper
+import io.github.lumiagg.gestureevo.utils.icon.bindAppIcon
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.widget.Toast
+import io.github.lumiagg.gestureevo.utils.ToastHelper
 
 /**
  * Full settings screen for link routing.
@@ -106,6 +107,7 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
 
     private fun setupRulesList() {
         adapter = RuleAdapter(
+            iconScope = lifecycleScope,
             onClick = { rule ->
                 if (adapter.selectionMode) adapter.toggleSelection(rule.id) else openEditor(rule)
             },
@@ -216,9 +218,9 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     withContext(Dispatchers.IO) {
                         val ids = rules.map { it.id }.toSet()
-                        val current = LinkRuleRepository.loadRules(this@LinkRuleSettingsActivity)
-                            .filterNot { it.id in ids }
-                        LinkRuleRepository.saveRules(this@LinkRuleSettingsActivity, current)
+                        LinkRuleRepository.updateRules(this@LinkRuleSettingsActivity) { current ->
+                            current.filterNot { it.id in ids }
+                        }
                     }
                     finishSelection()
                     reload()
@@ -239,9 +241,6 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
         binding.extractsRow.setOnClickListener {
             LinkExtractsBottomSheet(this, lifecycleScope).show()
         }
-        binding.historyRow.setOnClickListener {
-            LinkHistoryBottomSheet(this, lifecycleScope).show()
-        }
         binding.exportRow.setOnClickListener { exportConfig() }
         binding.importRow.setOnClickListener { importConfig() }
     }
@@ -252,13 +251,10 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
                 LinkRuleRepository.loadRules(this@LinkRuleSettingsActivity)
             }
             allRules.clear()
-            allRules.addAll(loaded.sortedBy { it.priority })
+            allRules.addAll(loaded)
             appNameCache.clear()
             loaded.map { it.targetPackage }.filter { it.isNotEmpty() }.distinct().forEach { pkg ->
-                val name = withContext(Dispatchers.IO) {
-                    runCatching { appDisplayNameFromDatabase(this@LinkRuleSettingsActivity, pkg) }
-                        .getOrNull()
-                }.orEmpty()
+                val name = ioResult { appDisplayNameFromDatabase(this@LinkRuleSettingsActivity, pkg) }.getOrNull().orEmpty()
                 if (name.isNotEmpty()) appNameCache[pkg] = name
             }
             applyFilter()
@@ -298,11 +294,9 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
         replaceInLists(rule)
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-                val current = LinkRuleRepository.loadRules(this@LinkRuleSettingsActivity)
-                    .toMutableList()
-                val index = current.indexOfFirst { it.id == rule.id }
-                if (index >= 0) current[index] = rule
-                LinkRuleRepository.saveRules(this@LinkRuleSettingsActivity, current)
+                LinkRuleRepository.updateRules(this@LinkRuleSettingsActivity) { current ->
+                    current.map { if (it.id == rule.id) it.copy(isEnabled = rule.isEnabled) else it }
+                }
             }
         }
     }
@@ -321,11 +315,14 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
     /** Rewrites priority from the current visual order so a drag survives a restart. */
     private fun persistOrder() {
         if (searchQuery.isNotBlank()) return
+        val order = adapter.currentRules().map { it.id }
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-                val ordered = adapter.currentRules()
-                val updated = ordered.mapIndexed { index, rule -> rule.copy(priority = index) }
-                LinkRuleRepository.saveRules(this@LinkRuleSettingsActivity, updated)
+                LinkRuleRepository.updateRules(this@LinkRuleSettingsActivity) { current ->
+                    val indexed = current.associateBy { it.id }
+                    (order.mapNotNull(indexed::get) + current.filterNot { it.id in order })
+                        .mapIndexed { index, rule -> rule.copy(priority = index) }
+                }
             }
             reload()
         }
@@ -334,11 +331,7 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
     private fun exportConfig() {
         lifecycleScope.launch {
             withContext(Dispatchers.IO) { LinkConfigTransfer.exportToClipboard(this@LinkRuleSettingsActivity) }
-            Toast.makeText(
-                this@LinkRuleSettingsActivity,
-                getString(R.string.link_rule_export_done),
-                Toast.LENGTH_SHORT
-            ).show()
+            ToastHelper.showInUIThread(this@LinkRuleSettingsActivity, R.string.link_rule_export_done)
         }
     }
 
@@ -356,7 +349,7 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
                     result.exemptsAdded
                 )
             }
-            Toast.makeText(this@LinkRuleSettingsActivity, message, Toast.LENGTH_SHORT).show()
+            ToastHelper.showInUIThread(this@LinkRuleSettingsActivity, message)
             reload()
         }
     }
@@ -371,6 +364,7 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
      * [selectedRules] hands the batch to the caller for deletion.
      */
     private class RuleAdapter(
+        private val iconScope: CoroutineScope,
         private val onClick: (LinkDispatchRule) -> Unit,
         private val onToggle: (LinkDispatchRule, Boolean) -> Unit,
         private val onEnterSelection: (LinkDispatchRule) -> Unit,
@@ -379,7 +373,6 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
 
         private val items = mutableListOf<LinkDispatchRule>()
         private var names: Map<String, String> = emptyMap()
-        private val iconCache = mutableMapOf<String, android.graphics.drawable.Drawable?>()
 
         var selectionMode = false
             private set
@@ -426,9 +419,6 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
             notifyDataSetChanged()
         }
 
-        fun iconFor(context: android.content.Context, pkg: String): android.graphics.drawable.Drawable? =
-            iconCache.getOrPut(pkg) { runCatching { IconHelper.getIcon(context, pkg) }.getOrNull() }
-
         fun currentRules(): List<LinkDispatchRule> = items.toList()
 
         /** In-place update for a toggle: no full rebind, so the switch animation is smooth. */
@@ -437,15 +427,6 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
             if (index >= 0) {
                 items[index] = rule
                 notifyItemChanged(index)
-            }
-        }
-
-        /** In-place removal for a delete: no full rebind either. */
-        fun removeItem(ruleId: String) {
-            val index = items.indexOfFirst { it.id == ruleId }
-            if (index >= 0) {
-                items.removeAt(index)
-                notifyItemRemoved(index)
             }
         }
 
@@ -467,7 +448,7 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
             holder.bind(
                 items[position],
                 names,
-                iconCache,
+                iconScope,
                 selectionMode,
                 items[position].id in selectedIds,
                 onClick,
@@ -485,7 +466,7 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
             fun bind(
                 rule: LinkDispatchRule,
                 appNames: Map<String, String>,
-                iconCache: MutableMap<String, android.graphics.drawable.Drawable?>,
+                iconScope: CoroutineScope,
                 selectionMode: Boolean,
                 selected: Boolean,
                 onClick: (LinkDispatchRule) -> Unit,
@@ -507,14 +488,7 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
 
                 // A custom icon wins over the target app icon so a user can tell two rules for
                 // the same app apart. The cache keeps scroll smooth with many rules.
-                val icon = rule.iconPath?.let { path ->
-                    runCatching {
-                        android.graphics.drawable.Drawable.createFromPath(path)
-                    }.getOrNull()
-                } ?: iconCache.getOrPut(rule.targetPackage) {
-                    runCatching { IconHelper.getIcon(context, rule.targetPackage) }.getOrNull()
-                }
-                rowBinding.appIcon.setImageDrawable(icon)
+                rowBinding.appIcon.bindAppIcon(iconScope, rule.targetPackage, rule.iconPath.orEmpty())
 
                 // Selection mode swaps the enable switch for the selected highlight.
                 rowBinding.enabledSwitch.visibility =

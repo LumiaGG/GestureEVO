@@ -14,6 +14,18 @@ import org.junit.Test
  */
 class LinkDispatcherTest {
 
+    @Test fun disabledResolutionCannotMakeAnEmptyTargetRuleCaptureLinks() {
+        val resolver = LinkDispatchRule(pattern = "example.com", resolveShortLink = false,
+            resolveStrategy = LinkResolveStrategy.REDISPATCH)
+        val app = LinkDispatchRule(pattern = "example.com", targetPackage = "com.example")
+        assertEquals(app, LinkDispatcher.findRule("https://example.com/a", listOf(resolver, app)))
+    }
+
+    @Test fun oversizedTemplateGroupDoesNotCrashDispatch() {
+        val rule = LinkDispatchRule(template = "app://{999999999999999999999999}")
+        assertEquals("app://", LinkDispatcher.applyTemplate("https://example.com", rule))
+    }
+
     private fun rule(
         pattern: String,
         matchType: LinkMatchType = LinkMatchType.CONTAINS,

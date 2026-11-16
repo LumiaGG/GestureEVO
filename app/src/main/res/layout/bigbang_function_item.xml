@@ -68,16 +68,12 @@
             android:tint="?attr/colorPrimary"
             app:round="100dp" />
 
-        <androidx.constraintlayout.utils.widget.ImageFilterView
+        <io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
             android:id="@+id/openUrl"
             android:layout_width="30dp"
             android:layout_height="30dp"
             android:layout_margin="5dp"
-            android:foreground="?attr/selectableItemBackground"
-            android:padding="5dp"
-            android:src="@drawable/ic_baseline_insert_link_24"
-            android:tint="?attr/colorPrimary"
-            app:round="100dp" />
+            android:foreground="?attr/selectableItemBackground" />
 
         <androidx.constraintlayout.utils.widget.ImageFilterView
             android:id="@+id/sendToEVO"
