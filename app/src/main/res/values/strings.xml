@@ -172,7 +172,7 @@
     <string name="appearance_settings_screen_content_card_background_blur">卡片背景模糊</string>
     <string name="appearance_settings_external_drop_title">拖放悬浮窗设置</string>
     <string name="appearance_settings_external_drop_description">调整拖放悬浮窗的背景模糊和卡片外观</string>
-    <string name="appearance_settings_external_drop_background_blur">背景模糊（需 Android 12+）</string>
+    <string name="appearance_settings_external_drop_background_blur">背景模糊（限制系统）</string>
     <string name="appearance_settings_external_drop_system_drag_blur">系统拖拽背景模糊</string>
     <string name="appearance_settings_external_drop_system_drag_blur_summary">拖拽来自其他应用时同样显示背景模糊</string>
     <string name="appearance_settings_external_drop_card_background_blur">卡片背景模糊</string>
@@ -1063,13 +1063,13 @@
     <string name="link_settings_radar_desc">指针靠近屏幕上的链接时高亮并显示打开气泡，点击气泡按规则跳转</string>
     <string name="link_settings_title">链接分发</string>
     <string name="link_settings_tools_title">工具</string>
-    <string name="link_settings_tools_summary">模板、豁免、提取规则与历史</string>
+    <string name="link_settings_tools_summary">规则模板、域名豁免与链接提取</string>
     <string name="link_settings_templates_summary">一键添加常用站点的深链规则</string>
     <string name="link_settings_extracts_summary">从文本中找出链接的正则</string>
     <string name="link_settings_backup_title">备份</string>
     <string name="link_settings_backup_summary">通过剪贴板导入导出全部规则</string>
-    <string name="link_settings_search_hint">搜索规则名称或域名</string>
-    <string name="link_settings_drag_hint">长按拖动可调整优先级，命中第一条规则即停止</string>
+    <string name="link_settings_search_hint">搜索名称、域名或应用</string>
+    <string name="link_settings_drag_hint">拖动手柄排序，长按规则多选；优先匹配靠前的规则</string>
     <string name="link_rule_hit_stats">命中 %1$d 次</string>
     <string name="link_rule_never_hit">从未命中</string>
     <string name="link_open_action_delete">删除</string>
@@ -1459,4 +1459,28 @@
     <string name="global_press_immediate_description">开启后无需移动即开始识别并显示拖放面板；关闭后需移动才开始。</string>
     <string name="global_press_early_text">提前读取长按文字</string>
     <string name="global_press_early_text_description">收到应用长按事件时保存其文字，拖放时优先使用，减少弹出菜单的影响。不提前截图；应用未提供文字时仍在触发后识别。</string>
+    <string name="link_settings_behavior_title">分发行为</string>
+    <string name="link_settings_behavior_summary">链接雷达与目标应用的打开方式</string>
+    <string name="link_rules_summary">共 %1$d 条规则 · 已启用 %2$d 条</string>
+    <string name="link_rules_filtered_summary">找到 %1$d 条 · 共 %2$d 条规则</string>
+    <string name="link_rules_no_results">没有找到匹配的规则，试试其他名称、域名或应用</string>
+    <string name="link_rule_reorder">拖动调整优先级</string>
+    <string name="link_selection_close">退出多选</string>
+    <string name="link_selection_all">全选</string>
+    <string name="link_rule_match_contains_short">包含</string>
+    <string name="link_rule_match_regex_short">正则</string>
+    <string name="link_rule_match_exact_short">精确</string>
+    <string name="link_rule_disabled">已停用</string>
+    <string name="link_rule_redispatch_target">解析后重新分发</string>
+    <string name="link_rule_section_match">匹配条件</string>
+    <string name="link_rule_section_target">打开目标</string>
+    <string name="link_rule_section_behavior">处理方式</string>
+    <string name="link_rule_section_advanced">高级设置</string>
+    <string name="link_rule_target_unset">点击选择目标应用</string>
+    <string name="link_rule_empty_help">还没有规则
+新建规则或从模板导入，开始分发链接</string>
+    <string name="link_rule_selected">已选择</string>
+    <string name="link_rule_not_selected">未选择</string>
+    <string name="link_rule_enable_named">启用规则：%1$s</string>
+    <string name="link_settings_templates_description">已为你勾选已安装应用的可用规则，可按需调整后导入。</string>
 </resources>

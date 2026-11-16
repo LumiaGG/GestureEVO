@@ -1,242 +1,264 @@
-<?xml version='1.0' encoding='utf-8'?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:fitsSystemWindows="true">
+  <com.google.android.material.appbar.AppBarLayout
+    android:id="@+id/app_bar"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/app_bar_height">
+    <com.google.android.material.appbar.CollapsingToolbarLayout
+      android:id="@+id/toolbar_layout"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"
+      android:fitsSystemWindows="true"
+      app:layout_scrollFlags="scroll|exitUntilCollapsed"
+      app:toolbarId="@+id/toolbar">
+      <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        app:layout_collapseMode="pin"
+        app:title="@string/link_settings_title" />
+    </com.google.android.material.appbar.CollapsingToolbarLayout>
+  </com.google.android.material.appbar.AppBarLayout>
+  <androidx.core.widget.NestedScrollView
+    android:id="@+id/linkScrollView"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
-
-    <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/app_bar"
+    android:clipToPadding="false"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior">
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical"
+      android:paddingHorizontal="@dimen/settings_card_spacing"
+      android:paddingVertical="16dp">
+      <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
+        android:id="@+id/rulesCard"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/app_bar_height">
-
-        <com.google.android.material.appbar.CollapsingToolbarLayout
-            android:id="@+id/toolbar_layout"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:fitsSystemWindows="true"
-            app:layout_scrollFlags="scroll|exitUntilCollapsed"
-            app:toolbarId="@+id/toolbar">
-
-            <androidx.appcompat.widget.Toolbar
-                android:id="@+id/toolbar"
-                android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize"
-                app:layout_collapseMode="pin"
-                app:title="@string/link_settings_title" />
-        </com.google.android.material.appbar.CollapsingToolbarLayout>
-    </com.google.android.material.appbar.AppBarLayout>
-
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/linkScrollView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:clipToPadding="false"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
-
+        android:layout_height="wrap_content"
+        app:settingsCardExpanded="false"
+        app:settingsCardSummary="@string/link_settings_drag_hint"
+        app:settingsCardTitle="@string/link_rule_title">
         <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:orientation="vertical"
+          android:paddingHorizontal="12dp"
+          android:paddingTop="4dp"
+          android:paddingBottom="12dp">
+          <com.google.android.material.button.MaterialButton
+            android:id="@+id/addRuleRow"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="@dimen/settings_card_spacing"
-            android:paddingVertical="16dp">
-
-            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
-                android:id="@+id/rulesCard"
+            android:minHeight="48dp"
+            android:layout_marginTop="12dp"
+            android:text="@string/link_rule_add"
+            app:icon="@drawable/baseline_add_24"
+            app:iconGravity="textStart" />
+          <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/rulesSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="4dp"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorPrimary" />
+          <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <com.google.android.material.textfield.TextInputLayout
+              android:id="@+id/searchLayout"
+              style="@style/LinkSettingsInput"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:layout_marginTop="8dp"
+              android:hint="@string/link_settings_search_hint"
+              app:boxCornerRadiusTopStart="16dp"
+              app:boxCornerRadiusTopEnd="16dp"
+              app:boxCornerRadiusBottomStart="16dp"
+              app:boxCornerRadiusBottomEnd="16dp"
+              app:endIconMode="clear_text"
+              app:startIconDrawable="@drawable/search_24px">
+              <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/searchInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/settings_card_spacing"
-                app:settingsCardExpanded="false"
-                app:settingsCardSummary="@string/link_settings_drag_hint"
-                app:settingsCardTitle="@string/link_rule_title">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="12dp"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="12dp">
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:hint="@string/link_settings_search_hint">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/searchInput"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="text"
-                            android:maxLines="1" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/rulesRecyclerView"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:nestedScrollingEnabled="false" />
-
-                    <TextView
-                        android:id="@+id/rulesEmptyView"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center"
-                        android:paddingVertical="24dp"
-                        android:text="@string/link_rule_empty"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:visibility="gone" />
-
-                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
-                        android:id="@+id/addRuleRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        app:settingsRowTitle="@string/link_rule_add" />
-                </LinearLayout>
-            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
-
-            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
-                android:id="@+id/toolsCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/settings_card_spacing"
-                app:settingsCardExpanded="false"
-                app:settingsCardSummary="@string/link_settings_tools_summary"
-                app:settingsCardTitle="@string/link_settings_tools_title">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="12dp"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="12dp">
-
-                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
-                        android:id="@+id/templatesRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        app:settingsRowSummary="@string/link_settings_templates_summary"
-                        app:settingsRowTitle="@string/link_rule_import_templates" />
-
-                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
-                        android:id="@+id/exemptsRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        app:settingsRowSummary="@string/link_rule_exempt_summary"
-                        app:settingsRowTitle="@string/link_rule_exempt_title" />
-
-                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
-                        android:id="@+id/extractsRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        app:settingsRowSummary="@string/link_settings_extracts_summary"
-                        app:settingsRowTitle="@string/link_extract_title" />
-
-                </LinearLayout>
-            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
-
-            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
-                android:id="@+id/backupCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/settings_card_spacing"
-                app:settingsCardExpanded="false"
-                app:settingsCardSummary="@string/link_settings_backup_summary"
-                app:settingsCardTitle="@string/link_settings_backup_title">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="12dp"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="12dp">
-
-                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
-                        android:id="@+id/exportRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        app:settingsRowTitle="@string/link_rule_export" />
-
-                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
-                        android:id="@+id/importRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        app:settingsRowTitle="@string/link_rule_import" />
-                </LinearLayout>
-            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
-
-            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
-                android:id="@+id/radarCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/settings_card_spacing"
-                app:settingsCardExpanded="false"
-                app:settingsCardSummary="@string/link_settings_radar_desc"
-                app:settingsCardTitle="@string/link_settings_radar_title">
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="12dp"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="12dp">
-                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        app:settingsRowTitle="@string/link_settings_radar_enabled_title"
-                        app:settingsRowSummary="@string/link_settings_radar_enabled_desc">
-                        <com.google.android.material.materialswitch.MaterialSwitch
-                            android:id="@+id/radarSwitch"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:checked="true" />
-                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
-                </LinearLayout>
-            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
-
-            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
-                android:id="@+id/openModeCard"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/settings_card_spacing"
-                app:settingsCardExpanded="false"
-                app:settingsCardSummary="@string/link_settings_open_mode_summary"
-                app:settingsCardTitle="@string/link_settings_open_mode_title">
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="12dp"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="12dp">
-                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        app:settingsRowTitle="@string/link_settings_small_window_title"
-                        app:settingsRowSummary="@string/link_settings_small_window_desc">
-                        <com.google.android.material.materialswitch.MaterialSwitch
-                            android:id="@+id/smallWindowSwitch"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:checked="false" />
-                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
-                </LinearLayout>
-            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
-
+                android:inputType="text"
+                android:imeOptions="actionSearch"
+                android:singleLine="true" />
+            </com.google.android.material.textfield.TextInputLayout>
+          </FrameLayout>
+          <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rulesRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:nestedScrollingEnabled="false" />
+          <TextView
+            android:id="@+id/rulesEmptyView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="32dp"
+            android:background="@drawable/bg_settings_tile_quiet"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:text="@string/link_rule_empty"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone" />
         </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+      </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+      <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
+        android:id="@+id/toolsCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/settings_card_spacing"
+        app:settingsCardExpanded="false"
+        app:settingsCardSummary="@string/link_settings_tools_summary"
+        app:settingsCardTitle="@string/link_settings_tools_title">
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:orientation="vertical"
+          android:paddingHorizontal="12dp"
+          android:paddingTop="4dp"
+          android:paddingBottom="12dp">
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/templatesRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowSummary="@string/link_settings_templates_summary"
+            app:settingsRowTitle="@string/link_rule_import_templates" />
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/exemptsRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowSummary="@string/link_rule_exempt_summary"
+            app:settingsRowTitle="@string/link_rule_exempt_title" />
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/extractsRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowSummary="@string/link_settings_extracts_summary"
+            app:settingsRowTitle="@string/link_extract_title" />
+        </LinearLayout>
+      </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+      <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
+        android:id="@+id/radarCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/settings_card_spacing"
+        app:settingsCardExpanded="false"
+        app:settingsCardSummary="@string/link_settings_behavior_summary"
+        app:settingsCardTitle="@string/link_settings_behavior_title">
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:orientation="vertical"
+          android:paddingHorizontal="12dp"
+          android:paddingTop="4dp"
+          android:paddingBottom="12dp">
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/link_settings_radar_enabled_title"
+            app:settingsRowSummary="@string/link_settings_radar_enabled_desc">
+            <com.google.android.material.materialswitch.MaterialSwitch
+              android:id="@+id/radarSwitch"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content"
+              android:checked="true" />
+          </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/link_settings_small_window_title"
+            app:settingsRowSummary="@string/link_settings_small_window_desc">
+            <com.google.android.material.materialswitch.MaterialSwitch
+              android:id="@+id/smallWindowSwitch"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content"
+              android:checked="false" />
+          </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+        </LinearLayout>
+      </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+      <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
+        android:id="@+id/backupCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/settings_card_spacing"
+        app:settingsCardExpanded="false"
+        app:settingsCardSummary="@string/link_settings_backup_summary"
+        app:settingsCardTitle="@string/link_settings_backup_title">
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:orientation="vertical"
+          android:paddingHorizontal="12dp"
+          android:paddingTop="4dp"
+          android:paddingBottom="12dp">
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/exportRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/link_rule_export" />
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/importRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/link_rule_import" />
+        </LinearLayout>
+      </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+    </LinearLayout>
+  </androidx.core.widget.NestedScrollView>
+  <LinearLayout
+    android:id="@+id/selectionToolbar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom"
+    android:layout_margin="16dp"
+    android:elevation="8dp"
+    android:padding="8dp"
+    android:background="@drawable/bg_link_settings_item"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:visibility="gone">
+    <com.google.android.material.button.MaterialButton
+      android:id="@+id/closeSelection"
+      style="@style/LinkSettingsIconButton"
+      app:icon="@drawable/ic_link_selection_close"
+      android:contentDescription="@string/link_selection_close" />
+    <com.google.android.material.textview.MaterialTextView
+      android:id="@+id/selectionCount"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:textAppearance="?attr/textAppearanceTitleSmall"
+      android:textColor="?attr/colorOnSurface"
+      android:accessibilityLiveRegion="polite" />
+    <com.google.android.material.button.MaterialButton
+      android:id="@+id/selectAll"
+      style="@style/LinkSettingsIconButton"
+      app:icon="@drawable/baseline_select_all_24"
+      android:contentDescription="@string/link_selection_all" />
+    <com.google.android.material.button.MaterialButton
+      android:id="@+id/deleteSelected"
+      style="@style/LinkSettingsIconButton"
+      app:icon="@drawable/ic_link_delete_24"
+      app:iconTint="?attr/colorError"
+      android:contentDescription="@string/link_rule_delete" />
+  </LinearLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

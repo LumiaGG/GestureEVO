@@ -5,7 +5,6 @@ import android.app.Activity
 import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
-import android.widget.EditText
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -48,9 +47,7 @@ class LinkExemptsBottomSheet(
         dialog = BottomSheetDialog(themedContext, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
         binding = BottomSheetLinkExemptsBinding.inflate(LayoutInflater.from(themedContext))
         dialog.setContentView(binding.root)
-        dialog.setOnShowListener {
-            DynamicColorUtils.applyBottomSheetSurface(it as BottomSheetDialog)
-        }
+        dialog.prepareLinkSettingsSheet(binding.root)
 
         binding.title.text = activity.getString(R.string.link_rule_exempt_title)
         binding.description.text = activity.getString(R.string.link_rule_exempt_description)
@@ -70,6 +67,7 @@ class LinkExemptsBottomSheet(
                 findView<MaterialTextView>(R.id.sourceText).text = sourceLabel(exempt.sourcePackage)
 
                 findView<MaterialSwitch>(R.id.enabledSwitch).apply {
+                    setOnCheckedChangeListener(null)
                     isChecked = exempt.isEnabled
                     setOnCheckedChangeListener { _, checked ->
                         updateExempt(exempt.copy(isEnabled = checked))
@@ -115,29 +113,34 @@ class LinkExemptsBottomSheet(
     }
 
     private fun showAddDialog() {
-        val input = EditText(activity).apply {
-            hint = activity.getString(R.string.link_rule_exempt_domain_hint)
-            inputType = InputType.TYPE_TEXT_VARIATION_URI
-        }
-
-        MaterialAlertDialogBuilder(activity)
+        val themedContext = DynamicColorUtils.dynamicThemedContext(activity)
+        val form = LinkSettingsForm(themedContext)
+        val domainField = form.field(R.string.link_rule_exempt_domain_hint)
+        domainField.editText?.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        val editor = MaterialAlertDialogBuilder(themedContext)
             .setTitle(R.string.link_rule_exempt_add)
-            .setView(input)
-            .setPositiveButton(R.string.link_rule_import_confirm) { _, _ ->
-                val raw = input.text?.toString()?.trim().orEmpty()
-                val domain = normalizeDomain(raw)
-                when {
-                    domain == null -> ToastHelper.showInUIThread(activity, R.string.link_rule_exempt_invalid)
-                    exempts.any { it.domain == domain && it.sourcePackage.isEmpty() } ->
-                        ToastHelper.showInUIThread(activity, R.string.link_rule_exempt_duplicate)
-
-                    else -> addExempt(
-                        LinkExemptDomain(domain = domain, sourcePackage = "")
-                    )
-                }
-            }
+            .setView(form)
+            .setPositiveButton(R.string.link_rule_save, null)
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .create()
+        editor.setOnShowListener {
+            editor.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+                val domain = normalizeDomain(domainField.editText?.text?.toString()?.trim().orEmpty())
+                val error = when {
+                    domain == null -> R.string.link_rule_exempt_invalid
+                    exempts.any { it.domain == domain && it.sourcePackage.isEmpty() } -> R.string.link_rule_exempt_duplicate
+                    else -> null
+                }
+                domainField.error = error?.let(activity::getString)
+                if (error != null || domain == null) {
+                    domainField.editText?.requestFocus()
+                    return@setOnClickListener
+                }
+                addExempt(LinkExemptDomain(domain = domain, sourcePackage = ""))
+                editor.dismiss()
+            }
+        }
+        editor.show()
     }
 
     /** Accepts a bare domain or a full URL and reduces it to the host. */

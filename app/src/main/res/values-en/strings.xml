@@ -964,13 +964,13 @@
     <string name="link_settings_radar_desc">Highlight the link nearest to the pointer and show an open-with capsule; tap the capsule to dispatch via rules</string>
     <string name="link_settings_title">Link dispatch</string>
     <string name="link_settings_tools_title">Tools</string>
-    <string name="link_settings_tools_summary">Templates, exemptions, extraction patterns and history</string>
+    <string name="link_settings_tools_summary">Templates, domain exemptions and link extraction</string>
     <string name="link_settings_templates_summary">One-tap deep link rules for popular apps</string>
     <string name="link_settings_extracts_summary">Regexes that find links inside text</string>
     <string name="link_settings_backup_title">Backup</string>
     <string name="link_settings_backup_summary">Import and export all rules through the clipboard</string>
-    <string name="link_settings_search_hint">Search by name or domain</string>
-    <string name="link_settings_drag_hint">Long-press and drag to reorder; the first matching rule wins</string>
+    <string name="link_settings_search_hint">Search name, domain or app</string>
+    <string name="link_settings_drag_hint">Drag the handle to reorder; hold a rule to select. First match wins.</string>
     <string name="link_rule_hit_stats">%1$d hits</string>
     <string name="link_rule_never_hit">never hit</string>
     <string name="default_trigger_name">Default trigger</string>
@@ -1153,7 +1153,7 @@
     <string name="appearance_settings_screen_content_card_background_blur">Card background blur</string>
     <string name="appearance_settings_external_drop_title">Drag overlay settings</string>
     <string name="appearance_settings_external_drop_description">Adjust drag overlay background blur and card appearance</string>
-    <string name="appearance_settings_external_drop_background_blur">Background blur (Android 12+)</string>
+    <string name="appearance_settings_external_drop_background_blur">Background blur (limited system support)</string>
     <string name="appearance_settings_external_drop_system_drag_blur">System drag background blur</string>
     <string name="appearance_settings_external_drop_system_drag_blur_summary">Also show the background blur for drags started by other apps</string>
     <string name="appearance_settings_external_drop_card_background_blur">Card background blur</string>
@@ -1457,4 +1457,28 @@
     <string name="global_press_immediate_description">Start capture and show the drop panel after the hold timeout. When off, move to start.</string>
     <string name="global_press_early_text">Read long-press text early</string>
     <string name="global_press_early_text_description">Save text from app long-click events for dragging to reduce menu interference. No early screenshots; capture on trigger if no text is provided.</string>
+    <string name="link_settings_behavior_title">Dispatch behavior</string>
+    <string name="link_settings_behavior_summary">Link radar and how target apps open</string>
+    <string name="link_rules_summary">%1$d rules · %2$d enabled</string>
+    <string name="link_rules_filtered_summary">%1$d results · %2$d total</string>
+    <string name="link_rules_no_results">No matching rules. Try another name, domain or app.</string>
+    <string name="link_rule_reorder">Drag to reorder</string>
+    <string name="link_selection_close">Exit selection</string>
+    <string name="link_selection_all">Select all</string>
+    <string name="link_rule_match_contains_short">Contains</string>
+    <string name="link_rule_match_regex_short">Regex</string>
+    <string name="link_rule_match_exact_short">Exact</string>
+    <string name="link_rule_disabled">Disabled</string>
+    <string name="link_rule_redispatch_target">Resolve and redispatch</string>
+    <string name="link_rule_section_match">Match conditions</string>
+    <string name="link_rule_section_target">Open with</string>
+    <string name="link_rule_section_behavior">Link handling</string>
+    <string name="link_rule_section_advanced">Advanced settings</string>
+    <string name="link_rule_target_unset">Tap to choose an app</string>
+    <string name="link_rule_empty_help">No rules yet
+Create a rule or import templates to get started</string>
+    <string name="link_rule_selected">Selected</string>
+    <string name="link_rule_not_selected">Not selected</string>
+    <string name="link_rule_enable_named">Enable rule: %1$s</string>
+    <string name="link_settings_templates_description">Available rules for installed apps are selected. Review your selection before importing.</string>
 </resources>

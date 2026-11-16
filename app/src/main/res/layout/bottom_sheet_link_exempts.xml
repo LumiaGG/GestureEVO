@@ -1,58 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="vertical">
+  <View
+    android:layout_width="32dp"
+    android:layout_height="4dp"
+    android:layout_gravity="center_horizontal"
+    android:layout_marginTop="12dp"
+    android:background="@drawable/bg_link_sheet_handle" />
+  <com.google.android.material.textview.MaterialTextView
+    android:id="@+id/title"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="16dp">
-
+    android:paddingHorizontal="24dp"
+    android:paddingTop="20dp"
+    android:text="@string/link_rule_exempt_title"
+    android:textAppearance="?attr/textAppearanceTitleLarge"
+    android:textColor="?attr/colorOnSurface" />
+  <com.google.android.material.textview.MaterialTextView
+    android:id="@+id/description"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="16dp"
+    android:text="@string/link_rule_exempt_description"
+    android:textAppearance="?attr/textAppearanceBodyMedium"
+    android:textColor="?attr/colorOnSurfaceVariant" />
+  <FrameLayout
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1">
+    <androidx.recyclerview.widget.RecyclerView
+      android:id="@+id/recyclerView"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"
+      android:paddingHorizontal="20dp"
+      android:paddingBottom="12dp"
+      android:clipToPadding="false" />
     <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/title"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:gravity="center"
-        android:text="@string/link_rule_exempt_title"
-        android:textSize="18sp"
-        android:textStyle="bold" />
-
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/description"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:text="@string/link_rule_exempt_description"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="14sp" />
-
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:maxHeight="400dp" />
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/emptyView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:gravity="center"
-            android:paddingVertical="32dp"
-            android:text="@string/link_rule_exempt_empty"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:textSize="14sp"
-            android:visibility="gone" />
-    </FrameLayout>
-
-    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
-        android:id="@+id/addButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        app:settingsRowTitle="@string/link_rule_exempt_add" />
-
+      android:id="@+id/emptyView"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_gravity="center"
+      android:gravity="center"
+      android:padding="32dp"
+      android:text="@string/link_rule_exempt_empty"
+      android:textAppearance="?attr/textAppearanceBodyMedium"
+      android:textColor="?attr/colorOnSurfaceVariant"
+      android:visibility="gone" />
+  </FrameLayout>
+  <com.google.android.material.divider.MaterialDivider
+    android:layout_width="match_parent"
+    android:layout_height="1dp"
+    app:dividerColor="?attr/colorOutlineVariant" />
+  <com.google.android.material.button.MaterialButton
+    android:id="@+id/addButton"
+    style="@style/Widget.Material3.Button.TonalButton"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="20dp"
+    android:layout_marginVertical="12dp"
+    android:minHeight="48dp"
+    android:text="@string/link_rule_exempt_add"
+    app:icon="@drawable/baseline_add_24"
+    app:iconGravity="textStart" />
 </LinearLayout>
