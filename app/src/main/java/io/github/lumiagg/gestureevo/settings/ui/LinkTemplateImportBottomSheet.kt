@@ -3,7 +3,17 @@ package io.github.lumiagg.gestureevo.settings.ui
 import android.app.Activity
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import androidx.lifecycle.LifecycleCoroutineScope
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.core.view.ViewCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import io.github.lumiagg.gestureevo.databinding.BottomSheetLinkTemplatesBinding
+import io.github.lumiagg.gestureevo.databinding.ItemLinkTemplateBinding
+import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
+import io.github.lumiagg.gestureevo.utils.icon.bindAppIcon
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.link.LinkDispatchRule
 import io.github.lumiagg.gestureevo.link.LinkGoRuleConverter
@@ -54,35 +64,58 @@ class LinkTemplateImportBottomSheet(
                 return@launch
             }
 
-            val labels = offers.map { offer ->
-                val marker = when {
-                    offer.alreadyPresent ->
-                        " · ${activity.getString(R.string.link_rule_import_exists)}"
-
-                    !offer.installed ->
-                        " · ${activity.getString(R.string.link_rule_import_missing)}"
-
-                    else -> ""
-                }
-                "${offer.label}$marker"
-            }.toTypedArray()
-
-            val selected = BooleanArray(offers.size) { index ->
-                offers[index].installed && !offers[index].alreadyPresent
+            val themedContext = DynamicColorUtils.dynamicThemedContext(activity)
+            val binding = BottomSheetLinkTemplatesBinding.inflate(LayoutInflater.from(themedContext))
+            val dialog = BottomSheetDialog(themedContext, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
+            dialog.setContentView(binding.root)
+            dialog.prepareLinkSettingsSheet(binding.root)
+            val selected = BooleanArray(offers.size) { offers[it].installed && !offers[it].alreadyPresent }
+            fun updateSummary() {
+                val count = selected.count { it }
+                binding.selectionSummary.text = activity.getString(R.string.link_selection_title, count)
+                binding.importButton.isEnabled = count > 0
             }
+            binding.recyclerView.layoutManager = LinearLayoutManager(themedContext)
+            binding.recyclerView.adapter = object : RecyclerView.Adapter<TemplateHolder>() {
+                override fun getItemCount(): Int = offers.size
+                override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TemplateHolder =
+                    TemplateHolder(ItemLinkTemplateBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
-            MaterialAlertDialogBuilder(activity)
-                .setTitle(R.string.link_rule_import_title)
-                .setMultiChoiceItems(labels, selected) { _, which, checked ->
-                    selected[which] = checked
+                override fun onBindViewHolder(holder: TemplateHolder, position: Int) {
+                    val offer = offers[position]
+                    with(holder.binding) {
+                        templateName.text = offer.label
+                        templatePattern.text = offer.rule.pattern
+                        templateStatus.text = when {
+                            offer.alreadyPresent -> activity.getString(R.string.link_rule_import_exists)
+                            !offer.installed -> activity.getString(R.string.link_rule_import_missing)
+                            else -> ""
+                        }
+                        templateStatus.visibility = if (templateStatus.text.isEmpty()) View.GONE else View.VISIBLE
+                        appIcon.bindAppIcon(coroutineScope, offer.rule.targetPackage, offer.rule.iconPath.orEmpty())
+                        selectedCheck.isChecked = selected[position]
+                        root.isActivated = selected[position]
+                        ViewCompat.setStateDescription(root, activity.getString(
+                            if (selected[position]) R.string.link_rule_selected else R.string.link_rule_not_selected
+                        ))
+                        root.setOnClickListener {
+                            selected[position] = !selected[position]
+                            notifyItemChanged(position)
+                            updateSummary()
+                        }
+                    }
                 }
-                .setPositiveButton(R.string.link_rule_import_confirm) { _, _ ->
-                    importRules(offers.filterIndexed { index, _ -> selected[index] }.map { it.rule })
-                }
-                .setNegativeButton(android.R.string.cancel, null)
-                .show()
+            }
+            binding.importButton.setOnClickListener {
+                importRules(offers.filterIndexed { index, _ -> selected[index] }.map { it.rule })
+                dialog.dismiss()
+            }
+            updateSummary()
+            dialog.show()
         }
     }
+
+    private class TemplateHolder(val binding: ItemLinkTemplateBinding) : RecyclerView.ViewHolder(binding.root)
 
     private fun importRules(rules: List<LinkDispatchRule>) {
         if (rules.isEmpty()) return

@@ -1,166 +1,196 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="vertical">
+  <View
+    android:layout_width="32dp"
+    android:layout_height="4dp"
+    android:layout_gravity="center_horizontal"
+    android:layout_marginTop="12dp"
+    android:background="@drawable/bg_link_sheet_handle" />
+  <com.google.android.material.textview.MaterialTextView
+    android:id="@+id/title"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
-
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="20dp"
+    android:paddingBottom="8dp"
+    android:text="@string/link_rule_new_title"
+    android:textAppearance="?attr/textAppearanceTitleLarge"
+    android:textColor="?attr/colorOnSurface" />
+  <androidx.core.widget.NestedScrollView
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:clipToPadding="false"
+    android:fillViewport="true">
     <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical"
+      android:paddingHorizontal="20dp"
+      android:paddingBottom="20dp">
+      <com.google.android.material.textview.MaterialTextView
+        style="@style/LinkSettingsHeading"
+        android:text="@string/link_rule_section_match" />
+      <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/nameLayout"
+        style="@style/LinkSettingsInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
-
+        android:hint="@string/link_rule_name">
+        <com.google.android.material.textfield.TextInputEditText
+          android:id="@+id/nameInput"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:inputType="textCapSentences"
+          android:maxLines="1" />
+      </com.google.android.material.textfield.TextInputLayout>
+      <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/matchTypeLayout"
+        style="@style/LinkSettingsDropdown"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="@string/link_rule_match_type">
+        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+          android:id="@+id/matchTypeInput"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:inputType="none" />
+      </com.google.android.material.textfield.TextInputLayout>
+      <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/patternLayout"
+        style="@style/LinkSettingsInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="@string/link_rule_pattern"
+        app:helperTextEnabled="true"
+        app:helperText="@string/link_rule_pattern_hint">
+        <com.google.android.material.textfield.TextInputEditText
+          android:id="@+id/patternInput"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:inputType="textNoSuggestions|textMultiLine"
+          android:maxLines="4"
+          android:fontFamily="monospace"
+          android:textSize="14sp" />
+      </com.google.android.material.textfield.TextInputLayout>
+      <com.google.android.material.textview.MaterialTextView
+        style="@style/LinkSettingsHeading"
+        android:text="@string/link_rule_section_target" />
+      <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+        android:id="@+id/targetAppRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:settingsRowTitle="@string/link_rule_target_app">
         <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:gravity="center"
-            android:text="@string/link_rule_new_title"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/nameLayout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/link_rule_name">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/nameInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="text" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/patternLayout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/link_rule_pattern"
-            app:helperTextEnabled="true"
-            app:helperText="@string/link_rule_pattern_hint">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/patternInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textNoSuggestions" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/matchTypeLayout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/link_rule_match_type">
-
-            <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                android:id="@+id/matchTypeInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
-            android:id="@+id/targetAppRow"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:settingsRowTitle="@string/link_rule_target_app" />
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/templateLayout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/link_rule_template"
-            app:helperTextEnabled="true"
-            app:helperText="@string/link_rule_template_hint">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/templateInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textNoSuggestions" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
-            android:id="@+id/resolveShortRow"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:settingsRowSummary="@string/link_rule_resolve_short_summary"
-            app:settingsRowTitle="@string/link_rule_resolve_short">
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/resolveShortSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-        </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/resolveStrategyLayout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/link_rule_resolve_strategy">
-
-            <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                android:id="@+id/resolveStrategyInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="none" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
-            android:id="@+id/excludeRecentsRow"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:settingsRowTitle="@string/link_rule_exclude_recents">
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/excludeRecentsSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-        </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
-
-        <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
-            android:id="@+id/enabledRow"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:settingsRowTitle="@string/link_rule_enabled">
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/enabledSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-        </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/deleteButton"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/link_rule_delete"
-            android:textColor="?attr/colorError"
-            android:visibility="gone" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/saveButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/link_rule_save" />
-
+          android:id="@+id/targetAppValue"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content" />
+      </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+      <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/templateLayout"
+        style="@style/LinkSettingsInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="@string/link_rule_template"
+        app:helperTextEnabled="true"
+        app:helperText="@string/link_rule_template_hint">
+        <com.google.android.material.textfield.TextInputEditText
+          android:id="@+id/templateInput"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:inputType="textNoSuggestions|textMultiLine"
+          android:maxLines="4"
+          android:fontFamily="monospace"
+          android:textSize="14sp" />
+      </com.google.android.material.textfield.TextInputLayout>
+      <com.google.android.material.textview.MaterialTextView
+        style="@style/LinkSettingsHeading"
+        android:text="@string/link_rule_section_behavior" />
+      <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+        android:id="@+id/resolveShortRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:settingsRowSummary="@string/link_rule_resolve_short_summary"
+        app:settingsRowTitle="@string/link_rule_resolve_short">
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/resolveShortSwitch"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content" />
+      </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+      <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/resolveStrategyLayout"
+        style="@style/LinkSettingsDropdown"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="@string/link_rule_resolve_strategy">
+        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+          android:id="@+id/resolveStrategyInput"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:inputType="none" />
+      </com.google.android.material.textfield.TextInputLayout>
+      <com.google.android.material.textview.MaterialTextView
+        style="@style/LinkSettingsHeading"
+        android:text="@string/link_rule_section_advanced" />
+      <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+        android:id="@+id/excludeRecentsRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:settingsRowTitle="@string/link_rule_exclude_recents">
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/excludeRecentsSwitch"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content" />
+      </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+      <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+        android:id="@+id/enabledRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:settingsRowTitle="@string/link_rule_enabled">
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/enabledSwitch"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content" />
+      </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
     </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+  </androidx.core.widget.NestedScrollView>
+  <com.google.android.material.divider.MaterialDivider
+    android:layout_width="match_parent"
+    android:layout_height="1dp"
+    app:dividerColor="?attr/colorOutlineVariant" />
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="20dp"
+    android:paddingVertical="12dp">
+    <com.google.android.material.button.MaterialButton
+      android:id="@+id/deleteButton"
+      style="@style/Widget.Material3.Button.TextButton"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:minHeight="48dp"
+      android:layout_marginEnd="12dp"
+      android:text="@string/link_rule_delete"
+      android:textColor="?attr/colorError"
+      android:visibility="gone" />
+    <com.google.android.material.button.MaterialButton
+      android:id="@+id/saveButton"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:minHeight="48dp"
+      android:text="@string/link_rule_save" />
+  </LinearLayout>
+</LinearLayout>

@@ -1,11 +1,8 @@
 package io.github.lumiagg.gestureevo.settings.ui
 
 import android.app.Activity
-import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
-import android.widget.EditText
-import android.widget.LinearLayout
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -45,9 +42,7 @@ class LinkExtractsBottomSheet(
         dialog = BottomSheetDialog(themedContext, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
         binding = BottomSheetLinkExtractsBinding.inflate(LayoutInflater.from(themedContext))
         dialog.setContentView(binding.root)
-        dialog.setOnShowListener {
-            DynamicColorUtils.applyBottomSheetSurface(it as BottomSheetDialog)
-        }
+        dialog.prepareLinkSettingsSheet(binding.root)
 
         binding.title.text = activity.getString(R.string.link_extract_title)
         binding.description.text = activity.getString(R.string.link_extract_description)
@@ -72,6 +67,7 @@ class LinkExtractsBottomSheet(
                 findView<MaterialTextView>(R.id.patternText).text = pattern.pattern
 
                 findView<MaterialSwitch>(R.id.enabledSwitch).apply {
+                    setOnCheckedChangeListener(null)
                     isChecked = pattern.isEnabled
                     setOnCheckedChangeListener { _, checked ->
                         persist(pattern.copy(isEnabled = checked))
@@ -80,7 +76,7 @@ class LinkExtractsBottomSheet(
 
                 findView<MaterialButton>(R.id.deleteButton).apply {
                     isEnabled = !pattern.isBuiltin
-                    alpha = if (pattern.isBuiltin) 0.4f else 1f
+                    visibility = if (pattern.isBuiltin) View.INVISIBLE else View.VISIBLE
                     setOnClickListener {
                         if (pattern.isBuiltin) {
                             ToastHelper.showInUIThread(activity, R.string.link_extract_builtin_locked)
@@ -108,46 +104,37 @@ class LinkExtractsBottomSheet(
     }
 
     private fun showEditor(original: LinkExtractPattern?) {
-        val container = LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 16, 48, 0)
-        }
-        val nameInput = EditText(activity).apply {
-            hint = activity.getString(R.string.link_extract_name_hint)
-            setText(original?.name.orEmpty())
-        }
-        val patternInput = EditText(activity).apply {
-            hint = activity.getString(R.string.link_extract_pattern_hint)
-            inputType = InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-            setText(original?.pattern.orEmpty())
-        }
-        container.addView(nameInput)
-        container.addView(patternInput)
-
-        MaterialAlertDialogBuilder(activity)
-            .setTitle(
-                if (original == null) R.string.link_extract_add else R.string.link_extract_title
-            )
-            .setView(container)
-            .setPositiveButton(R.string.link_rule_save) { _, _ ->
-                val name = nameInput.text?.toString()?.trim().orEmpty()
-                val pattern = patternInput.text?.toString()?.trim().orEmpty()
-                when {
-                    pattern.isEmpty() -> ToastHelper.showInUIThread(activity, R.string.link_rule_pattern_required)
-                    runCatching { Regex(pattern) }.isFailure ->
-                        ToastHelper.showInUIThread(activity, R.string.link_extract_invalid)
-
-                    else -> {
-                        val updated = (original ?: LinkExtractPattern()).copy(
-                            name = name.ifEmpty { pattern.take(24) },
-                            pattern = pattern
-                        )
-                        persist(updated)
-                    }
-                }
-            }
+        val themedContext = DynamicColorUtils.dynamicThemedContext(activity)
+        val form = LinkSettingsForm(themedContext)
+        val nameField = form.field(R.string.link_extract_name_hint, original?.name.orEmpty())
+        val patternField = form.field(R.string.link_extract_pattern_hint, original?.pattern.orEmpty(), multiline = true)
+        val editor = MaterialAlertDialogBuilder(themedContext)
+            .setTitle(if (original == null) R.string.link_extract_add else R.string.link_extract_title)
+            .setView(form)
+            .setPositiveButton(R.string.link_rule_save, null)
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .create()
+        editor.setOnShowListener {
+            editor.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+                val name = nameField.editText?.text?.toString()?.trim().orEmpty()
+                val pattern = patternField.editText?.text?.toString()?.trim().orEmpty()
+                val error = when {
+                    pattern.isEmpty() -> R.string.link_rule_pattern_required
+                    runCatching { Regex(pattern) }.isFailure -> R.string.link_extract_invalid
+                    else -> null
+                }
+                patternField.error = error?.let(activity::getString)
+                if (error != null) {
+                    patternField.editText?.requestFocus()
+                    return@setOnClickListener
+                }
+                persist((original ?: LinkExtractPattern()).copy(
+                    name = name.ifEmpty { pattern.take(24) }, pattern = pattern
+                ))
+                editor.dismiss()
+            }
+        }
+        editor.show()
     }
 
     private fun persist(pattern: LinkExtractPattern) {

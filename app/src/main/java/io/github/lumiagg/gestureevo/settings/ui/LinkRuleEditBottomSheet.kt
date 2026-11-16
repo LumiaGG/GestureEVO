@@ -46,9 +46,7 @@ class LinkRuleEditBottomSheet(
         dialog = BottomSheetDialog(themedContext, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
         binding = BottomSheetEditLinkRuleBinding.inflate(LayoutInflater.from(themedContext))
         dialog.setContentView(binding.root)
-        dialog.setOnShowListener {
-            DynamicColorUtils.applyBottomSheetSurface(it as BottomSheetDialog)
-        }
+        dialog.prepareLinkSettingsSheet(binding.root)
 
         binding.title.text = activity.getString(
             if (original == null) R.string.link_rule_new_title else R.string.link_rule_edit_title
@@ -72,7 +70,7 @@ class LinkRuleEditBottomSheet(
             LinkMatchType.EXACT
         )
         binding.matchTypeInput.setAdapter(
-            ArrayAdapter(activity, android.R.layout.simple_dropdown_item_1line, labels)
+            ArrayAdapter(binding.root.context, android.R.layout.simple_dropdown_item_1line, labels)
         )
         val index = values.indexOf(selectedMatchType).coerceAtLeast(0)
         binding.matchTypeInput.setText(labels[index], false)
@@ -93,7 +91,7 @@ class LinkRuleEditBottomSheet(
             LinkResolveStrategy.REDISPATCH
         )
         binding.resolveStrategyInput.setAdapter(
-            ArrayAdapter(activity, android.R.layout.simple_dropdown_item_1line, labels)
+            ArrayAdapter(binding.root.context, android.R.layout.simple_dropdown_item_1line, labels)
         )
         val index = values.indexOf(selectedStrategy).coerceAtLeast(0)
         binding.resolveStrategyInput.setText(labels[index], false)
@@ -101,14 +99,13 @@ class LinkRuleEditBottomSheet(
             selectedStrategy = values[position]
         }
         binding.resolveShortSwitch.isChecked = original?.resolveShortLink ?: false
-        binding.resolveStrategyLayout.isEnabled = binding.resolveShortSwitch.isChecked
+        binding.resolveStrategyLayout.visibility = if (binding.resolveShortSwitch.isChecked) android.view.View.VISIBLE else android.view.View.GONE
         binding.resolveShortSwitch.setOnCheckedChangeListener { _, checked ->
-            binding.resolveStrategyLayout.isEnabled = checked
-            if (!checked) selectedStrategy = LinkResolveStrategy.NONE
+            binding.resolveStrategyLayout.visibility = if (checked) android.view.View.VISIBLE else android.view.View.GONE
         }
         if (selectedStrategy != LinkResolveStrategy.NONE) {
             binding.resolveShortSwitch.isChecked = true
-            binding.resolveStrategyLayout.isEnabled = true
+            binding.resolveStrategyLayout.visibility = android.view.View.VISIBLE
         }
     }
 
@@ -121,9 +118,7 @@ class LinkRuleEditBottomSheet(
         updateTargetLabel(original?.targetPackage.orEmpty())
         binding.targetAppRow.setOnClickListener { pickApp() }
 
-        if (original == null) {
-            binding.deleteButton.visibility = android.view.View.GONE
-        }
+        binding.deleteButton.visibility = if (original == null) android.view.View.GONE else android.view.View.VISIBLE
     }
 
     private fun bindActions() {
@@ -133,15 +128,15 @@ class LinkRuleEditBottomSheet(
 
     private fun updateTargetLabel(pkg: String) {
         if (pkg.isEmpty()) {
-            binding.targetAppRow.setTitle(activity.getString(R.string.link_rule_target_app))
+            binding.targetAppValue.text = activity.getString(R.string.link_rule_target_unset)
             return
         }
-        binding.targetAppRow.setTitle(pkg)
+        binding.targetAppValue.text = pkg
         coroutineScope.launch {
             val label = withContext(Dispatchers.IO) {
                 ioResult { appDisplayNameFromDatabase(activity, pkg) }.getOrNull()
             }.orEmpty().ifEmpty { pkg }
-            binding.targetAppRow.setTitle(label)
+            binding.targetAppValue.text = label
         }
     }
 
@@ -160,14 +155,17 @@ class LinkRuleEditBottomSheet(
 
     private fun save() {
         val pattern = binding.patternInput.text?.toString()?.trim().orEmpty()
+        binding.patternLayout.error = null
         if (pattern.isEmpty()) {
-            ToastHelper.showInUIThread(activity, R.string.link_rule_pattern_required)
+            binding.patternLayout.error = activity.getString(R.string.link_rule_pattern_required)
+            binding.patternInput.requestFocus()
             return
         }
         if (selectedMatchType == LinkMatchType.REGEX) {
             val compiled = runCatching { Regex(pattern, RegexOption.IGNORE_CASE) }
             if (compiled.isFailure) {
-                ToastHelper.showInUIThread(activity, R.string.link_rule_pattern_invalid)
+                binding.patternLayout.error = activity.getString(R.string.link_rule_pattern_invalid)
+                binding.patternInput.requestFocus()
                 return
             }
         }
