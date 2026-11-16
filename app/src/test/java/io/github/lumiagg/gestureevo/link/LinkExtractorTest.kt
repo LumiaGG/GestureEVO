@@ -96,4 +96,11 @@ class LinkExtractorTest {
         ))
         assertEquals(listOf("full", "second"), links.map { it.url })
     }
+
+    @Test fun radarTargetsSkipFileNamesButKeepRealLinks() {
+        val text = "下载 app-debug.apk 和 backup.zip，详见 example.com/help"
+        val links = LinkExtractor.findAll(text, LinkExtractPattern.builtinDefaults())
+        assertEquals(listOf("example.com/help"), links.map { it.url })
+        assertNull(LinkExtractor.extract("已保存 app-debug.apk", LinkExtractPattern.builtinDefaults()))
+    }
 }
