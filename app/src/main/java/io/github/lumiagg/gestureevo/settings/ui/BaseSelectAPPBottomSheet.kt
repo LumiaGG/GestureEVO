@@ -28,7 +28,7 @@ import io.github.lumiagg.gestureevo.db.getAPPDao
 import io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.ToastHelper
-import io.github.lumiagg.gestureevo.utils.icon.IconHelper
+import io.github.lumiagg.gestureevo.utils.icon.bindAppIcon
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -184,7 +184,7 @@ abstract class BaseSelectAPPBottomSheet(
         val model = holder.getModel<APPModel>()
         holder.findView<TextView>(R.id.name).text = model.name
         holder.findView<TextView>(R.id.packageName).text = model.pkgName
-        holder.findView<RoundImageTextView>(R.id.icon).setImage(IconHelper.getIcon(holder.context, model.pkgName))
+        holder.findView<RoundImageTextView>(R.id.icon).bindAppIcon(coroutineScope, model.pkgName)
         holder.findView<MaterialSwitch>(R.id.appEnabledSwitch).apply {
             setOnCheckedChangeListener(null)
             visibility = View.GONE

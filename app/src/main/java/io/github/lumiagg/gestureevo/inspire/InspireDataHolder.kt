@@ -22,6 +22,7 @@ object InspireDataHolder {
 
     var forceImageTextSelection: Boolean = false
     var triggerSide: String? = null
+    var sourcePackage: String? = null
 
     fun replaceScreenshotBitmap(bitmapHandle: ManagedBitmap?) {
         val newHandle = bitmapHandle?.acquire()
@@ -46,5 +47,6 @@ object InspireDataHolder {
         ocrAllowedTextBoxes = null
         forceImageTextSelection = false
         triggerSide = null
+        sourcePackage = null
     }
 }

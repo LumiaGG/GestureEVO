@@ -20,13 +20,25 @@ import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.BigbangFunctionItemBinding
 import io.github.lumiagg.gestureevo.databinding.BigbangSelectBgBinding
+import io.github.lumiagg.gestureevo.link.LinkExtractor
+import io.github.lumiagg.gestureevo.link.previewLinkTarget
+import io.github.lumiagg.gestureevo.inspire.InspireDataHolder
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.GlassEffectUtils
 import io.github.lumiagg.gestureevo.utils.UrlDetector
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
+import io.github.lumiagg.gestureevo.utils.icon.setAppIcon
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import kotlin.math.max
 
 class BigBangView : ViewGroup, NestedScrollingChild {
+
+    /** 链接按钮图标的异步更新任务：选择连续变化时只保留最后一次。 */
+    private var urlIconJob: Job? = null
 
     private lateinit var functionItemBinding: BigbangFunctionItemBinding
     private lateinit var selectBgBinding: BigbangSelectBgBinding
@@ -87,6 +99,10 @@ class BigBangView : ViewGroup, NestedScrollingChild {
             }
             openUrl.apply {
                 setOnClickListener { bigBangStatusListener?.onURL() }
+                setOnLongClickListener {
+                    (bigBangStatusListener as? BigBangActionWrapper)?.handleBigBangUrlLongClick()
+                    true
+                }
                 visibility = GONE
             }
             pin.setOnClickListener { bigBangStatusListener?.onPin() }
@@ -564,14 +580,35 @@ class BigBangView : ViewGroup, NestedScrollingChild {
     }
 
     private fun checkURL() {
-        showURLBt(UrlDetector.hasUrl(makeSelectedText().trim { it <= ' ' }))
+        updateUrlButtonIcon(makeSelectedText())
     }
 
-    private fun showURLBt(isShow: Boolean) {
-        functionItemBinding.openUrl.visibility = if (isShow) VISIBLE else GONE
+    private fun measureFunctionRow() {
         val measureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
         functionItemBinding.root.measure(measureSpec, measureSpec)
+    }
 
+    /** Same extraction, target preview and app-icon binding as the link radar. */
+    private fun updateUrlButtonIcon(text: String) {
+        urlIconJob?.cancel()
+        val target = functionItemBinding.openUrl
+        target.visibility = if (UrlDetector.hasUrl(text)) VISIBLE else GONE
+        target.setAppIcon(null, R.drawable.ic_baseline_insert_link_24)
+        measureFunctionRow()
+        val scope = findViewTreeLifecycleOwner()?.lifecycleScope ?: return
+        urlIconJob = scope.launch {
+            try {
+                val url = LinkExtractor.extractWithStoredPatterns(context, text)
+                target.visibility = if (url == null) GONE else VISIBLE
+                val preview = url?.let { previewLinkTarget(context, it, InspireDataHolder.sourcePackage.orEmpty(), text) }
+                target.setAppIcon(preview?.icon, R.drawable.ic_baseline_insert_link_24)
+                measureFunctionRow()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                android.util.Log.w("BigBangView", "Link target preview failed", error)
+            }
+        }
     }
 
     fun selectAll() {

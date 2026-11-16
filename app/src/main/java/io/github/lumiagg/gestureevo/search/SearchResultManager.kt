@@ -60,6 +60,7 @@ import io.github.lumiagg.gestureevo.utils.TextUtil
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.UrlDetector
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
+import io.github.lumiagg.gestureevo.utils.icon.setAppIcon
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import io.github.lumiagg.gestureevo.utils.dp2px
@@ -326,9 +327,7 @@ class SearchResultManager(
         itemBinding.icon.applyGlobalImageRoundPercent = true
         bindBuiltInResultIcon(itemBinding.icon, R.drawable.baseline_image_24)
         loadResultImage(itemView, { IconHelper.getIcon(activity, model.app.pkgName) }) { icon ->
-            itemBinding.icon.applyGlobalImageRoundPercent = true
-            itemBinding.icon.setImage(icon)
-            itemBinding.icon.clearTint()
+            itemBinding.icon.setAppIcon(icon)
         }
     }
 

@@ -143,6 +143,9 @@
             android:name=".settings.InspireSettingsActivity"
             android:exported="false" />
         <activity
+            android:name=".settings.LinkRuleSettingsActivity"
+            android:exported="false" />
+        <activity
             android:name=".settings.DataBackActivity"
             android:exported="false" />
         <activity
@@ -202,6 +205,11 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service" />
         </service>
+        <activity
+            android:name=".link.radar.LinkSelectionActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@style/Theme.GestureEVO.transparent" />
         <service
             android:name=".notification.NotificationService"
             android:enabled="true"

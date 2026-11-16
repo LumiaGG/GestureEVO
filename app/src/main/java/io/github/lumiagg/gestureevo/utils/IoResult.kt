@@ -7,7 +7,7 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 
 /** Converts operation failures to Result while preserving coroutine cancellation. */
-internal suspend fun <T> ioResult(operation: () -> T): Result<T> = withContext(Dispatchers.IO) {
+internal suspend fun <T> ioResult(operation: suspend () -> T): Result<T> = withContext(Dispatchers.IO) {
     coroutineContext.ensureActive()
     try {
         val value = operation()

@@ -35,7 +35,6 @@ import io.github.lumiagg.gestureevo.gesture.EventBusManager.produceKeyboardEvent
 import io.github.lumiagg.gestureevo.gesture.KeyboardEvent
 import io.github.lumiagg.gestureevo.quick.ui.KeyboardType
 import io.github.lumiagg.gestureevo.settings.ui.BlackListSelectAPPBottomSheet
-import io.github.lumiagg.gestureevo.settings.ui.DefaultLinkOpenManager
 import io.github.lumiagg.gestureevo.settings.ui.DefaultSelectAPPBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.NotificationDisplayTimeBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.PointerTouchAreaOffsetBottomSheet
@@ -83,6 +82,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val KEY_NOTIFICATION_IMAGE_DISPLAY_SECONDS =
             "key_notification_image_display_seconds"
         const val KEY_SHOW_POINTER_TRAIL = "key_show_pointer_trail"
+
         const val KEY_ALWAYS_SHOW_POINTER_TOUCH_AREA = "key_always_show_pointer_touch_area"
         const val KEY_POINTER_TOUCH_AREA_OFFSET_DP = "key_pointer_touch_area_offset_dp"
         const val KEY_ENABLE_POINTER_DRAG_MODE = "key_enable_pointer_drag_mode"
@@ -266,14 +266,6 @@ class InspireSettingsActivity : AppCompatActivity() {
             )
         } else {
             updateSearchSelectionText(searchLink)
-        }
-
-        binding.linkOpenRow.setOnClickListener {
-            lifecycleScope.launch {
-                val linkOpenManager =
-                    DefaultLinkOpenManager(this@InspireSettingsActivity, lifecycleScope)
-                linkOpenManager.showDefaultLinkOpenSettings()
-            }
         }
     }
 

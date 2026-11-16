@@ -8,8 +8,10 @@ class BigBangActionWrapper(
     private val onBigBangShare: () -> Unit = {},
     private val onBigBangEdit: (Int, Int, String) -> Unit = { _, _, _ -> },
     private val onBigBangURL: () -> Unit = {},
+    private val onBigBangURLLongClick: () -> Unit = {},
     private val onBigBangPin: () -> Unit = {},
     private val onParticipleURLClick: () -> Unit = {},
+    private val onParticipleURLLongClick: () -> Unit = {},
     private val onParticipleReselectClick: () -> Unit = {},
     private val onParticipleSaveImageClick: (Boolean) -> Unit = {},
     private val onParticipleOpenImageClick: (Boolean) -> Unit = {},
@@ -39,9 +41,11 @@ class BigBangActionWrapper(
     fun handleShare() = onBigBangShare()
     fun handlePin() = onBigBangPin()
     fun handleBigBangUrlClick() = onBigBangURL()
+    fun handleBigBangUrlLongClick() = onBigBangURLLongClick()
     fun handleEditClick() = onBigBangEdit(0, 0, "")
 
     fun handleUrlClick() = onParticipleURLClick()
+    fun handleUrlLongClick() = onParticipleURLLongClick()
     fun handleScanQR() = onParticipleScanQR()
     fun handleReselectClick() = onParticipleReselectClick()
     fun handleSaveImageClick(isPress: Boolean) = onParticipleSaveImageClick(isPress)
