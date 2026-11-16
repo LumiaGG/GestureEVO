@@ -109,6 +109,7 @@
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleTask"
+            android:taskAffinity="${applicationId}.TASK.InspireContent"
             android:theme="@style/Theme.GestureEVO.transparent" />
         <activity
             android:name=".inspire.imageeditor.InspireImageEditorActivity"
