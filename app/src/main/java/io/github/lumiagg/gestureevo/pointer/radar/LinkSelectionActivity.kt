@@ -1,4 +1,4 @@
-package io.github.lumiagg.gestureevo.link.radar
+package io.github.lumiagg.gestureevo.pointer.radar
 
 import io.github.lumiagg.gestureevo.utils.ClipboardUtils
 import android.graphics.drawable.Drawable

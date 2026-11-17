@@ -77,6 +77,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
     }
 
     override fun onInterrupt() {
+        gestureManager?.cancelPointerHoverInteraction()
         globalPressDragSource?.cancel("accessibility_interrupted")
         AppLogger.event(
             LogModule.SERVICE, "accessibility_interrupted",
@@ -278,9 +279,10 @@ class GestureService : AccessibilityService(), CoroutineScope {
     suspend fun performClickAsync(
         x: Float,
         y: Float,
-        duration: Long = 100L
+        duration: Long = 100L,
+        clickCount: Int = 1,
     ): Boolean = suspendCancellableCoroutine { continuation ->
-        if (x < 0 || y < 0) {
+        if (!x.isFinite() || !y.isFinite() || x < 0 || y < 0 || duration <= 0 || clickCount !in 1..2) {
             continuation.resume(false) { Log.d(TAG, "Click cancelled: negative position") }
             return@suspendCancellableCoroutine
         }
@@ -290,29 +292,29 @@ class GestureService : AccessibilityService(), CoroutineScope {
         }
 
         val gestureBuilder = GestureDescription.Builder()
-        val gesture = GestureDescription.StrokeDescription(
-            clickPath,
-            0,  // Start time
-            duration  // Duration
-        )
-
-        gestureBuilder.addStroke(gesture)
+        // Non-overlapping strokes keep a double tap in one accepted gesture, not two races.
+        repeat(clickCount) { index ->
+            gestureBuilder.addStroke(GestureDescription.StrokeDescription(
+                clickPath, index * (duration + 80L), duration,
+            ))
+        }
         Log.d(TAG, "performClickAsync: start click")
-        dispatchGesture(
+        val accepted = dispatchGesture(
             gestureBuilder.build(),
             object : GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
                     Log.d(TAG, "onCompleted: click completed")
-                    continuation.resume(true) { Log.d(TAG, "Click cancelled: after completion") }
+                    if (continuation.isActive) continuation.resume(true)
                 }
 
                 override fun onCancelled(gestureDescription: GestureDescription?) {
                     Log.d(TAG, "onCancelled: click cancelled")
-                    continuation.resume(false) { Log.d(TAG, "Click cancelled: by system") }
+                    if (continuation.isActive) continuation.resume(false)
                 }
             },
             null
         )
+        if (!accepted && continuation.isActive) continuation.resume(false)
     }
 
     suspend fun performSwipeAsync(
