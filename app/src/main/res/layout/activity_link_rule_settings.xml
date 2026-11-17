@@ -191,6 +191,18 @@
               android:layout_height="wrap_content"
               android:checked="false" />
           </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+            android:id="@+id/clipboardRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/link_settings_clipboard_row"
+            app:settingsRowSummary="@string/link_settings_clipboard_row_desc">
+            <TextView
+              android:id="@+id/clipboardStateText"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content" />
+          </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
         </LinearLayout>
       </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
       <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard

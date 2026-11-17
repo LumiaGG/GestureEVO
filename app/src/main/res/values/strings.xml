@@ -1483,4 +1483,40 @@
     <string name="link_rule_not_selected">未选择</string>
     <string name="link_rule_enable_named">启用规则：%1$s</string>
     <string name="link_settings_templates_description">已为你勾选已安装应用的可用规则，可按需调整后导入。</string>
+    <string name="clipboard_link_settings_title">胶囊弹窗</string>
+    <string name="clipboard_link_settings_summary">复制的内容里带链接时，在屏幕边缘浮出一颗胶囊，显示会用哪个应用打开；点按打开，下滑小窗，多条链接各一颗</string>
+    <string name="clipboard_link_settings_behavior_card">行为</string>
+    <string name="clipboard_link_settings_behavior_card_summary">决定胶囊什么时候出现、停留多久、贴在哪一侧</string>
+    <string name="clipboard_link_settings_enabled">启用胶囊弹窗</string>
+    <string name="clipboard_link_settings_enabled_desc">关闭后不再监听剪贴板，也不再启动后台守护进程</string>
+    <string name="clipboard_link_settings_auto_dismiss">自动消失时长</string>
+    <string name="clipboard_link_settings_auto_dismiss_desc">超时没有操作就自动收起；0 秒表示不自动消失</string>
+    <string name="clipboard_link_settings_auto_dismiss_never">不自动消失</string>
+    <string name="clipboard_link_settings_auto_dismiss_seconds">%1$s 秒</string>
+    <string name="clipboard_link_settings_position">贴边位置</string>
+    <string name="clipboard_link_settings_position_desc">胶囊停靠的屏幕侧边；长按胶囊拖动可直接换位置并记住（键盘弹出时自动上移）</string>
+    <string name="clipboard_link_settings_position_left">左侧</string>
+    <string name="clipboard_link_settings_position_right">右侧</string>
+    <string name="clipboard_link_settings_max_targets">最多显示几条链接</string>
+    <string name="clipboard_link_settings_max_targets_desc">一次复制里超过数量的链接不再为它显示胶囊</string>
+    <string name="clipboard_link_settings_clear_after_open">打开后清空剪贴板</string>
+    <string name="clipboard_link_settings_clear_after_open_desc">打开链接后清空剪贴板，避免目标应用再读一次导致重复弹胶囊</string>
+    <string name="clipboard_link_settings_only_site_apps">只显示站点专属应用</string>
+    <string name="clipboard_link_settings_only_site_apps_desc">不列浏览器。复制淘宝链接时只出现淘宝；该链接没有专属应用时仍会列出浏览器</string>
+    <string name="clipboard_link_settings_note_card">实现说明</string>
+    <string name="clipboard_link_settings_note">胶囊手势：点按用目标应用打开；向下划在小窗打开；左右划关闭；长按后拖动可换位置并自动吸附到最近的侧边。
+
+系统只允许前台应用读取剪贴板，root 与 shell 都读不到。胶囊靠 Shizuku（免 root）或 root 守护进程发现剪贴板变化，再短暂切一次前台把内容读出来，所以复制后会有一瞬间的界面切换，这是读取动作本身，不是故障。
+
+胶囊显示的应用来自「链接分发」的分发规则，其次才是能声明打开该链接的应用；没有填写匹配内容的规则不参与，否则它会把任何链接都当成自己该打开的。</string>
+    <string name="clipboard_link_state_on">已开启</string>
+    <string name="clipboard_link_state_off">已关闭</string>
+    <string name="link_settings_clipboard_row">胶囊弹窗</string>
+    <string name="link_settings_clipboard_row_desc">启用、自动消失时长、贴边位置、最多显示几条链接</string>
+    <string name="clipboard_link_manual_choice">手动选择</string>
+    <string name="clipboard_link_backend_row">检测通道</string>
+    <string name="clipboard_link_backend_row_desc">自动：优先 Shizuku，失败回退 root；也可以固定其中一种</string>
+    <string name="clipboard_link_backend_auto">自动</string>
+    <string name="clipboard_link_backend_shizuku">Shizuku</string>
+    <string name="clipboard_link_backend_root">Root</string>
 </resources>

@@ -68,6 +68,28 @@ object LinkLauncher {
         return openRouted(context, rawUrl, result, side)
     }
 
+    /**
+     * Opens [url] straight into the ROM's small window, pinned to [targetPackage].
+     *
+     * Same launch path as a routed link — ActionProxy's OTHER_LINK, so the ROM-specific freeform
+     * hooks apply — but the windowing mode is forced instead of read from
+     * 链接分发 → 小窗打开. Routing is not repeated: the caller already knows where the link goes.
+     */
+    suspend fun openInSmallWindow(
+        context: Context,
+        url: String,
+        targetPackage: String,
+        component: String? = null,
+    ): Boolean = launch(
+        context = context,
+        url = url,
+        targetPackage = targetPackage,
+        excludeFromRecents = false,
+        component = component,
+        side = null,
+        forceFreeform = true,
+    )
+
     /** Handles a routing result: launch the rule target or fall back to the system handler. */
     private suspend fun openRouted(
         context: Context,
@@ -139,6 +161,7 @@ object LinkLauncher {
         excludeFromRecents: Boolean,
         component: String? = null,
         side: String? = null,
+        forceFreeform: Boolean? = null,
     ): Boolean = withContext(Dispatchers.Main) {
         val intent = buildLaunchIntent(url, targetPackage, excludeFromRecents, component)
             ?: run {
@@ -146,7 +169,8 @@ object LinkLauncher {
                 return@withContext false
             }
 
-        val smallWindow = context.settingsStore.readKey(KEY_LINK_OPEN_IN_SMALL_WINDOW, false)
+        val smallWindow = forceFreeform
+            ?: context.settingsStore.readKey(KEY_LINK_OPEN_IN_SMALL_WINDOW, false)
         val launchSide = side ?: TriggerSide.peek()
         val anchor = if (side == null) TriggerSide.peekLocation()?.let {
             TriggerSide.Point(it.x, it.screenWidth, it.y, it.screenHeight)

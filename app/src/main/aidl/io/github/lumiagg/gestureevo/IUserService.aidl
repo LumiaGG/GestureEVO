@@ -17,4 +17,7 @@ interface IUserService {
     void closeTouchStream(String token) = 7;
     boolean interruptTouchForDrag(String token, String sourcePackage, float x, float y,
         int displayId, long deadlineUptimeMs, ITouchInterruptionGuard guard) = 8;
+    // Starts the clipboard change daemon as shell and returns the read end of its stdout.
+    ParcelFileDescriptor startClipboardDaemon(String apkPath) = 9;
+    void stopClipboardDaemon() = 10;
 }

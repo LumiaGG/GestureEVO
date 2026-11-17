@@ -20,3 +20,9 @@ TinyPinyin 2.0.3: Apache-2.0; app/libs/tinypinyin-2.0.3.jar.
 Generated dictionary: jieba and THUOCL MIT notices retained in assets/licenses.
 
 Local LiteRT adapters in app/src/main/cpp are not an unmodified upstream SDK.
+
+Clipboard capsule, detection backend: ported from wangzhen9331's GestureEVO
+  personal fork (GPL-3.0-only), adapted to this codebase by the contributors.
+Capsule overlay and IME height tracking: ported from LinkGo by mting1117
+  (github.com/moting1117/LinkGo, All Rights Reserved) with the author's
+  permission; contributed back under this project's GPL-3.0-only license.

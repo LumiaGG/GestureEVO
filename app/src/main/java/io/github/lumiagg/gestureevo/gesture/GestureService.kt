@@ -34,6 +34,8 @@ import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.RecentAppsRecorder
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
+import io.github.lumiagg.gestureevo.clipboard.ClipboardLinkWatcher
+import io.github.lumiagg.gestureevo.clipboard.ImeInsetsManager
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -68,10 +70,14 @@ class GestureService : AccessibilityService(), CoroutineScope {
     private var lastNightMode = Configuration.UI_MODE_NIGHT_UNDEFINED
     private var externalDropFloating: ExternalDropFloating? = null
     private var externalDropSettingsJob: Job? = null
+    private var clipboardLinkWatcher: ClipboardLinkWatcher? = null
     private var globalPressDragSource: GlobalPressDragSource? = null
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         CurrentPackageProvider.onAccessibilityEvent(event)
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
+            ImeInsetsManager.onAccessibilityWindowsChanged()
+        }
         gestureManager?.onWindowStateChanged(event)
         globalPressDragSource?.onWindowEvent(event)
     }
@@ -88,6 +94,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
         AppLogger.event(
             LogModule.SERVICE, "accessibility_connected")
         CurrentPackageProvider.setService(this)
+        ImeInsetsManager.bind(this)
         initReceiver()
         launch(Dispatchers.Main) {
             delay(1000)
@@ -97,6 +104,8 @@ class GestureService : AccessibilityService(), CoroutineScope {
                 PressContentCapture(this@GestureService, this@GestureService::takeScreenshot),
             ) { externalDropFloating }.also { it.start() }
             observeExternalDropSettings()
+            clipboardLinkWatcher?.stop()
+            clipboardLinkWatcher = ClipboardLinkWatcher(this@GestureService).also { it.start() }
             DynamicColorUtils.themeRevision.collect {
                 gestureManager?.refreshOverlayThemes()
             }
@@ -187,6 +196,8 @@ class GestureService : AccessibilityService(), CoroutineScope {
         externalDropSettingsJob = null
         externalDropFloating?.destroy()
         externalDropFloating = null
+        clipboardLinkWatcher?.stop()
+        clipboardLinkWatcher = null
         super.onDestroy()
         gestureManager?.destroy()
         gestureManager = null
@@ -194,6 +205,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
             unregisterReceiver(gestureBroadcastReceiver)
         }
         CurrentPackageProvider.clearService()
+        ImeInsetsManager.bind(null)
         io.github.lumiagg.gestureevo.pin.PinDragCancelOverlay.hide(notify = false)
         job.cancel()
     }

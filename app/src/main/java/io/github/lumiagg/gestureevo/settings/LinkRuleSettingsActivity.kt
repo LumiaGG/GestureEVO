@@ -1,6 +1,7 @@
 package io.github.lumiagg.gestureevo.settings
 
 import io.github.lumiagg.gestureevo.utils.ioResult
+import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -19,6 +20,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.clipboard.ClipboardLinkConfig
 import io.github.lumiagg.gestureevo.databinding.ActivityLinkRuleSettingsBinding
 import io.github.lumiagg.gestureevo.databinding.ItemLinkRuleBinding
 import io.github.lumiagg.gestureevo.link.LinkConfigTransfer
@@ -39,6 +41,7 @@ import io.github.lumiagg.gestureevo.utils.app.appDisplayNameFromDatabase
 import io.github.lumiagg.gestureevo.utils.icon.bindAppIcon
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import io.github.lumiagg.gestureevo.utils.ToastHelper
@@ -83,11 +86,31 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
         setupRulesList()
         setupEntries()
         setupRadarSwitch()
+        setupClipboardEntry()
     }
 
     override fun onResume() {
         super.onResume()
         reload()
+        refreshClipboardState()
+    }
+
+    /** 复制链接弹窗入口：规则复用链接分发，这里只放跳转和启用状态。 */
+    private fun setupClipboardEntry() {
+        binding.clipboardRow.setOnClickListener {
+            startActivity(Intent(this, ClipboardLinkSettingsActivity::class.java))
+        }
+    }
+
+    private fun refreshClipboardState() {
+        lifecycleScope.launch {
+            val enabled = runCatching {
+                ClipboardLinkConfig.observe(this@LinkRuleSettingsActivity).first().enabled
+            }.getOrDefault(false)
+            binding.clipboardStateText.setText(
+                if (enabled) R.string.clipboard_link_state_on else R.string.clipboard_link_state_off
+            )
+        }
     }
 
     /** 链接雷达开关：雷达运行时读取同一 key。 */

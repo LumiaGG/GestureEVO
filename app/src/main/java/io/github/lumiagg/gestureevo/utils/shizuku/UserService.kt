@@ -15,6 +15,8 @@ class UserService : IUserService.Stub {
     private val diagnosticStreams = HashMap<String, io.github.lumiagg.gestureevo.diagnostics.DiagnosticRelay>()
     private val cancelledStreams = LinkedHashSet<String>()
     private val touchStreams = TouchStreamHost()
+    private var clipboardDaemon: Process? = null
+    private var clipboardPump: Thread? = null
     constructor() : super()
 
     @Keep
@@ -25,8 +27,54 @@ class UserService : IUserService.Stub {
     override fun destroy() {
         synchronized(diagnosticStreams) { diagnosticStreams.values.forEach { it.close() }; diagnosticStreams.clear() }
         touchStreams.close()
+        stopClipboardDaemon()
         Log.i(TAG, "destroy")
         exitProcess(0)
+    }
+
+    /**
+     * Runs the clipboard daemon as this process's uid (shell under Shizuku) and hands its stdout
+     * back through a pipe. The daemon ships inside the app's own APK, so no second artifact has
+     * to be built or kept in sync; shell can read APK files in /data/app.
+     */
+    override fun startClipboardDaemon(apkPath: String): android.os.ParcelFileDescriptor {
+        stopClipboardDaemon()
+        val pipe = android.os.ParcelFileDescriptor.createPipe()
+        val out = android.os.ParcelFileDescriptor.AutoCloseOutputStream(pipe[1])
+        try {
+            val process = ProcessBuilder(
+                "app_process",
+                "-Djava.class.path=" + apkPath,
+                "/system/bin",
+                clipboardDaemonClass,
+            ).redirectErrorStream(true).start()
+            clipboardDaemon = process
+            clipboardPump = Thread({
+                try {
+                    process.inputStream.use { it.copyTo(out) }
+                } catch (_: Exception) {
+                    // Reader gone; the daemon exits on its own watchdog.
+                } finally {
+                    runCatching { out.close() }
+                    runCatching { process.destroy() }
+                }
+            }, "clipboard-daemon-pump").apply {
+                isDaemon = true
+                start()
+            }
+            return pipe[0]
+        } catch (e: Exception) {
+            runCatching { out.close() }
+            runCatching { pipe[0].close() }
+            throw IllegalStateException("clipboard daemon launch failed: " + e.javaClass.simpleName)
+        }
+    }
+
+    override fun stopClipboardDaemon() {
+        clipboardPump?.interrupt()
+        clipboardPump = null
+        clipboardDaemon?.let { runCatching { it.destroy() } }
+        clipboardDaemon = null
     }
 
     override fun exit() {
@@ -84,5 +132,7 @@ class UserService : IUserService.Stub {
 
     companion object {
         private const val TAG = "UserService"
+        private const val clipboardDaemonClass =
+            "io.github.lumiagg.gestureevo.clipboard.ClipboardDaemon"
     }
 }

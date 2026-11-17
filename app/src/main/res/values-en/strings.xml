@@ -1481,4 +1481,40 @@ Create a rule or import templates to get started</string>
     <string name="link_rule_not_selected">Not selected</string>
     <string name="link_rule_enable_named">Enable rule: %1$s</string>
     <string name="link_settings_templates_description">Available rules for installed apps are selected. Review your selection before importing.</string>
+    <string name="clipboard_link_settings_title">Link capsule</string>
+    <string name="clipboard_link_settings_summary">A capsule floats at the screen edge when the copied text holds a link, showing which app will open it; tap to open, swipe down for the small window, one capsule per link</string>
+    <string name="clipboard_link_settings_behavior_card">Behaviour</string>
+    <string name="clipboard_link_settings_behavior_card_summary">When the capsule appears, how long it stays, and which side it docks on</string>
+    <string name="clipboard_link_settings_enabled">Enable link capsule</string>
+    <string name="clipboard_link_settings_enabled_desc">Turning this off stops watching the clipboard and stops the background daemon</string>
+    <string name="clipboard_link_settings_auto_dismiss">Auto dismiss</string>
+    <string name="clipboard_link_settings_auto_dismiss_desc">The ring around the capsule runs out and it collapses; 0 s means it stays</string>
+    <string name="clipboard_link_settings_auto_dismiss_never">Never</string>
+    <string name="clipboard_link_settings_auto_dismiss_seconds">%1$s s</string>
+    <string name="clipboard_link_settings_position">Dock side</string>
+    <string name="clipboard_link_settings_position_desc">Screen edge the capsule docks on; long-press and drag it to move, and the choice is remembered (moves above the keyboard on its own)</string>
+    <string name="clipboard_link_settings_position_left">Left</string>
+    <string name="clipboard_link_settings_position_right">Right</string>
+    <string name="clipboard_link_settings_max_targets">Maximum links shown</string>
+    <string name="clipboard_link_settings_max_targets_desc">Links beyond the limit get no capsule</string>
+    <string name="clipboard_link_settings_clear_after_open">Clear clipboard after opening</string>
+    <string name="clipboard_link_settings_clear_after_open_desc">Empty the clip once a link is opened, so the target app cannot read it back and pop another capsule</string>
+    <string name="clipboard_link_settings_only_site_apps">Site apps only</string>
+    <string name="clipboard_link_settings_only_site_apps_desc">Hide browsers. A Taobao link offers only Taobao; browsers still appear when no site app can open the link</string>
+    <string name="clipboard_link_settings_note_card">How it works</string>
+    <string name="clipboard_link_settings_note">Capsule gestures: tap opens in the target app; swipe down opens the small window; swipe sideways dismisses; long-press then drag moves it and it snaps to the nearest edge.
+
+The system only lets the foreground app read the clipboard — neither root nor shell can. The capsule is driven by a Shizuku (no root) or root daemon that notices the change, then briefly brings the app forward to read the text, so a quick flicker after copying is part of the read itself, not a fault.
+
+The app shown comes from the dispatch rules in Link dispatch, and only then from apps that claim the link. A rule without a pattern takes no part, otherwise it would claim every link that is copied.</string>
+    <string name="clipboard_link_state_on">On</string>
+    <string name="clipboard_link_state_off">Off</string>
+    <string name="link_settings_clipboard_row">Link capsule</string>
+    <string name="link_settings_clipboard_row_desc">Enable, auto dismiss, dock side, and how many links to show</string>
+    <string name="clipboard_link_manual_choice">Choose app</string>
+    <string name="clipboard_link_backend_row">Detection channel</string>
+    <string name="clipboard_link_backend_row_desc">Auto prefers Shizuku and falls back to root; either can also be pinned</string>
+    <string name="clipboard_link_backend_auto">Auto</string>
+    <string name="clipboard_link_backend_shizuku">Shizuku</string>
+    <string name="clipboard_link_backend_root">Root</string>
 </resources>

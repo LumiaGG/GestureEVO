@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:fitsSystemWindows="true">
+    <com.google.android.material.appbar.AppBarLayout android:layout_width="match_parent" android:layout_height="@dimen/app_bar_height">
+        <com.google.android.material.appbar.CollapsingToolbarLayout android:layout_width="match_parent" android:layout_height="match_parent" android:fitsSystemWindows="true" app:layout_scrollFlags="scroll|exitUntilCollapsed" app:toolbarId="@+id/toolbar">
+            <androidx.appcompat.widget.Toolbar android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="?attr/actionBarSize" app:layout_collapseMode="pin" app:title="@string/clipboard_link_settings_title" />
+        </com.google.android.material.appbar.CollapsingToolbarLayout>
+    </com.google.android.material.appbar.AppBarLayout>
+    <androidx.core.widget.NestedScrollView android:id="@+id/clipboardLinkScrollView" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" android:fillViewport="true" app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="@dimen/settings_card_spacing" android:paddingVertical="16dp">
+            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/behaviorCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/settings_card_spacing" app:settingsCardTitle="@string/clipboard_link_settings_behavior_card" app:settingsCardSummary="@string/clipboard_link_settings_behavior_card_summary" app:settingsCardExpanded="true">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/enabledRow" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/clipboard_link_settings_enabled" app:settingsRowSummary="@string/clipboard_link_settings_enabled_desc">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/enabledSwitch" android:checked="true" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/backendRow" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/clipboard_link_backend_row" app:settingsRowSummary="@string/clipboard_link_backend_row_desc">
+                        <TextView android:id="@+id/backendStateText" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/autoDismissRow" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/clipboard_link_settings_auto_dismiss" app:settingsRowSummary="@string/clipboard_link_settings_auto_dismiss_desc">
+                        <TextView android:id="@+id/selectedAutoDismissText" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/positionRow" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/clipboard_link_settings_position" app:settingsRowSummary="@string/clipboard_link_settings_position_desc">
+                        <TextView android:id="@+id/selectedPositionText" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/maxTargetsRow" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/clipboard_link_settings_max_targets" app:settingsRowSummary="@string/clipboard_link_settings_max_targets_desc">
+                        <TextView android:id="@+id/selectedMaxTargetsText" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/clearAfterOpenRow" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/clipboard_link_settings_clear_after_open" app:settingsRowSummary="@string/clipboard_link_settings_clear_after_open_desc">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/clearAfterOpenSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/siteAppsOnlyRow" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/clipboard_link_settings_only_site_apps" app:settingsRowSummary="@string/clipboard_link_settings_only_site_apps_desc">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/siteAppsOnlySwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                </LinearLayout>
+            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/noteCard" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsCardTitle="@string/clipboard_link_settings_note_card" app:settingsCardExpanded="true">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="16dp">
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:lineSpacingExtra="4dp" android:text="@string/clipboard_link_settings_note" android:textColor="?android:textColorSecondary" android:textSize="13sp" />
+                </LinearLayout>
+            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

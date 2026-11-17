@@ -36,11 +36,24 @@
             android:excludeFromRecents="true"
             android:exported="false"
             android:theme="@style/Theme.GestureEVO.transparent" />
+        <!-- Invisible for one frame: only the foreground app may read the clipboard on this ROM,
+             so the watcher borrows the foreground instead of asking for a permission that does
+             not exist. Own task, same reason as DropSearchActivity above. -->
+        <activity
+            android:name=".clipboard.ClipboardReadActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity="io.github.lumiagg.gestureevo.clipread"
+            android:theme="@style/Theme.GestureEVO.transparent" />
         <activity
             android:name=".utils.NotificationPermissionPromptActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:theme="@style/Theme.GestureEVO.transparent" />
+        <activity
+            android:name=".settings.ClipboardLinkSettingsActivity"
+            android:exported="false" />
         <activity
             android:name=".settings.SearchEngineSettingsActivity"
             android:exported="false" />
