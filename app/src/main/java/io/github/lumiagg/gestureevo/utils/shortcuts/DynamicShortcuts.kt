@@ -112,14 +112,13 @@ object DynamicShortcuts {
             if (pkg != null) setPackage(pkg)
         }, user) ?: error("System shortcut query failed")
 
-    suspend fun requireImported(context: Context, uri: Uri, expectedPackage: String): DynamicShortcutModel {
+    internal suspend fun requireImported(uri: Uri, expectedPackage: String): ShortcutIdentity {
         require(Build.VERSION.SDK_INT >= 25 && uri.scheme == SCHEME && uri.host == "launch")
         val pkg = requireNotNull(uri.getQueryParameter("pkg")).also { require(it.isNotBlank()) }
         require(expectedPackage.isEmpty() || expectedPackage == pkg)
         val id = requireNotNull(uri.getQueryParameter("id")).also { require(it.isNotEmpty()) }
         val serial = requireNotNull(uri.getQueryParameter("user")?.toLongOrNull()).also { require(it >= 0) }
         check(dao.isImported(pkg, id, serial)) { "Shortcut needs to be imported on this device" }
-        check(context.getSystemService(UserManager::class.java).getUserForSerialNumber(serial) != null)
-        return DynamicShortcutModel(pkg, id, serial, "", "", true)
+        return ShortcutIdentity(pkg, id, serial)
     }
 }

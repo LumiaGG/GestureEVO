@@ -39,7 +39,6 @@
   <string name="dynamic_shortcuts_home_unavailable">Unable to open home settings. Change your default home app in system settings.</string>
   <string name="dynamic_shortcuts_list_hint">Imported · Tap to launch, hold to copy the action link</string>
   <string name="dynamic_shortcuts_empty">No imported shortcuts. Import them in Dynamic shortcuts settings first.</string>
-  <string name="dynamic_shortcuts_record">%1$s\n%2$s · User %3$d</string>
   <string name="dynamic_shortcuts_link_copied">Action link copied for gesture or wheel configuration</string>
   <string name="dynamic_shortcuts_launch_failed">Unable to launch shortcut. It may be unavailable or need importing on this device.</string>
   <string name="dynamic_shortcuts_source">Imported dynamic shortcuts</string>

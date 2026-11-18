@@ -378,7 +378,7 @@ class ActionProxy(private val context: Context, linkString: String) {
         shortcutOptions: Bundle? = null,
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            val shortcut = DynamicShortcuts.requireImported(context, uri, expectedPackage)
+            val shortcut = DynamicShortcuts.requireImported(uri, expectedPackage)
             val users = context.getSystemService(UserManager::class.java)
             val user = users.getUserForSerialNumber(shortcut.userSerial)
                 ?: error("Shortcut profile no longer exists")
@@ -393,7 +393,7 @@ class ActionProxy(private val context: Context, linkString: String) {
                     !ensureAppEnabledIfFrozen(shortcut.packageName, context)) return@launchWithWindowRouting false
                 if (Build.VERSION.SDK_INT < 25) error("Dynamic shortcuts require Android 7.1")
                 context.getSystemService(LauncherApps::class.java).startShortcut(
-                    shortcut.packageName, shortcut.shortcutId, null, options, user,
+                    shortcut.packageName, shortcut.id, null, options, user,
                 )
                 recordOpenCount(shortcut.packageName)
                 AppLogger.event(LogModule.ACTION, "dynamic_shortcut_launch_submitted", trace = trace,

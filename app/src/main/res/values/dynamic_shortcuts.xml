@@ -36,7 +36,6 @@
   <string name="dynamic_shortcuts_home_unavailable">无法打开默认桌面设置，请在系统设置中更换桌面。</string>
   <string name="dynamic_shortcuts_list_hint">已导入 · 轻点启动，长按复制动作链接</string>
   <string name="dynamic_shortcuts_empty">尚未导入快捷方式，请先在动态快捷方式设置中导入。</string>
-  <string name="dynamic_shortcuts_record">%1$s\n%2$s · 用户 %3$d</string>
   <string name="dynamic_shortcuts_link_copied">已复制动作链接，可用于手势或轮盘配置</string>
   <string name="dynamic_shortcuts_launch_failed">快捷方式无法启动，可能已失效或需要在本机重新导入。</string>
   <string name="dynamic_shortcuts_source">已导入的动态快捷方式</string>
