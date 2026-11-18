@@ -96,6 +96,8 @@ object LinkLauncher {
                     result.rule.excludeFromRecents,
                     result.rule.component,
                     side,
+                    result.fallbackUrl,
+                    privilegedComponent = ruleComponent(result.rule),
                 )
 
             is LinkDispatchResult.Exempted -> launch(context, result.url, "", false, side = side)
@@ -139,19 +141,21 @@ object LinkLauncher {
         excludeFromRecents: Boolean,
         component: String? = null,
         side: String? = null,
+        fallbackUrl: String = url,
+        privilegedComponent: ComponentName? = null,
     ): Boolean = withContext(Dispatchers.Main) {
         val intent = buildLaunchIntent(url, targetPackage, excludeFromRecents, component)
-            ?: run {
-                ToastHelper.showInUIThread(context, R.string.inspire_link_no_app)
-                return@withContext false
-            }
-
+        val attemptedPackage = intent?.component?.packageName ?: intent?.`package`
         val smallWindow = context.settingsStore.readKey(KEY_LINK_OPEN_IN_SMALL_WINDOW, false)
         val launchSide = side ?: TriggerSide.peek()
         val anchor = if (side == null) TriggerSide.peekLocation()?.let {
             TriggerSide.Point(it.x, it.screenWidth, it.y, it.screenHeight)
         } else null
-        suspend fun open(target: Intent): Boolean {
+        suspend fun open(
+            target: Intent,
+            alreadyAttempted: String? = null,
+            privilegedTarget: ComponentName? = null,
+        ): Boolean {
             val action = GestureActionLink(
                 actionType = GestureActionType.OTHER_LINK,
                 isFreeform = smallWindow,
@@ -160,9 +164,14 @@ object LinkLauncher {
                 addParams("uri", target.toUri(Intent.URI_INTENT_SCHEME))
                 addParams("pkg", target.`package` ?: target.component?.packageName.orEmpty())
             }
-            return ActionProxy(context, action.buildLink()).executeLink(anchor = anchor, side = launchSide)
+            return ActionProxy(context, action.buildLink()).executeLink(
+                anchor = anchor,
+                side = launchSide,
+                authorizedComponent = privilegedTarget,
+                skipUnfreezeFor = alreadyAttempted,
+            )
         }
-        if (open(intent)) return@withContext true
+        if (intent != null && open(intent, privilegedTarget = privilegedComponent)) return@withContext true
         AppLogger.event(
             LogModule.ACTION,
             "link_target_unavailable",
@@ -170,24 +179,31 @@ object LinkLauncher {
             fields = mapOf("package" to targetPackage)
         )
 
-        // A component-pinned launch that failed may still work through the plain link.
-        if (intent.component != null) {
-            val unpinned = Intent(intent).apply { this.component = null }
-            if (open(unpinned)) return@withContext true
+        if (intent?.component != null && intent.`package` != null) {
+            val unpinned = Intent(intent).setComponent(null)
+            if (open(unpinned, alreadyAttempted = attemptedPackage)) return@withContext true
         }
 
-        // Fall back to any app that can handle the link, including the system chooser.
-        val fallback = Intent(Intent.ACTION_VIEW).apply {
-            data = intent.data
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            if (excludeFromRecents) addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
-        }
-        if (open(fallback)) {
-            return@withContext true
+        val originalData = buildLaunchIntent(fallbackUrl, "", false, null)?.data
+            ?.takeIf { !it.scheme.isNullOrBlank() && !it.scheme.equals("intent", ignoreCase = true) }
+        val routedData = intent?.data?.takeIf { !it.scheme.isNullOrBlank() && !it.scheme.equals("intent", ignoreCase = true) }
+        for (data in listOfNotNull(routedData, originalData).distinct()) {
+            val fallback = Intent(Intent.ACTION_VIEW, data).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (excludeFromRecents) addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+            }
+            if (!fallback.filterEquals(intent) && open(fallback)) return@withContext true
         }
 
         ToastHelper.showInUIThread(context, R.string.inspire_link_no_app)
         false
+    }
+
+    internal fun ruleComponent(rule: LinkDispatchRule): ComponentName? {
+        if (rule.targetPackage.isBlank()) return null
+        val template = if (rule.component == null) rule.template.orEmpty() else ""
+        val intent = buildLaunchIntent(template, rule.targetPackage, false, rule.component)
+        return intent?.component?.takeIf { it.packageName == rule.targetPackage }
     }
 
     /** 分发规则触发时的打开方式：true=小窗，false=全屏（默认）。 */
@@ -206,9 +222,12 @@ object LinkLauncher {
         component: String?
     ): Intent? {
         val normalized = UrlDetector.normalizeForOpening(url) ?: url
-        val intent = if (normalized.startsWith("intent://", ignoreCase = true)) {
+        val intent = if (normalized.startsWith("intent:", ignoreCase = true)) {
             runCatching {
-                Intent.parseUri(normalized, Intent.URI_INTENT_SCHEME)
+                Intent.parseUri(normalized, Intent.URI_INTENT_SCHEME).apply {
+                    // LinkGo uses intent:// with no data when the address is passed as an extra.
+                    if (data?.toString() == "//") data = null
+                }
             }.getOrNull() ?: return null
         } else {
             val uri = runCatching { Uri.parse(normalized) }.getOrNull() ?: return null

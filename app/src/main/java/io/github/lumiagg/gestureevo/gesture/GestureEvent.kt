@@ -54,7 +54,7 @@ data class AccessibilityActionEvent(
 
 data class NotificationActionEvent(val isAdd: Boolean)
 
-data class SearchEvent(val task: InjectionTask)
+data class SearchEvent(val task: InjectionTask, val cancel: Boolean = false)
 
 data class PinPoolEvent(val show: Boolean, val side: String? = null)
 

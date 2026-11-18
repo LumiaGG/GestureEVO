@@ -1274,7 +1274,8 @@
     <string name="guide_ready">Core settings are ready and you have confirmed that a gesture works.</string>
     <string name="guide_trial_confirmed">I have triggered a gesture and performed its action</string>
     <string name="guide_trial_pending">Core settings are ready. Try a gesture and confirm the result.</string>
-    <string name="guide_advanced_details">Root access is requested when a relevant action runs. You can also authorize Shizuku or view ADB authorization options.</string>
+    <string name="guide_advanced_details">Authorize Root or Shizuku here to open activities that require advanced permissions. Freezing and unfreezing apps use Shizuku. You can also view ADB authorization options.</string>
+    <string name="guide_root_request">Request Root access</string>
     <string name="guide_incomplete">Essential settings are incomplete. Continue setup or return later.</string>
     <string name="guide_finish">Finish setup</string>
     <string name="guide_skip">Set up later</string>

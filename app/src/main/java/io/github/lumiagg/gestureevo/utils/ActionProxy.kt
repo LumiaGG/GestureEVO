@@ -59,6 +59,9 @@ import io.github.lumiagg.gestureevo.utils.Rom.isHuawei
 import io.github.lumiagg.gestureevo.utils.app.AShell
 import io.github.lumiagg.gestureevo.utils.app.AShizuku
 import io.github.lumiagg.gestureevo.utils.app.AShizuku.ensureAppEnabledIfFrozen
+import io.github.lumiagg.gestureevo.utils.app.PrivilegedActivityLauncher
+import io.github.lumiagg.gestureevo.utils.app.isActivityExported
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
@@ -66,6 +69,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.lsposed.hiddenapibypass.HiddenApiBypass
@@ -92,12 +97,20 @@ class ActionProxy(private val context: Context, linkString: String) {
         executeTracked(anchor, side) { executeAction(sourceTriggerTag) }
     }
 
-    /** Executes OTHER_LINK/OTHER_SHORTCUT through the regular launcher and reports submission. */
-    suspend fun executeLink(anchor: TriggerSide.Point? = null, side: String? = null): Boolean {
+    internal suspend fun executeExternal() {
+        executeTracked(null, null) { executeAction(null, external = true) }
+    }
+
+    internal suspend fun executeLink(
+        anchor: TriggerSide.Point? = null,
+        side: String? = null,
+        authorizedComponent: ComponentName? = null,
+        skipUnfreezeFor: String? = null,
+    ): Boolean {
         require(event == GestureActionType.OTHER_LINK || event == GestureActionType.OTHER_SHORTCUT)
         return executeTracked(anchor, side) {
             val uri = otherLink ?: return@executeTracked false
-            launchUri(uri, pkg.orEmpty())
+            launchUri(uri, pkg.orEmpty(), authorizedComponent, skipUnfreezeFor)
         }
     }
 
@@ -134,7 +147,7 @@ class ActionProxy(private val context: Context, linkString: String) {
         }
     }
 
-    private suspend fun executeAction(sourceTriggerTag: String?) {
+    private suspend fun executeAction(sourceTriggerTag: String?, external: Boolean = false) {
         when (event) {
             GestureActionType.OPEN_APP -> {
                 pkg?.let {
@@ -175,33 +188,10 @@ class ActionProxy(private val context: Context, linkString: String) {
             }
 
             GestureActionType.OTHER_LINK, GestureActionType.OTHER_SHORTCUT -> {
-                launchUri(otherLink ?: return, pkg ?: "")
+                launchUri(otherLink ?: return, pkg.orEmpty())
             }
 
-            GestureActionType.OPEN_ACTIVITY -> {
-                val isExported: Boolean = link.getBooleanQueryParameter("isExported", false)
-                val activityName: String? = link.getQueryParameter("activityName")
-                if (pkg != null && activityName != null && !isExported) {
-                    if (freeform) {
-                        launcherAPP(pkg, countOpen = false)
-                    }
-                    if (!ensureAppEnabledIfFrozen(pkg, context)) {
-                        AppLogger.event(LogModule.ACTION, "unfreeze_failed", LogLevel.WARN, trace,
-                            mapOf("package" to pkg))
-                        return
-                    }
-                    val launched = if (!launchTemporaryAssistant(context, pkg, activityName)) {
-                        launchUri(otherLink ?: return, pkg)
-                    } else {
-                        true
-                    }
-                    if (launched) {
-                        recordOpenCount(pkg)
-                    }
-                } else {
-                    launchUri(otherLink ?: return, pkg ?: "")
-                }
-            }
+            GestureActionType.OPEN_ACTIVITY -> openConfiguredActivity(allowPrivilegedLaunch = !external)
 
             GestureActionType.OPEN_SHELL -> {
                 launchShell(shell ?: return)
@@ -295,41 +285,113 @@ class ActionProxy(private val context: Context, linkString: String) {
 
     }
 
-    private suspend fun launcherAPP(pkg: String, countOpen: Boolean = true): Boolean =
-        withContext(Dispatchers.Default) {
-            if (!ensureAppEnabledIfFrozen(pkg, context)) {
-                AppLogger.event(LogModule.ACTION, "unfreeze_failed", LogLevel.WARN, trace,
-                    mapOf("package" to pkg))
-                return@withContext false
-            }
-            val intent = context.packageManager.getLaunchIntentForPackage(pkg) ?: let {
-                AppLogger.event(LogModule.ACTION, "launch_intent_missing", LogLevel.WARN, trace,
-                    mapOf("package" to pkg))
-                return@withContext false
-            }
-            val useMiFreeForm = context.settingsStore.readKey(KEY_USE_MI_WINDOW, false)
-            val launched = when {
-                freeform && useMiFreeForm -> launchIntentMi(intent)
-                userId > 0 -> launchAndroidForWork(intent.component)
-                else -> launchIntent(intent)
-            }
-            if (launched && countOpen) {
-                recordOpenCount(pkg)
-            }
-            launched
+    internal suspend fun executeSearchActivityLaunch(
+        side: String?,
+        beforeLaunch: suspend () -> Unit,
+    ): Boolean {
+        require(event == GestureActionType.OPEN_ACTIVITY)
+        return executeTracked(null, side) {
+            openConfiguredActivity(searchLaunch = true, beforeLaunch = beforeLaunch)
         }
+    }
 
-    private suspend fun launchUri(uri: String, pkgName: String): Boolean {
-        try {
-            if (pkgName.isNotEmpty()) {
-                if (!ensureAppEnabledIfFrozen(pkgName, context)) {
-                    AppLogger.event(LogModule.ACTION, "unfreeze_failed", LogLevel.WARN, trace,
-                        mapOf("package" to pkgName))
-                    return false
+    private suspend fun openConfiguredActivity(
+        allowPrivilegedLaunch: Boolean = true,
+        searchLaunch: Boolean = false,
+        beforeLaunch: suspend () -> Unit = {},
+    ): Boolean {
+        val targetPackage = pkg.orEmpty()
+        val activityName = link.getQueryParameter("activityName")
+        val uri = otherLink
+        val component = if (targetPackage.isNotEmpty() && !activityName.isNullOrBlank()) {
+            ComponentName.unflattenFromString("$targetPackage/$activityName")
+        } else null
+        if (uri == null && component == null) return false
+        if (targetPackage.isNotEmpty() && !prepareTarget(targetPackage)) return false
+        val exported = component?.let { withContext(Dispatchers.IO) { isActivityExported(context, it) } }
+        val needsCompatibilityLaunch = if (searchLaunch) {
+            exported != true
+        } else {
+            exported == false && (allowPrivilegedLaunch || !link.getBooleanQueryParameter("isExported", false))
+        }
+        beforeLaunch()
+        if (component != null && needsCompatibilityLaunch) {
+            if (freeform) launcherAPP(targetPackage, prepared = true, countOpen = false)
+            if (searchLaunch && allowPrivilegedLaunch &&
+                PrivilegedActivityLauncher.launchSearchActivity(context, component, trace)
+            ) {
+                recordOpenCount(targetPackage)
+                return true
+            }
+            if (launchTemporaryAssistant(context, component)) {
+                recordOpenCount(targetPackage)
+                return true
+            }
+            if (allowPrivilegedLaunch && !searchLaunch && !freeform) {
+                val intent = if (uri == null) Intent().setComponent(component) else parseLaunchUri(uri)
+                if (intent != null && intent.component == component &&
+                    PrivilegedActivityLauncher.launch(context, intent.addFlags(FLAG_ACTIVITY_NEW_TASK), trace)
+                ) {
+                    recordOpenCount(targetPackage)
+                    return true
                 }
             }
-            val launchUri = UrlDetector.normalizeForOpening(uri) ?: uri
-            val intent = Intent.parseUri(launchUri, Intent.URI_ALLOW_UNSAFE)
+        }
+        if (uri != null) {
+            return launchUri(uri, targetPackage, skipUnfreezeFor = targetPackage)
+        }
+        return component != null && launchIntent(Intent().setComponent(component).addFlags(FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    private suspend fun prepareTarget(targetPackage: String): Boolean {
+        if (ensureAppEnabledIfFrozen(targetPackage, context)) return true
+        AppLogger.event(LogModule.ACTION, "unfreeze_failed", LogLevel.WARN, trace,
+            mapOf("package" to targetPackage))
+        return false
+    }
+
+    private suspend fun launcherAPP(
+        pkg: String,
+        prepared: Boolean = false,
+        countOpen: Boolean = true,
+    ): Boolean = withContext(Dispatchers.Default) {
+        if (!prepared && !prepareTarget(pkg)) return@withContext false
+        val intent = context.packageManager.getLaunchIntentForPackage(pkg) ?: let {
+            AppLogger.event(LogModule.ACTION, "launch_intent_missing", LogLevel.WARN, trace,
+                mapOf("package" to pkg))
+            return@withContext false
+        }
+        val useMiFreeForm = context.settingsStore.readKey(KEY_USE_MI_WINDOW, false)
+        val launched = when {
+            freeform && useMiFreeForm -> launchIntentMi(intent)
+            userId > 0 -> launchAndroidForWork(intent.component)
+            else -> launchIntent(intent)
+        }
+        if (launched && countOpen) recordOpenCount(pkg)
+        launched
+    }
+
+    private fun parseLaunchUri(uri: String): Intent? = try {
+        Intent.parseUri(UrlDetector.normalizeForOpening(uri) ?: uri, Intent.URI_ALLOW_UNSAFE)
+    } catch (_: java.net.URISyntaxException) {
+        null
+    }
+
+    private suspend fun launchUri(
+        uri: String,
+        pkgName: String,
+        authorizedComponent: ComponentName? = null,
+        skipUnfreezeFor: String? = null,
+    ): Boolean {
+        try {
+            val intent = parseLaunchUri(uri) ?: run {
+                AppLogger.event(LogModule.ACTION, "shortcut_parse_failed", LogLevel.WARN, trace)
+                return false
+            }
+            val targetPackage = intent.component?.packageName ?: pkgName.ifBlank { intent.`package`.orEmpty() }
+            if (pkgName.isNotBlank() && pkgName != skipUnfreezeFor && !prepareTarget(pkgName)) {
+                return false
+            }
             AppLogger.event(LogModule.ACTION, "shortcut_parsed", LogLevel.DEBUG, trace,
                 mapOf("package" to (intent.component?.packageName ?: pkgName), "component" to intent.component?.flattenToShortString()))
             intent.addFlags(FLAG_ACTIVITY_NEW_TASK)
@@ -339,12 +401,9 @@ class ActionProxy(private val context: Context, linkString: String) {
             val launched = if (useCustomTabs) {
                 launchCustomTabsIntent(intent, pkgName) || launchIntent(intent)
             } else {
-                launchIntent(intent)
+                launchIntent(intent, authorizedComponent)
             }
-            if (launched) {
-                val targetPkg = pkgName.ifBlank { extractPackageFromUri(launchUri) ?: "" }
-                recordOpenCount(targetPkg)
-            }
+            if (launched) recordOpenCount(targetPackage)
             return launched
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -452,7 +511,7 @@ class ActionProxy(private val context: Context, linkString: String) {
             return@withContext false
         }
 
-    private suspend fun launchIntent(intent: Intent): Boolean =
+    private suspend fun launchIntent(intent: Intent, authorizedComponent: ComponentName? = null): Boolean =
         withContext(Dispatchers.Default) {
             if (newWindow) {
                 intent.addFlags(FLAG_ACTIVITY_NEW_TASK)
@@ -488,6 +547,9 @@ class ActionProxy(private val context: Context, linkString: String) {
                 AppLogger.event(LogModule.ACTION, "activity_not_found", LogLevel.ERROR, trace, metadata, ignored)
             } catch (ignored: SecurityException) {
                 AppLogger.event(LogModule.ACTION, "launch_permission_denied", LogLevel.ERROR, trace, metadata, ignored)
+                if (!freeform && authorizedComponent != null && authorizedComponent == intent.component) {
+                    return@withContext PrivilegedActivityLauncher.launch(context, intent, trace)
+                }
             }
             return@withContext false
         }
@@ -517,19 +579,18 @@ class ActionProxy(private val context: Context, linkString: String) {
             true
         }
 
-    private fun extractPackageFromUri(uri: String): String? {
-        return runCatching {
-            val intent = Intent.parseUri(uri, Intent.URI_ALLOW_UNSAFE)
-            intent.`package` ?: intent.component?.packageName
-        }.getOrNull()
-    }
-
     private suspend fun recordOpenCount(pkgName: String?) {
         val targetPkg = pkgName?.takeIf { it.isNotBlank() } ?: return
-        val model = getAPPDao().findByPkg(targetPkg) ?: return
-        model.openCount += 1
-        model.lastUsageTime = System.currentTimeMillis()
-        updateDB(model)
+        try {
+            val model = getAPPDao().findByPkg(targetPkg) ?: return
+            model.openCount += 1
+            model.lastUsageTime = System.currentTimeMillis()
+            updateDB(model)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            AppLogger.event(LogModule.ACTION, "app_statistics_failed", LogLevel.WARN, trace, error = error)
+        }
     }
 
     suspend fun getActivityOptions(): ActivityOptions {
@@ -594,55 +655,48 @@ class ActionProxy(private val context: Context, linkString: String) {
         }
     }
 
-    suspend fun launchTemporaryAssistant(context: Context, pkg: String, activity: String): Boolean =
+    private suspend fun launchTemporaryAssistant(context: Context, component: ComponentName): Boolean =
         withContext(Dispatchers.IO) {
-            val searchManager =
-                context.getSystemService(Context.SEARCH_SERVICE) as? android.app.SearchManager
-            val currentAssistant = Settings.Secure.getString(context.contentResolver, "assistant")
-
-            val targetComponent = ComponentName(
-                pkg,
-                activity
-            )
-            val replacedAssistant = targetComponent.flattenToString()
-
-            runCatching {
-                allowReflectionLaunchAssist()
-                // Temporarily replace system assistant
-                Settings.Secure.putString(context.contentResolver, "assistant", replacedAssistant)
-
-                // Launch assistant
-                searchManager?.let {
-                    val method =
-                        searchManager.javaClass.getMethod("launchAssist", Bundle::class.java)
-                    method.invoke(searchManager, Bundle())
-
-                    // Brief delay before restoring
+            if (context.checkSelfPermission(android.Manifest.permission.WRITE_SECURE_SETTINGS) !=
+                PackageManager.PERMISSION_GRANTED
+            ) return@withContext false
+            assistantLaunchLock.withLock {
+                val searchManager = context.getSystemService(android.app.SearchManager::class.java)
+                    ?: return@withLock false
+                val resolver = context.contentResolver
+                val target = component.flattenToString()
+                var currentAssistant: String? = null
+                var changed = false
+                try {
+                    allowReflectionLaunchAssist()
+                    currentAssistant = Settings.Secure.getString(resolver, "assistant")
+                    changed = Settings.Secure.putString(resolver, "assistant", target)
+                    if (!changed) return@withLock false
+                    searchManager.javaClass.getMethod("launchAssist", Bundle::class.java).invoke(searchManager, Bundle())
                     delay(100)
-                    Settings.Secure.putString(
-                        context.contentResolver,
-                        "assistant",
-                        currentAssistant
-                    )
-                    return@withContext true
-                }
-
-                return@withContext false
-            }.onFailure { e ->
-                runCatching {
-                    Settings.Secure.putString(
-                        context.contentResolver,
-                        "assistant",
-                        currentAssistant
-                    )
+                    true
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    AppLogger.event(LogModule.ACTION, "assistant_launch_failed", LogLevel.WARN, trace, error = error)
+                    false
+                } finally {
+                    if (changed) {
+                        runCatching {
+                            if (Settings.Secure.getString(resolver, "assistant") == target) {
+                                check(Settings.Secure.putString(resolver, "assistant", currentAssistant))
+                            }
+                        }.onFailure {
+                            AppLogger.event(LogModule.ACTION, "assistant_restore_failed", LogLevel.WARN, trace, error = it)
+                        }
+                    }
                 }
             }
-
-            return@withContext false
         }
 
     companion object {
         private const val NUBIA_FREEFORM_IDENTIFIER = "_WindowReply"
+        private val assistantLaunchLock = Mutex()
         private var activityOptionsAPIPass = false
         private var launchAssistAPIPass = false
 

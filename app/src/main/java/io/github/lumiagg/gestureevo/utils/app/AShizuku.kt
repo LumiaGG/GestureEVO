@@ -65,6 +65,11 @@ object AShizuku {
         return true
     }
 
+    internal fun hasPermission(): Boolean = runCatching {
+        Shizuku.pingBinder() && !Shizuku.isPreV11() &&
+            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+    }.getOrDefault(false)
+
     suspend fun checkPermission(context: Context): Boolean = permissionMutex.withLock {
         // Main dispatching also prevents listener cleanup from modifying Shizuku's callback list
         // inside the library's permission-result dispatch loop.

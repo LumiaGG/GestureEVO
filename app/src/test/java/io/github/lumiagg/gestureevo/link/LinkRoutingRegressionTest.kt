@@ -69,6 +69,23 @@ class LinkRoutingRegressionTest {
     }
 
     @Test
+    fun intentExtraKeepsUrlDelimitersInsideTheValue() = runBlocking {
+        val url = "https://example.com/part%20one?a=1;part=two+three#section"
+        val rule = LinkDispatchRule(
+            pattern = "example.com",
+            targetPackage = "com.example",
+            template = "intent://#Intent;component=com.example/.Reader;S.rawUrl={url};end",
+        )
+        val result = LinkDispatcher.routeWithRules(url, listOf(rule)) as LinkDispatchResult.Routed
+        assertEquals(url, result.fallbackUrl)
+        assertEquals(
+            "intent://#Intent;component=com.example/.Reader;S.rawUrl=" +
+                "https%3A%2F%2Fexample.com%2Fpart%2520one%3Fa%3D1%3Bpart%3Dtwo%2Bthree%23section;end",
+            result.url,
+        )
+    }
+
+    @Test
     fun redispatchRechecksExemptionsAndPreservesResolvedUrl() = runBlocking {
         val result = LinkDispatcher.routeWithRules(
             "https://short.test/a",

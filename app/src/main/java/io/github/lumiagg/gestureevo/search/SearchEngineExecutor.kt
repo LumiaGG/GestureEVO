@@ -18,9 +18,9 @@ import io.github.lumiagg.gestureevo.search.config.EngineType
 import io.github.lumiagg.gestureevo.search.config.SearchEngine
 import io.github.lumiagg.gestureevo.utils.ActionProxy
 import io.github.lumiagg.gestureevo.utils.ToastHelper
-import io.github.lumiagg.gestureevo.utils.app.isActivityExported
 import io.github.lumiagg.gestureevo.utils.uriBuilder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -120,39 +120,32 @@ class SearchEngineExecutor(
                         if (pkg.isEmpty() || activityName.isEmpty()) {
                             return@launch
                         }
-                        val intent = Intent().apply {
-                            component = ComponentName(pkg, activityName)
-                        }
-                        val uri = intent.toUri(Intent.URI_INTENT_SCHEME)
-                        val isExported = withContext(ioDispatcher) {
-                            isActivityExported(activity, pkg, activityName)
-                        }
+                        val component = ComponentName.unflattenFromString("$pkg/$activityName") ?: return@launch
+                        val uri = Intent().setComponent(component).toUri(Intent.URI_INTENT_SCHEME)
                         val link = uriBuilder(GestureActionType.OPEN_ACTIVITY)
                             .appendQueryParameter("uri", uri)
                             .appendQueryParameter("pkg", pkg)
                             .appendQueryParameter("activityName", activityName)
-                            .appendQueryParameter(
-                                "isExported",
-                                isExported.toString()
-                            )
                             .appendQueryParameter("freeform", freeFrom.toString())
                             .apply {
                                 triggerSide?.let { appendQueryParameter("triggerSide", it) }
                             }
                             .build()
 
-                        ActionProxy(activity, link.toString()).execute(side = triggerSide)
-
-                        produceSearchEvent(
-                            SearchEvent(
-                                InjectionTask(
-                                    query = query,
-                                    targetPackage = pkg,
-                                    targetActivity = activityName,
-                                    inputEnter = engine.autoInputEnter
-                                )
-                            )
-                        )
+                        val task = InjectionTask(query, pkg, component.className, engine.autoInputEnter)
+                        var armed = false
+                        var launched = false
+                        try {
+                            launched = ActionProxy(activity, link.toString()).executeSearchActivityLaunch(side = triggerSide) {
+                                armed = true
+                                produceSearchEvent(SearchEvent(task))
+                            }
+                        } finally {
+                            if (armed && !launched) withContext(NonCancellable) {
+                                produceSearchEvent(SearchEvent(task, cancel = true))
+                            }
+                        }
+                        if (!launched) return@launch
                     }
 
                     EngineType.SHARE_TO_APP -> {

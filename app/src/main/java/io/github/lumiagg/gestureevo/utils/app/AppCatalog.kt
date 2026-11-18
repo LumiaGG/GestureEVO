@@ -111,11 +111,11 @@ fun appDisplayName(context: Context, info: ApplicationInfo): String? = try {
     null
 }
 
-fun isActivityExported(context: Context, packageName: String, className: String): Boolean = try {
+internal fun isActivityExported(context: Context, component: ComponentName): Boolean? = try {
     @Suppress("DEPRECATION")
-    context.packageManager.getActivityInfo(ComponentName(packageName, className), 0).exported
+    context.packageManager.getActivityInfo(component, PackageManager.MATCH_DISABLED_COMPONENTS).exported
 } catch (_: PackageManager.NameNotFoundException) {
-    false
+    null
 }
 
 suspend fun syncAppCatalogIfNeeded(context: Context, minIntervalMs: Long = 60_000L) = appSyncMutex.withLock {

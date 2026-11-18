@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import io.github.lumiagg.gestureevo.gesture.GestureService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -38,13 +39,10 @@ class AutomatePerformer(private val service: GestureService) {
     }
 
 
-    @Volatile
     private var currentTask: InjectionTask? = null
-
-    @Volatile
     private var taskState: TaskState = TaskState.Idle
-
     private var monitorJob: Job? = null
+    private var injectionJob: Job? = null
 
     // Configuration constants
     private companion object {
@@ -132,27 +130,23 @@ class AutomatePerformer(private val service: GestureService) {
         Log.i(TAG, "Target screen reached, starting injection")
         taskState = TaskState.Running(System.currentTimeMillis())
 
-        // Perform injection
-        service.launch {
+        injectionJob = service.launch(Dispatchers.Main.immediate) {
             try {
-                // Brief delay ensuring view hierarchy is fully loaded
                 delay(50)
-
-                val success = performInjectionWithRetry(task.query)
-
+                val success = performInjectionWithRetry(task)
+                if (currentTask !== task) return@launch
                 if (success) {
                     Log.i(TAG, "✓ Injection succeeded")
-                    taskState = TaskState.Completed
                     completeTask()
                 } else {
                     Log.e(TAG, "✗ Injection failed after reaching maximum retry attempts")
-                    taskState = TaskState.Cancelled
                     cancelCurrentTask()
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Exception during injection process", e)
-                taskState = TaskState.Cancelled
-                cancelCurrentTask()
+                cancelInjection(task)
             }
         }
     }
@@ -176,21 +170,15 @@ class AutomatePerformer(private val service: GestureService) {
     /**
      * Executes injection and verifies result with retries.
      */
-    private suspend fun performInjectionWithRetry(query: String): Boolean =
+    private suspend fun performInjectionWithRetry(task: InjectionTask): Boolean =
         withContext(Dispatchers.Default) {
+            val query = task.query
             var attempts = 0
 
             while (attempts < MAX_INJECTION_ATTEMPTS) {
                 attempts++
 
-                // Check whether task has been cancelled
-                if (taskState is TaskState.Cancelled) {
-                    Log.d(TAG, "Task cancelled")
-                    return@withContext false
-                }
-
-                // Find editable input node
-                val editBox = findEditBoxInTree()
+                val editBox = findEditBoxInTree(task.targetPackage)
                 if (editBox == null) {
                     Log.d(TAG, "Attempt $attempts: no editable node found")
                     delay(EDITBOX_SEARCH_INTERVAL_MS)
@@ -198,7 +186,7 @@ class AutomatePerformer(private val service: GestureService) {
                 }
 
                 // Perform injection
-                val injected = if (currentTask?.usePaste == true) {
+                val injected = if (task.usePaste) {
                     pasteToNode(editBox)
                 } else {
                     injectTextToNode(editBox, query)
@@ -212,11 +200,7 @@ class AutomatePerformer(private val service: GestureService) {
                 // Verify injection result
                 delay(VERIFICATION_DELAY_MS)
 
-                val verified = if (currentTask?.usePaste == true) {
-                    if (query.isBlank()) true else verifyInjection(query)
-                } else {
-                    verifyInjection(query)
-                }
+                val verified = (task.usePaste && query.isBlank()) || verifyInjection(task)
                 if (verified) {
                     Log.i(TAG, "Injection verified successfully ($attempts attempts)")
                     return@withContext true
@@ -233,12 +217,10 @@ class AutomatePerformer(private val service: GestureService) {
     /**
      * Searches for edit box node in accessibility tree.
      */
-    private fun findEditBoxInTree(): AccessibilityNodeInfoCompat? {
+    private fun findEditBoxInTree(targetPackage: String): AccessibilityNodeInfoCompat? {
         val rootNode = service.rootInActiveWindow?.let {
             AccessibilityNodeInfoCompat.wrap(it)
         } ?: return null
-
-        val task = currentTask ?: return null
 
         // Breadth-first search prioritizing visible and editable nodes
         val queue = ArrayDeque<Pair<AccessibilityNodeInfoCompat, Int>>()
@@ -254,7 +236,7 @@ class AutomatePerformer(private val service: GestureService) {
 
             // Validate package name to prevent cross-app mismatch
             val nodePackage = node.unwrap()?.packageName?.toString()
-            if (nodePackage != null && nodePackage != task.targetPackage) {
+            if (nodePackage != null && nodePackage != targetPackage) {
                 continue
             }
 
@@ -360,6 +342,8 @@ class AutomatePerformer(private val service: GestureService) {
             }
 
             return@withContext true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e(TAG, "Error injecting text", e)
             return@withContext false
@@ -378,6 +362,8 @@ class AutomatePerformer(private val service: GestureService) {
                     Log.w(TAG, "ACTION_PASTE returned false")
                 }
                 return@withContext pasted
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Error pasting text", e)
                 return@withContext false
@@ -387,18 +373,20 @@ class AutomatePerformer(private val service: GestureService) {
     /**
      * Verifies injection result against expected text.
      */
-    private suspend fun verifyInjection(expectedText: String): Boolean =
+    private suspend fun verifyInjection(task: InjectionTask): Boolean =
         withContext(Dispatchers.Default) {
-            val editBox = findEditBoxInTree() ?: return@withContext false
+            val editBox = findEditBoxInTree(task.targetPackage) ?: return@withContext false
 
             val actualText = editBox.text?.toString()?.trim() ?: ""
-            val expected = expectedText.trim()
+            val expected = task.query.trim()
 
             // Exact match or prefix match (accounting for auto-complete)
             if (actualText == expected || actualText.startsWith(expected)) {
                 // Trigger IME submit action (Android R+)
-                if (currentTask?.inputEnter == true && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    editBox.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+                if (task.inputEnter && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    withContext(Dispatchers.Main) {
+                        editBox.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+                    }
                 }
                 Log.d(TAG, "verifyInjection: trigger IME enter")
                 return@withContext true
@@ -411,7 +399,7 @@ class AutomatePerformer(private val service: GestureService) {
      */
     private fun startTimeoutMonitor() {
         monitorJob?.cancel()
-        monitorJob = service.launch {
+        monitorJob = service.launch(Dispatchers.Main.immediate) {
             delay(TASK_TIMEOUT_MS)
 
             when (val state = taskState) {
@@ -437,16 +425,25 @@ class AutomatePerformer(private val service: GestureService) {
      */
     private fun completeTask() {
         monitorJob?.cancel()
+        monitorJob = null
+        injectionJob = null
         currentTask = null
         taskState = TaskState.Completed
         Log.i(TAG, "Task completed")
     }
 
+    fun cancelInjection(task: InjectionTask) {
+        if (currentTask === task) cancelCurrentTask()
+    }
+
     /**
      * Cancels the current task.
      */
-    fun cancelCurrentTask() {
+    private fun cancelCurrentTask() {
         monitorJob?.cancel()
+        injectionJob?.cancel()
+        monitorJob = null
+        injectionJob = null
         currentTask = null
         taskState = TaskState.Cancelled
         Log.i(TAG, "Task cancelled")

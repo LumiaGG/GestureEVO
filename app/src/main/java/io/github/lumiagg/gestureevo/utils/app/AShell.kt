@@ -9,10 +9,13 @@ import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.runProcess
 import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
 
 object AShell {
     suspend fun doCmd(context: Context, command: String): Pair<Boolean, String> {
-        val rootResult = doCmdWithRoot(command)
+        // Gesture actions may dispatch on Main; keep the blocking su spawn off the caller thread.
+        val rootResult = runInterruptible(Dispatchers.IO) { doCmdWithRoot(command) }
         return if (!rootResult.first && AShizuku.checkPermission(context)) {
             AShizuku.doCmdWithShizuku(command)
         } else rootResult
@@ -50,5 +53,26 @@ object AShell {
             ToastHelper.showInUIThread(context, context.getString(R.string.root_shizuku_permission_failed))
         }
         return changed
+    }
+
+    internal suspend fun requestRootAccess(context: Context): Boolean {
+        val result = runInterruptible(Dispatchers.IO) { doCmdWithRoot("id -u") }
+        val authorized = result.first && result.second.trim() == "0"
+        PrivilegedLaunchPreferences.setRootAuthorized(context, authorized)
+        return authorized
+    }
+
+    internal suspend fun tryWithAuthorizedShell(
+        context: Context,
+        command: String,
+        preferRoot: Boolean = false,
+        succeeded: (Pair<Boolean, String>) -> Boolean,
+    ): Boolean {
+        suspend fun tryRoot(): Boolean = PrivilegedLaunchPreferences.isRootAuthorized(context) &&
+            succeeded(runInterruptible(Dispatchers.IO) { doCmdWithRoot(command) })
+        suspend fun tryShizuku(): Boolean = AShizuku.hasPermission() &&
+            succeeded(AShizuku.doCmdWithShizuku(command))
+
+        return if (preferRoot) tryRoot() || tryShizuku() else tryShizuku() || tryRoot()
     }
 }

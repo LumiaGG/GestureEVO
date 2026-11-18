@@ -310,10 +310,11 @@ class GestureManager(
                 }
             }
         }
-        // Search
-        lifecycleScope.launch(Dispatchers.Default) {
+        // Search state changes share the accessibility callback's main thread.
+        lifecycleScope.launch(Dispatchers.Main.immediate) {
             searchEventBus.collect {
-                automatePerformer.startInjection(it.task)
+                if (it.cancel) automatePerformer.cancelInjection(it.task)
+                else automatePerformer.startInjection(it.task)
             }
         }
         // Pin pool

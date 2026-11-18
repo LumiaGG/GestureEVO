@@ -11,11 +11,12 @@ import kotlin.coroutines.coroutineContext
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLDecoder
+import java.net.URLEncoder
 import java.util.concurrent.ConcurrentHashMap
 
 /** Outcome of routing one link, so callers can decide whether to fall back to the browser. */
 sealed class LinkDispatchResult {
-    data class Routed(val rule: LinkDispatchRule, val url: String) : LinkDispatchResult()
+    data class Routed(val rule: LinkDispatchRule, val url: String, val fallbackUrl: String) : LinkDispatchResult()
     data class Exempted(val domain: String, val url: String) : LinkDispatchResult()
     data class SystemDefault(val url: String) : LinkDispatchResult()
     object NoRule : LinkDispatchResult()
@@ -84,16 +85,21 @@ object LinkDispatcher {
             val regex = compile(rule.pattern) ?: return url
             regex.find(url) ?: return url
         } else null
-        // Replace once so captured values containing placeholder syntax remain literal.
+        val intentFields = template.indexOf("#Intent;").takeIf { template.startsWith("intent:", ignoreCase = true) } ?: -1
+        // Encode substitutions inside Intent fields so input stays within the field selected by the rule.
         return TEMPLATE_PLACEHOLDER.replace(template) { match ->
             val backReference = match.groupValues[1]
-            if (backReference.isNotEmpty()) {
-                return@replace captureMatch?.groupValues?.getOrNull(backReference.toInt()) ?: match.value
+            val value = if (backReference.isNotEmpty()) {
+                captureMatch?.groupValues?.getOrNull(backReference.toInt()) ?: match.value
+            } else {
+                val key = match.groupValues[2]
+                val raw = if (key == "url") url else
+                    key.toIntOrNull()?.takeIf { it > 0 }?.let { extractGroups.getOrNull(it - 1) } ?: return@replace ""
+                applyTransform(raw, match.groupValues[3].ifEmpty { null })
             }
-            val key = match.groupValues[2]
-            val raw = if (key == "url") url else
-                key.toIntOrNull()?.takeIf { it > 0 }?.let { extractGroups.getOrNull(it - 1) } ?: return@replace ""
-            applyTransform(raw, match.groupValues[3].ifEmpty { null })
+            if (intentFields >= 0 && match.range.first > intentFields) {
+                URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+            } else value
         }
     }
 
@@ -203,7 +209,7 @@ object LinkDispatcher {
             }.orEmpty()
             val finalUrl = applyTemplate(target, rule, groups)
             return if (finalUrl.isBlank()) LinkDispatchResult.Failed else
-                LinkDispatchResult.Routed(rule, finalUrl)
+                LinkDispatchResult.Routed(rule, finalUrl, target)
         }
         return LinkDispatchResult.Failed
     }
