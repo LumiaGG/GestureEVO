@@ -7,6 +7,34 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PointerHoverStateTest {
+    @Test fun selectionPreviewOnlyExistsWhileSelectIsHighlightedInMenu() {
+        val state = PointerHoverState()
+        state.show()
+        assertFalse(state.isSelectionPreviewActive)
+        state.highlight(PointerHoverAction.SELECT)
+        assertTrue(state.isSelectionPreviewActive)
+        state.highlight(PointerHoverAction.DOUBLE_TAP)
+        assertFalse(state.isSelectionPreviewActive)
+        state.highlight(PointerHoverAction.SELECT)
+        state.enterSelection()
+        assertFalse(state.isSelectionPreviewActive)
+    }
+
+    @Test fun cancelOrReleaseBeforeConfirmationClearsSelectionPreview() {
+        val state = PointerHoverState()
+        state.show()
+        state.highlight(PointerHoverAction.SELECT)
+        state.cancel()
+        assertFalse(state.isSelectionPreviewActive)
+        assertFalse(state.enterSelection())
+        state.reset()
+        state.show()
+        state.highlight(PointerHoverAction.SELECT)
+        assertNull(state.release())
+        assertFalse(state.isSelectionPreviewActive)
+        assertFalse(state.enterSelection())
+    }
+
     @Test fun returnToPointerNeverDispatchesAScreenActionOnRelease() {
         val state = PointerHoverState()
         state.show()

@@ -12,6 +12,8 @@ internal class PointerHoverState {
         private set
     var hasOpened = false
         private set
+    val isSelectionPreviewActive: Boolean
+        get() = phase == Phase.MENU && selected == PointerHoverAction.SELECT
 
     fun reset() { phase = Phase.IDLE; selected = null; hasOpened = false }
     fun show(): Boolean {
@@ -59,6 +61,6 @@ internal fun placeHoverMenu(
     )
 }
 
-/** Offset the existing absolute mapping once, so entering selection cannot jump to the menu. */
+/** Apply the return-to-pointer offset while preserving screen bounds. */
 internal fun rebasePointerPosition(mapped: Float, offset: Float, limit: Int): Float =
     (mapped + offset).coerceIn(0f, limit.toFloat())
