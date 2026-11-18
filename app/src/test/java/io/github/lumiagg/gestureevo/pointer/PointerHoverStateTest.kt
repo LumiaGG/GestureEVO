@@ -35,10 +35,11 @@ class PointerHoverStateTest {
         assertFalse(state.enterSelection())
     }
 
-    @Test fun returnToPointerNeverDispatchesAScreenActionOnRelease() {
+    @Test fun dismissedMenuNeverDispatchesAScreenActionOnRelease() {
         val state = PointerHoverState()
         state.show()
-        state.highlight(PointerHoverAction.DISMISS)
+        state.highlight(PointerHoverAction.LONG_PRESS)
+        state.dismiss()
         assertNull(state.release())
     }
 

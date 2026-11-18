@@ -51,7 +51,6 @@ internal class PointerHoverMenuView(context: Context) : FrameLayout(context) {
         addRow(PointerHoverAction.LONG_PRESS, context.getString(R.string.pointer_hover_long_press))
         addRow(PointerHoverAction.DOUBLE_TAP, context.getString(R.string.pointer_hover_double_tap))
         addRow(PointerHoverAction.SELECT, context.getString(R.string.pointer_hover_select))
-        addRow(PointerHoverAction.DISMISS, context.getString(R.string.pointer_hover_return))
         visibility = VISIBLE
         refreshTheme()
     }
@@ -61,9 +60,7 @@ internal class PointerHoverMenuView(context: Context) : FrameLayout(context) {
             LayoutInflater.from(context), menu.actions, false,
         ).also {
             rows[action] = it
-            val beforeReturn = rows[PointerHoverAction.DISMISS]?.root?.let(menu.actions::indexOfChild) ?: -1
-            if (action == PointerHoverAction.OPEN_LINK && beforeReturn >= 0) menu.actions.addView(it.root, beforeReturn)
-            else menu.actions.addView(it.root)
+            menu.actions.addView(it.root)
         }
         row.actionLabel.text = label
         val showIcon = action == PointerHoverAction.OPEN_LINK
@@ -72,7 +69,6 @@ internal class PointerHoverMenuView(context: Context) : FrameLayout(context) {
         row.actionGlyph.setImageResource(when (action) {
             PointerHoverAction.LONG_PRESS -> R.drawable.ic_pointer_long_press
             PointerHoverAction.DOUBLE_TAP -> R.drawable.ic_pointer_double_tap
-            PointerHoverAction.DISMISS -> R.drawable.baseline_arrow_back_24
             else -> R.drawable.ic_screen_content_fullscreen_text_24
         })
         if (showIcon) row.actionIcon.setAppIcon(icon, R.drawable.ic_baseline_insert_link_24)
@@ -92,8 +88,7 @@ internal class PointerHoverMenuView(context: Context) : FrameLayout(context) {
             }
             row.actionLabel.setTextColor(if (selected == key) {
                 selectedForeground
-            } else if (key == PointerHoverAction.DISMISS) DynamicColorUtils.onSurfaceVariantColor
-            else DynamicColorUtils.onSurfaceColor)
+            } else DynamicColorUtils.onSurfaceColor)
             row.actionGlyph.imageTintList = if (key == PointerHoverAction.SELECT) null else ColorStateList.valueOf(if (selected == key) {
                 selectedForeground
             } else DynamicColorUtils.onSurfaceVariantColor)

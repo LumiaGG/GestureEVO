@@ -1,6 +1,6 @@
 package io.github.lumiagg.gestureevo.pointer
 
-internal enum class PointerHoverAction { LONG_PRESS, DOUBLE_TAP, SELECT, OPEN_LINK, DISMISS }
+internal enum class PointerHoverAction { LONG_PRESS, DOUBLE_TAP, SELECT, OPEN_LINK }
 
 /** A menu owns the release even when cancelled; it must never fall through to a screen tap. */
 internal class PointerHoverState {
@@ -32,7 +32,7 @@ internal class PointerHoverState {
         return true
     }
     fun release(): PointerHoverAction? {
-        val action = selected.takeIf { phase == Phase.MENU && it != PointerHoverAction.SELECT && it != PointerHoverAction.DISMISS }
+        val action = selected.takeIf { phase == Phase.MENU && it != PointerHoverAction.SELECT }
         phase = Phase.FINISHED
         selected = null
         return action
