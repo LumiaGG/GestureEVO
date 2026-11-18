@@ -30,7 +30,8 @@ import io.github.lumiagg.gestureevo.gesture.ui.TriggerCallBack
 import io.github.lumiagg.gestureevo.gesture.ui.TriggerView
 import io.github.lumiagg.gestureevo.inspire.InspireFloating
 import io.github.lumiagg.gestureevo.inspire.PictureFloating
-import io.github.lumiagg.gestureevo.link.radar.LinkRadarOverlay
+import io.github.lumiagg.gestureevo.pointer.radar.LinkRadarOverlay
+import io.github.lumiagg.gestureevo.pointer.radar.PointerLinkCapture
 import io.github.lumiagg.gestureevo.notification.NotificationFloating
 import io.github.lumiagg.gestureevo.notification.NotificationService
 import io.github.lumiagg.gestureevo.pin.PinPoolFloating
@@ -40,7 +41,7 @@ import io.github.lumiagg.gestureevo.screen_search.ScreenSearchFloating
 import io.github.lumiagg.gestureevo.search.AutomatePerformer
 import io.github.lumiagg.gestureevo.settings.ActionViewSettingsActivity.Companion.KEY_DISABLE_ALL_WHEEL_VIBRATE
 import io.github.lumiagg.gestureevo.settings.ActionViewSettingsActivity.Companion.KEY_MAIN_SHOW_VIBRATE
-import io.github.lumiagg.gestureevo.settings.LinkRuleSettingsActivity
+import io.github.lumiagg.gestureevo.pointer.radar.LinkRadarPreferences
 import io.github.lumiagg.gestureevo.settings.guide.GuidePreviewSession
 import io.github.lumiagg.gestureevo.utils.ActionProxy
 import io.github.lumiagg.gestureevo.utils.CurrentPackageProvider
@@ -80,6 +81,7 @@ class GestureManager(
     private val pointerFloatingLazy = lazy { PointerFloating(gestureService) }
     private val pointerFloating: PointerFloating
         get() = pointerFloatingLazy.value
+    private val pointerLinks = PointerLinkCapture(gestureService, lifecycleScope)
     private val notificationFloatingLazy = lazy { NotificationFloating(gestureService) }
     private val notificationFloating: NotificationFloating
         get() = notificationFloatingLazy.value
@@ -90,13 +92,16 @@ class GestureManager(
         LinkRadarOverlay(
             gestureService,
             pointerStateProvider = {
-                if (pointerFloatingLazy.isInitialized() && !pointerFloating.isPointerDragSelecting) {
+                // The radar yields throughout drag selection and hover menu interaction.
+                if (pointerFloatingLazy.isInitialized() && !pointerFloating.isPointerDragMode &&
+                    !pointerFloating.isHoverInteractionActive) {
                     pointerFloating.currentPointerSnapshot()
                 } else null
             },
             triggerSideProvider = {
                 if (pointerFloatingLazy.isInitialized()) pointerFloating.triggerSide else null
             },
+            captureLinks = { pointerLinks.get() },
         )
     }
     private val linkRadarFloating: LinkRadarOverlay
@@ -254,8 +259,10 @@ class GestureManager(
             pointerEventBus.collect {
                 if (it.enable || pointerFloatingLazy.isInitialized()) {
                     pointerFloating.onPointerHidden = {
+                        pointerLinks.stop()
                         if (linkRadarFloatingLazy.isInitialized()) linkRadarFloating.stopSession()
                     }
+                    pointerFloating.captureLinks = { pointerLinks.get() }
                     pointerFloating.onPointerPositionChanged = { snapshot ->
                         if (linkRadarFloatingLazy.isInitialized()) linkRadarFloating.onPointerPositionChanged(snapshot)
                     }
@@ -274,9 +281,10 @@ class GestureManager(
                 }
                 // 链接雷达跟随指针会话，开关位于链接分发设置。
                 if (it.enable) {
+                    pointerLinks.start()
                     val radarEnabled = context.settingsStore.readKey(
-                        LinkRuleSettingsActivity.KEY_LINK_RADAR_ENABLED,
-                        LinkRuleSettingsActivity.DEFAULT_LINK_RADAR_ENABLED
+                        LinkRadarPreferences.KEY_ENABLED,
+                        LinkRadarPreferences.DEFAULT_ENABLED
                     )
                     if (radarEnabled && pointerFloating.enable) {
                         linkRadarFloating.startSession()
@@ -286,6 +294,7 @@ class GestureManager(
                 } else if (linkRadarFloatingLazy.isInitialized()) {
                     linkRadarFloating.stopSession()
                 }
+                if (!it.enable) pointerLinks.stop()
             }
         }
         // Notification
@@ -559,6 +568,7 @@ class GestureManager(
         lastConfig = Configuration(newConfig)
 
         if (orientationChanged) {
+            cancelPointerHoverInteraction()
             Log.d(TAG, "Screen orientation changed")
             PictureFloating.onOrientationChanged()
             if (notificationFloatingLazy.isInitialized()) {
@@ -590,6 +600,16 @@ class GestureManager(
     }
 
     fun onWindowStateChanged(event: AccessibilityEvent) {
+        if (pointerFloatingLazy.isInitialized()) pointerFloating.onWindowEvent(event)
+        if (pointerLinks.active && (
+                event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED ||
+                    (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+                        event.packageName?.toString() != gestureService.packageName)
+            )) {
+            pointerLinks.invalidate()
+            // Old screen coordinates must not consume a release after the page moves.
+            if (linkRadarFloatingLazy.isInitialized()) linkRadarFloating.stopSession()
+        }
         if (!automatePerformer.isTaskActive()) return
         val trustedWindowContext = CurrentPackageProvider.getTrustedWindowContext(event) ?: return
         val (packageName, className) = trustedWindowContext
@@ -599,6 +619,12 @@ class GestureManager(
             currentPackage = packageName,
             currentActivity = className
         )
+    }
+
+    fun cancelPointerHoverInteraction() {
+        if (pointerFloatingLazy.isInitialized()) pointerFloating.cancelHoverInteraction()
+        pointerLinks.invalidate()
+        if (linkRadarFloatingLazy.isInitialized()) linkRadarFloating.stopSession()
     }
 
     fun inactiveAllFloating() = lifecycleScope.launch(Dispatchers.Main) {
@@ -638,6 +664,7 @@ class GestureManager(
     }
 
     fun destroy() {
+        pointerLinks.stop()
         interactionMode = InteractionMode.NORMAL
         freeTriggerFloating.destroy()
         if (guidePreviewFloatingLazy.isInitialized()) guidePreviewFloating.destroy()

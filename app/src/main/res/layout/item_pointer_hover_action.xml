@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:minHeight="44dp"
+  android:orientation="horizontal"
+  android:gravity="center_vertical"
+  android:paddingHorizontal="10dp"
+  android:paddingVertical="9dp">
+  <ImageView
+    android:id="@+id/actionGlyph"
+    android:layout_width="24dp"
+    android:layout_height="24dp"
+    android:padding="2dp"
+    android:importantForAccessibility="no"
+    android:contentDescription="@null" />
+  <io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
+    android:id="@+id/actionIcon"
+    android:layout_width="24dp"
+    android:layout_height="24dp"
+    android:visibility="gone" />
+  <TextView
+    android:id="@+id/actionLabel"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="10dp"
+    android:fontFamily="sans-serif-medium"
+    android:includeFontPadding="false"
+    android:textSize="14sp" />
+</LinearLayout>

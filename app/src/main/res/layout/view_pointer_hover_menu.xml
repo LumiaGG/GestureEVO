@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="wrap_content"
+  android:layout_height="wrap_content"
+  android:fillViewport="false"
+  android:scrollbars="none"
+  android:overScrollMode="never"
+  android:elevation="8dp"
+  android:padding="5dp">
+  <LinearLayout
+    android:id="@+id/actions"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:showDividers="middle"
+    android:divider="@drawable/pointer_hover_item_gap" />
+</ScrollView>

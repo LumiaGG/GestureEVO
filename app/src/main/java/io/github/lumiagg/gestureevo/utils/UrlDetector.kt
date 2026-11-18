@@ -15,6 +15,56 @@ object UrlDetector {
     )
     private val domainRegex = Regex("(?i)^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,63}$")
     private val ipv4Regex = Regex("^(?:\\d{1,3}\\.){3}\\d{1,3}$")
+
+    /**
+     * Bare `name.ext` tokens whose extension is a file type, not a host. A few of these are also
+     * delegated TLDs (.zip, .log), but a bare occurrence is a file name far more often, and a
+     * real URL can still be opened by spelling out its scheme or adding a path.
+     */
+    private val fileExtensionLabels = setOf(
+        // packages and archives
+        "apk", "apks", "xapk", "apkm", "aab", "ipa", "obb", "zip", "zipx", "rar", "7z", "tar",
+        "tgz", "gz", "bz2", "xz", "lz", "lzma", "zst", "cab", "iso", "jar", "war", "sit", "sitx",
+        // installers and binaries
+        "exe", "msi", "dmg", "pkg", "deb", "rpm", "elf", "dll", "dylib", "sys", "bin",
+        // documents
+        "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp", "rtf", "txt",
+        "csv", "tsv", "epub", "mobi", "azw3",
+        // images
+        "png", "jpg", "jpeg", "gif", "webp", "bmp", "tif", "tiff", "ico", "heic", "heif", "svg",
+        "psd", "raw",
+        // media
+        "mp3", "m4a", "m4v", "wav", "flac", "aac", "ogg", "opus", "wma", "avi", "mkv", "mov",
+        "wmv", "flv", "webm", "3gp",
+        // configuration, data and logs
+        "json", "xml", "yaml", "yml", "toml", "ini", "cfg", "conf", "log", "bak", "tmp", "dat",
+        "db", "sqlite", "properties", "torrent",
+        // source code with two-letter endings that are not delegated country codes
+        "js", "ts", "go", "cs", "rb", "vb", "ko",
+    )
+
+    /**
+     * Generic top-level domains a bare token may end in to count as a host. Curated rather than
+     * complete on purpose: it exists to keep package names like `cc.csxcl.fkcoloros` out of the
+     * link radar, and anything missing stays reachable through an explicit scheme or a path.
+     */
+    private val topLevelDomainLabels = setOf(
+        // classic generics
+        "com", "org", "net", "edu", "gov", "int", "mil", "info", "biz", "pro", "name", "mobi",
+        "asia", "tel", "cat", "aero", "coop", "jobs", "travel", "museum",
+        // newer generics people actually meet
+        "xyz", "top", "site", "online", "club", "vip", "icu", "shop", "store", "tech", "cloud",
+        "fun", "space", "website", "live", "life", "world", "today", "news", "link", "zone",
+        "team", "group", "company", "digital", "network", "systems", "solutions", "agency",
+        "studio", "works", "guru", "tips", "run", "fit", "ltd", "inc", "llc", "plus", "one",
+        "love", "best", "cool", "city", "global", "games", "game", "host", "video", "music",
+        "photo", "photos", "pics", "email", "market", "finance", "fund", "money", "press",
+        "ink", "red", "blue", "pink", "mba", "moe", "fans", "cafe", "pub", "bar", "pet", "auto",
+        "cars", "bike", "care", "health", "legal", "wtf", "lol", "rest", "rip", "day", "app",
+        "dev", "page", "how", "art", "design", "blog", "wiki", "deals", "gift", "gifts", "tools",
+        "wang", "ren", "loan", "cash", "gold", "sale", "win", "bet",
+    )
+
     private val fullWidthUrlChars = mapOf(
         '：' to ':',
         '／' to '/',
@@ -71,10 +121,29 @@ object UrlDetector {
 
             anySchemeRegex.containsMatchIn(normalized) -> null
 
+            isBareNonHost(normalized) -> null
+
             else -> {
                 "https://$normalized".takeIf { isLikelyWebUrl(it) }
             }
         }
+    }
+
+    /**
+     * A scheme-less token without a path is only a host when its last label could be a TLD.
+     * Judging the whole token keeps `example.com/a.zip` a URL, while `app.apk` (file name) and
+     * `cc.csxcl.fkcoloros` (package name) drop out of the bare-domain path.
+     */
+    private fun isBareNonHost(normalized: String): Boolean {
+        if (normalized.contains('/') || normalized.contains('?') || normalized.contains('#')) return false
+        // An explicit `www.` is a deliberate host, so `.zip` and friends stay usable as TLDs.
+        if (normalized.startsWith("www.", ignoreCase = true)) return false
+        val label = normalized.substringAfterLast('.', "").substringBefore(':').lowercase()
+        if (label.isEmpty()) return false
+        if (label in fileExtensionLabels) return true
+        // Two-letter labels are delegated country codes, so they stay reachable; longer ones must
+        // be a known generic TLD. Unknown TLDs can still be opened by spelling out the scheme.
+        return label.length != 2 && label !in topLevelDomainLabels
     }
 
     private fun normalizeUrlLikeText(text: String): String {

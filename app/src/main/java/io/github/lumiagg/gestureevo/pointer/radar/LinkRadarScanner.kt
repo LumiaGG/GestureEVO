@@ -1,4 +1,4 @@
-package io.github.lumiagg.gestureevo.link.radar
+package io.github.lumiagg.gestureevo.pointer.radar
 
 import android.accessibilityservice.AccessibilityService
 import android.graphics.Rect

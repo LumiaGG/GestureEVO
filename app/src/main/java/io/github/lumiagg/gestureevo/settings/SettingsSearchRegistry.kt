@@ -847,6 +847,24 @@ object SettingsSearchRegistry {
             keywords = listOf("拖拽模式", "pointer drag")
         ),
         entry(
+            id = "pointer_hover_menu",
+            titleResId = R.string.pointer_hover_menu_title,
+            summaryResId = R.string.pointer_hover_menu_summary,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.pointer_hover_menu_row,
+            keywords = listOf("指针", "悬停", "菜单", "长按", "双击", "框选", "链接", "pointer hover menu")
+        ),
+        entry(
+            id = "pointer_link_radar",
+            titleResId = R.string.inspire_settings_link_radar_title,
+            summaryResId = R.string.inspire_settings_link_radar_desc,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.pointer_link_radar_row,
+            keywords = listOf("指针", "链接雷达", "链接高亮", "pointer", "link radar")
+        ),
+        entry(
             id = "inspire_pin_pool_mode",
             titleResId = R.string.inspire_settings_pin_pool_mode_title,
             pageTitleResId = R.string.inspire_settings_title,
