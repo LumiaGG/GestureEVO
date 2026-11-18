@@ -6,10 +6,10 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.datastore.preferences.core.Preferences
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_APP_ICON_OVERRIDES
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_ICON_IMAGE_ROUND_PERCENT
@@ -22,6 +22,7 @@ import io.github.lumiagg.gestureevo.utils.settingsStore
 import com.squareup.moshi.Types
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.flow.first
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -40,9 +41,14 @@ object IconHelper {
     )
 
     suspend fun initIconConfig(context: Context, pkgName: String? = null) = configurationMutex.withLock {
-        val percentage = context.settingsStore.readKey(KEY_ICON_IMAGE_ROUND_PERCENT, 0f)
-        val packageName = pkgName ?: context.settingsStore.readKey(KEY_ICON_PACK, "")
-        val json = context.settingsStore.readKey(KEY_APP_ICON_OVERRIDES, "")
+        initializeFromPreferences(context, context.settingsStore.data.first(), pkgName)
+    }
+
+    /** Called during Application startup with its already-loaded snapshot, before any views exist. */
+    internal fun initializeFromPreferences(context: Context, preferences: Preferences, pkgName: String? = null) {
+        val percentage = preferences.readKey(KEY_ICON_IMAGE_ROUND_PERCENT, 0f)
+        val packageName = pkgName ?: preferences.readKey(KEY_ICON_PACK, "")
+        val json = preferences.readKey(KEY_APP_ICON_OVERRIDES, "")
         val overrides = if (json.isBlank()) emptyMap() else try {
             overridesAdapter.fromJson(json).orEmpty()
         } catch (e: Exception) {

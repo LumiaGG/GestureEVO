@@ -17,18 +17,28 @@
         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+        android:id="@+id/selectDynamicShortcut"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        app:settingsRowTitle="@string/shortcut_source_dynamic"
+        app:settingsRowSummary="@string/shortcut_source_dynamic_summary" />
+
+    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
         android:id="@+id/selectLocalShortcut"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        app:settingsRowTitle="@string/shortcut_source_select_local" />
+        app:settingsRowTitle="@string/shortcut_source_select_local"
+        app:settingsRowSummary="@string/shortcut_source_local_summary" />
 
     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
         android:id="@+id/selectOnlineShortcut"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        app:settingsRowTitle="@string/shortcut_source_select_online" />
+        app:settingsRowTitle="@string/shortcut_source_select_online"
+        app:settingsRowSummary="@string/shortcut_source_templates_summary" />
 
 
 </LinearLayout>

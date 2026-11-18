@@ -42,7 +42,7 @@ class LinkExtractsBottomSheet(
         dialog = BottomSheetDialog(themedContext, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
         binding = BottomSheetLinkExtractsBinding.inflate(LayoutInflater.from(themedContext))
         dialog.setContentView(binding.root)
-        dialog.prepareLinkSettingsSheet(binding.root)
+        dialog.prepareSettingsSheet(binding.root)
 
         binding.title.text = activity.getString(R.string.link_extract_title)
         binding.description.text = activity.getString(R.string.link_extract_description)

@@ -7,6 +7,7 @@ object DatabaseManager {
     private const val DB_NAME = "GestureEvoRoom.db"
     val db: DataBase by lazy {
         Room.databaseBuilder(application.applicationContext, DataBase::class.java, DB_NAME)
+            .addMigrations(MIGRATION_1_2)
             .build()
     }
 }

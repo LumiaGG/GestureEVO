@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="dynamic_shortcuts_freeform_unsupported">This window backend requires an activity Intent and cannot launch a dynamic shortcut. Turn off the floating window option for this action.</string>
+  <string name="shortcut_source_dynamic">Dynamic shortcuts</string>
+  <string name="shortcut_source_dynamic_summary">Choose from imported app shortcuts</string>
+  <string name="shortcut_source_local_summary">Open the shortcut creator provided by an app</string>
+  <string name="shortcut_source_templates_summary">Choose from bundled app feature templates</string>
+  <string name="dynamic_shortcuts_search">Search shortcuts or apps</string>
+  <string name="dynamic_shortcuts_no_match">No matching shortcuts</string>
+  <plurals name="dynamic_shortcuts_picker_count">
+    <item quantity="one">%1$d item</item>
+    <item quantity="other">%1$d items</item>
+  </plurals>
+  <string name="dynamic_shortcuts_title">Dynamic shortcuts</string>
+  <string name="dynamic_shortcuts_summary">Temporarily switch home apps to import app shortcuts for continued use</string>
+  <string name="dynamic_shortcuts_home_label">GestureEVO shortcut import</string>
+  <string name="dynamic_shortcuts_description">Temporarily set GestureEVO as your default home app, then select and import shortcuts published by your apps. Switch back to your usual home app afterwards and use imported shortcuts in gestures or the wheel. Shortcuts may stop working if the app disables them or is uninstalled.</string>
+  <string name="dynamic_shortcuts_grant">1. Temporarily set as default home</string>
+  <string name="dynamic_shortcuts_query">2. Read and select shortcuts</string>
+  <string name="dynamic_shortcuts_restore">3. Switch back to your usual home app</string>
+  <string name="dynamic_shortcuts_import">Import shortcuts</string>
+  <string name="dynamic_shortcuts_import_summary">Import new shortcuts, then switch back to your usual home app</string>
+  <string name="dynamic_shortcuts_profile_label">%1$s · User %2$d</string>
+  <plurals name="dynamic_shortcuts_list_summary">
+    <item quantity="one">%1$d shortcut · Tap to launch, hold to copy the action link</item>
+    <item quantity="other">%1$d shortcuts · Tap to launch, hold to copy the action link</item>
+  </plurals>
+  <string name="dynamic_shortcuts_select">Select shortcuts to keep</string>
+  <string name="dynamic_shortcuts_import_description">Choose app shortcuts to keep using after switching back to your usual home app.</string>
+  <string name="dynamic_shortcuts_already_imported">Imported</string>
+  <string name="dynamic_shortcuts_permission_ready">Access granted. You can select and import shortcuts.</string>
+  <string name="dynamic_shortcuts_permission_needed">Reading new shortcuts requires default home access. Imported shortcuts can still be used.</string>
+  <string name="dynamic_shortcuts_unsupported">Dynamic shortcuts require Android 7.1 or later.</string>
+  <string name="dynamic_shortcuts_no_candidates">No shortcuts available. Try using the relevant features in the target app, then read again.</string>
+  <plurals name="dynamic_shortcuts_imported">
+    <item quantity="one">Imported %1$d shortcut. You can switch back to your usual home app.</item>
+    <item quantity="other">Imported %1$d shortcuts. You can switch back to your usual home app.</item>
+  </plurals>
+  <string name="dynamic_shortcuts_failed">Reading or importing did not finish completely. Successful imports were kept. Check home access and unlock your profiles, then read again and retry.</string>
+  <string name="dynamic_shortcuts_home_unavailable">Unable to open home settings. Change your default home app in system settings.</string>
+  <string name="dynamic_shortcuts_list_hint">Imported · Tap to launch, hold to copy the action link</string>
+  <string name="dynamic_shortcuts_empty">No imported shortcuts. Import them in Dynamic shortcuts settings first.</string>
+  <string name="dynamic_shortcuts_link_copied">Action link copied for gesture or wheel configuration</string>
+  <string name="dynamic_shortcuts_launch_failed">Unable to launch shortcut. It may be unavailable or need importing on this device.</string>
+  <string name="dynamic_shortcuts_source">Imported dynamic shortcuts</string>
+</resources>

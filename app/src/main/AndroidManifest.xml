@@ -31,6 +31,19 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GestureEVO"
         tools:targetApi="34">
+        <activity android:name=".settings.DynamicShortcutSettingsActivity" android:exported="false" />
+        <activity android:name=".utils.shortcuts.ShortcutLaunchActivity"
+            android:exported="false" android:excludeFromRecents="true"
+            android:theme="@style/Theme.GestureEVO.transparent" />
+        <activity android:name=".settings.ShortcutImportHomeActivity"
+            android:exported="true" android:excludeFromRecents="true"
+            android:label="@string/dynamic_shortcuts_home_label">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".drop.DropSearchActivity"
             android:excludeFromRecents="true"

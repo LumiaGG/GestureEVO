@@ -22,7 +22,7 @@
     android:layout_weight="1"
     android:orientation="vertical">
     <com.google.android.material.textview.MaterialTextView
-      android:id="@+id/templateName"
+      android:id="@+id/itemTitle"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:maxLines="2"
@@ -30,7 +30,7 @@
       android:textAppearance="?attr/textAppearanceTitleSmall"
       android:textColor="?attr/colorOnSurface" />
     <com.google.android.material.textview.MaterialTextView
-      android:id="@+id/templatePattern"
+      android:id="@+id/itemSubtitle"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="4dp"
@@ -39,7 +39,7 @@
       android:textAppearance="?attr/textAppearanceBodySmall"
       android:textColor="?attr/colorOnSurfaceVariant" />
     <com.google.android.material.textview.MaterialTextView
-      android:id="@+id/templateStatus"
+      android:id="@+id/itemStatus"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="4dp"

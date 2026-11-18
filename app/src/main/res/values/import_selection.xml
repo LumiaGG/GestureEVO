@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="import_selection_confirm">导入</string>
+  <string name="import_selection_select_all">全选</string>
+  <string name="import_selection_clear_all">取消全选</string>
+  <string name="import_selection_empty">暂无可导入的内容</string>
+  <string name="import_selection_selected">已选择</string>
+  <string name="import_selection_not_selected">未选择</string>
+  <plurals name="import_selection_count">
+    <item quantity="other">已选 %1$d 项</item>
+  </plurals>
+</resources>

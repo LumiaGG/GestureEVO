@@ -2,38 +2,10 @@ package io.github.lumiagg.gestureevo.settings.ui
 
 import android.content.Context
 import android.text.InputType
-import android.view.View
-import android.view.WindowManager
 import android.widget.LinearLayout
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
-
-/** Shared sizing and form controls for the link settings panels. */
-internal fun BottomSheetDialog.prepareLinkSettingsSheet(content: View) {
-    window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-    setOnShowListener {
-        DynamicColorUtils.applyBottomSheetSurface(this)
-        val sheet = findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
-            ?: return@setOnShowListener
-        sheet.layoutParams = sheet.layoutParams.apply {
-            height = (context.resources.displayMetrics.heightPixels * 0.9f).toInt()
-        }
-        behavior.state = BottomSheetBehavior.STATE_EXPANDED
-        val bottomPadding = content.paddingBottom
-        ViewCompat.setOnApplyWindowInsetsListener(content) { view, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, bottomPadding + bars.bottom)
-            insets
-        }
-        ViewCompat.requestApplyInsets(content)
-    }
-}
 
 internal class LinkSettingsForm(context: Context) : LinearLayout(context) {
     init {

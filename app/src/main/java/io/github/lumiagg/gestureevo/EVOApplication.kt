@@ -17,6 +17,7 @@ import io.github.lumiagg.gestureevo.utils.MlKitOcr
 import io.github.lumiagg.gestureevo.utils.AppCrashHandler
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
+import io.github.lumiagg.gestureevo.utils.icon.IconHelper
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CancellationException
@@ -70,6 +71,7 @@ class EvoApplication : Application() {
         val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler(AppCrashHandler(this, previousHandler))
         val preferences = runBlocking { settingsStore.data.first() }
+        IconHelper.initializeFromPreferences(this, preferences)
         applySavedLanguage(preferences.readKey(AppearanceSettingsActivity.KEY_APP_LANGUAGE, ""))
         runBlocking { DynamicColorUtils.loadSavedScheme(this@EvoApplication, preferences) }
         DynamicColorUtils.applyAppWideColors(this)

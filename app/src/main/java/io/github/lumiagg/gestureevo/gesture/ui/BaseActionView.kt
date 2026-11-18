@@ -19,6 +19,7 @@ import io.github.lumiagg.gestureevo.gesture.config.GestureActionType
 import io.github.lumiagg.gestureevo.gesture.config.IconType
 import io.github.lumiagg.gestureevo.utils.dp2px
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
+import io.github.lumiagg.gestureevo.utils.icon.setAppIcon
 import kotlin.math.abs
 import kotlin.math.asin
 import kotlin.math.cos
@@ -473,6 +474,11 @@ fun gestureActionIcon(context: Context, view: RoundImageTextView, item: GestureA
                     IconHelper.getIcon(
                         context, item.firstStagePkg ?: context.packageName
                     )
+                )
+
+                GestureActionType.OTHER_SHORTCUT -> view.setAppIcon(
+                    item.firstStagePkg?.takeIf { it.isNotBlank() }?.let { IconHelper.getIcon(context, it) },
+                    R.drawable.ic_baseline_insert_link_24,
                 )
 
                 GestureActionType.ACC_ACTION -> {
