@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent" android:layout_height="match_parent"
+  android:orientation="vertical" android:fitsSystemWindows="true">
+  <androidx.appcompat.widget.Toolbar
+    android:id="@+id/toolbar" android:layout_width="match_parent"
+    android:layout_height="?attr/actionBarSize" app:title="@string/dynamic_shortcuts_title" />
+  <androidx.core.widget.NestedScrollView
+    android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+    android:clipToPadding="false">
+    <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
+      android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:layout_marginHorizontal="@dimen/settings_card_spacing"
+      app:settingsCardTitle="@string/dynamic_shortcuts_import"
+      app:settingsCardSummary="@string/dynamic_shortcuts_description"
+      app:settingsCardExpandable="false">
+      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingHorizontal="12dp" android:paddingBottom="12dp" android:orientation="vertical">
+        <TextView android:id="@+id/permissionStatus" android:layout_width="match_parent"
+          android:layout_height="wrap_content" android:padding="8dp" />
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/grantHome"
+          android:layout_width="match_parent" android:layout_height="wrap_content"
+          app:settingsRowTitle="@string/dynamic_shortcuts_grant" />
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/queryShortcuts"
+          android:layout_width="match_parent" android:layout_height="wrap_content"
+          app:settingsRowTitle="@string/dynamic_shortcuts_query" />
+        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/restoreHome"
+          android:layout_width="match_parent" android:layout_height="wrap_content"
+          app:settingsRowTitle="@string/dynamic_shortcuts_restore" />
+      </LinearLayout>
+    </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+  </androidx.core.widget.NestedScrollView>
+  <com.google.android.material.progressindicator.LinearProgressIndicator android:id="@+id/progress"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:indeterminate="true" android:visibility="gone" />
+  <TextView android:id="@+id/status" android:layout_width="match_parent"
+    android:layout_height="wrap_content" android:padding="16dp" android:visibility="gone" />
+  <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:padding="16dp" android:text="@string/dynamic_shortcuts_list_hint" />
+  <TextView android:id="@+id/emptyList" android:layout_width="match_parent"
+    android:layout_height="wrap_content" android:paddingHorizontal="16dp"
+    android:text="@string/dynamic_shortcuts_empty" />
+  <androidx.recyclerview.widget.RecyclerView android:id="@+id/importedList"
+    android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+    android:clipToPadding="false" android:paddingHorizontal="16dp" android:paddingBottom="16dp" />
+</LinearLayout>

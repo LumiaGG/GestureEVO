@@ -17,6 +17,13 @@
         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
+        android:id="@+id/selectDynamicShortcut"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        app:settingsRowTitle="@string/dynamic_shortcuts_source" />
+
+    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow
         android:id="@+id/selectLocalShortcut"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

@@ -80,6 +80,9 @@ android {
         }
     }
     sourceSets {
+        getByName("androidTest") {
+            assets.srcDir("schemas")
+        }
         getByName("main") {
             aidl.srcDirs("src/main/aidl")
             assets.srcDir(layout.buildDirectory.dir("generated/ocrModelAssets"))

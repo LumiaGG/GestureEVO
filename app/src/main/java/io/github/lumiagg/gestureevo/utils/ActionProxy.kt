@@ -59,6 +59,7 @@ import io.github.lumiagg.gestureevo.utils.Rom.isHuawei
 import io.github.lumiagg.gestureevo.utils.app.AShell
 import io.github.lumiagg.gestureevo.utils.app.AShizuku
 import io.github.lumiagg.gestureevo.utils.app.AShizuku.ensureAppEnabledIfFrozen
+import io.github.lumiagg.gestureevo.utils.shortcuts.DynamicShortcuts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
@@ -321,6 +322,10 @@ class ActionProxy(private val context: Context, linkString: String) {
 
     private suspend fun launchUri(uri: String, pkgName: String): Boolean {
         try {
+            val shortcutUri = Uri.parse(uri)
+            if (shortcutUri.scheme == DynamicShortcuts.SCHEME) {
+                return launchDynamicShortcut(shortcutUri, pkgName)
+            }
             if (pkgName.isNotEmpty()) {
                 if (!ensureAppEnabledIfFrozen(pkgName, context)) {
                     AppLogger.event(LogModule.ACTION, "unfreeze_failed", LogLevel.WARN, trace,
@@ -353,6 +358,34 @@ class ActionProxy(private val context: Context, linkString: String) {
         }
         return false
     }
+
+    private suspend fun launchDynamicShortcut(uri: Uri, expectedPackage: String): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                val shortcut = DynamicShortcuts.requireImported(context, uri, expectedPackage)
+                val users = context.getSystemService(UserManager::class.java)
+                val user = users.getUserForSerialNumber(shortcut.userSerial)
+                    ?: error("Shortcut profile no longer exists")
+                // The existing unfreeze backend operates on the current user only.
+                if (user == android.os.Process.myUserHandle() &&
+                    !ensureAppEnabledIfFrozen(shortcut.packageName, context)) return@withContext false
+                if (Build.VERSION.SDK_INT < 25) error("Dynamic shortcuts require Android 7.1")
+                context.getSystemService(LauncherApps::class.java).startShortcut(
+                    shortcut.packageName, shortcut.shortcutId, null,
+                    if (freeform) getActivityOptions().toBundle() else null, user,
+                )
+                recordOpenCount(shortcut.packageName)
+                AppLogger.event(LogModule.ACTION, "dynamic_shortcut_launch_submitted", trace = trace,
+                    fields = mapOf("package" to shortcut.packageName))
+                true
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.event(LogModule.ACTION, "dynamic_shortcut_launch_failed", LogLevel.ERROR, trace, error = e)
+                ToastHelper.showInUIThread(context, context.getString(R.string.dynamic_shortcuts_launch_failed))
+                false
+            }
+        }
 
     private suspend fun launchCustomTabsIntent(intent: Intent, pkgName: String): Boolean {
         if (intent.action != Intent.ACTION_VIEW) return false

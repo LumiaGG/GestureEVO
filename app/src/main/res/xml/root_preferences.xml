@@ -34,6 +34,12 @@
     </PreferenceCategory>
     <PreferenceCategory android:layout="@layout/settings_home_category" app:title="@string/settings_group_tools" app:iconSpaceReserved="false">
         <Preference
+            android:icon="@drawable/ic_baseline_insert_link_24"
+            android:key="preferenceDynamicShortcuts"
+            android:layout="@layout/custom_preference_widget_layout"
+            app:title="@string/dynamic_shortcuts_title"
+            app:summary="@string/dynamic_shortcuts_summary" />
+        <Preference
             android:icon="@drawable/outline_center_focus_weak_24"
             android:key="preferenceInspire"
             android:layout="@layout/custom_preference_widget_layout"

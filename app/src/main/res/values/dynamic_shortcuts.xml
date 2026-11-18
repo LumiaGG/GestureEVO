@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="dynamic_shortcuts_title">动态快捷方式</string>
+  <string name="dynamic_shortcuts_summary">临时设为桌面，导入应用快捷方式后继续使用</string>
+  <string name="dynamic_shortcuts_home_label">GestureEVO 快捷方式导入</string>
+  <string name="dynamic_shortcuts_description">先将 GestureEVO 临时设为默认桌面，再选择并导入应用已发布的快捷方式。导入后可切回原桌面，在手势或轮盘的快捷方式中使用。应用禁用入口或卸载后，快捷方式可能失效。</string>
+  <string name="dynamic_shortcuts_grant">1. 临时设为默认桌面</string>
+  <string name="dynamic_shortcuts_query">2. 读取并选择快捷方式</string>
+  <string name="dynamic_shortcuts_restore">3. 切回原桌面</string>
+  <string name="dynamic_shortcuts_import">导入快捷方式</string>
+  <string name="dynamic_shortcuts_select">选择要保留的快捷方式</string>
+  <string name="dynamic_shortcuts_select_all">全选</string>
+  <string name="dynamic_shortcuts_permission_ready">已获得读取权限，可以选择并导入快捷方式。</string>
+  <string name="dynamic_shortcuts_permission_needed">读取新入口需要临时设为默认桌面，已导入的入口仍可使用。</string>
+  <string name="dynamic_shortcuts_unsupported">动态快捷方式需要 Android 7.1 或更新版本。</string>
+  <string name="dynamic_shortcuts_no_candidates">没有可导入的快捷方式。可先在目标应用中使用相关功能，再尝试读取。</string>
+  <plurals name="dynamic_shortcuts_imported">
+    <item quantity="other">已导入 %1$d 个快捷方式，可以切回原桌面。</item>
+  </plurals>
+  <string name="dynamic_shortcuts_failed">读取或导入未全部完成，已成功导入的项目已保留。请确认桌面权限及资料空间已解锁，再重新读取并重试。</string>
+  <string name="dynamic_shortcuts_home_unavailable">无法打开默认桌面设置，请在系统设置中更换桌面。</string>
+  <string name="dynamic_shortcuts_list_hint">已导入 · 轻点启动，长按复制动作链接</string>
+  <string name="dynamic_shortcuts_empty">尚未导入快捷方式，请先在动态快捷方式设置中导入。</string>
+  <string name="dynamic_shortcuts_record">%1$s\n%2$s · 用户 %3$d</string>
+  <string name="dynamic_shortcuts_link_copied">已复制动作链接，可用于手势或轮盘配置</string>
+  <string name="dynamic_shortcuts_launch_failed">快捷方式无法启动，可能已失效或需要在本机重新导入。</string>
+  <string name="dynamic_shortcuts_source">已导入的动态快捷方式</string>
+</resources>

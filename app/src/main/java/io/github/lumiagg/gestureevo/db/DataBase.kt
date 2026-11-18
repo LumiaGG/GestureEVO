@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 
 
 @Database(
-    version = 1,
+    version = 2,
     exportSchema = true,
     entities = [
         APPModel::class,
@@ -16,9 +16,12 @@ import androidx.room.RoomDatabase
         HiddenSearchResultModel::class,
         ExternalActionPermissionModel::class,
         PinPoolModel::class,
+        DynamicShortcutModel::class,
     ]
 )
 abstract class DataBase : RoomDatabase() {
+    abstract fun dynamicShortcutDao(): DynamicShortcutDao
+
     val appDao: APPDao by lazy { createAPPDao() }
 
     val contactDao: ContactDao by lazy { createContactDao() }
