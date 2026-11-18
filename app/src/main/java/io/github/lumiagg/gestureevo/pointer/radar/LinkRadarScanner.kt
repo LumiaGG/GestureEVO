@@ -16,7 +16,7 @@ import io.github.lumiagg.gestureevo.link.selectLinkTextMatches
 
 /** Link-specific projection of the same node snapshots used by pointer and screen capture. */
 object LinkRadarScanner {
-    suspend fun scan(service: AccessibilityService): List<LinkRegion> {
+    suspend fun scan(service: AccessibilityService, sourceWindowId: Int? = null): List<LinkRegion> {
         val patterns = LinkRuleRepository.loadExtractPatterns(service)
         return withAccessibilityNodes(service, nodeLimit = 3000, depthLimit = 64) { nodes ->
             val protected = protectedAccessibilityNodes(nodes)
@@ -29,6 +29,7 @@ object LinkRadarScanner {
             }
             (preferredScreenTextIndices(nodes, protected) + spanNodes).distinct().flatMap { index ->
                 val node = nodes[index]
+                if (sourceWindowId != null && node.info.windowId != sourceWindowId) return@flatMap emptyList()
                 if (node.info.packageName?.toString() == service.packageName) return@flatMap emptyList()
                 val text = node.text ?: return@flatMap emptyList()
                 val native = node.nativeText as? Spanned

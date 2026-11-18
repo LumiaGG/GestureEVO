@@ -15,6 +15,9 @@
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_default_image_text_overlay" app:settingsRowSummary="@string/inspire_settings_default_image_text_overlay_desc">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/defaultImageTextOverlaySwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/screen_content_link_radar_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/screen_content_link_radar_title" app:settingsRowSummary="@string/screen_content_link_radar_summary">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/screenContentLinkRadarSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_double_check" app:settingsRowSummary="@string/inspire_settings_double_check_desc">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/doubleCheckSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>

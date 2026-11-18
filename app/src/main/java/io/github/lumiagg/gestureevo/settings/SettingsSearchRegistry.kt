@@ -847,6 +847,15 @@ object SettingsSearchRegistry {
             keywords = listOf("拖拽模式", "pointer drag")
         ),
         entry(
+            id = "screen_content_link_radar",
+            titleResId = R.string.screen_content_link_radar_title,
+            summaryResId = R.string.screen_content_link_radar_summary,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.screen_content_link_radar_row,
+            keywords = listOf("屏幕内容", "链接雷达", "链接高亮", "screen content", "link radar")
+        ),
+        entry(
             id = "pointer_hover_menu",
             titleResId = R.string.pointer_hover_menu_title,
             summaryResId = R.string.pointer_hover_menu_summary,

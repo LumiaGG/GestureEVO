@@ -12,3 +12,11 @@ data class LinkRegion(
     val sourcePackage: String,
     val sourceText: String,
 )
+
+/** Match the enclosing frame drawn for a link, including wrapped lines. */
+internal fun LinkRegion.frameBounds(): Rect =
+    Rect(rects.first()).apply { rects.drop(1).forEach(::union) }
+
+internal fun Rect.toRadarBox(offsetX: Int = 0, offsetY: Int = 0): RadarBox =
+    RadarBox((left - offsetX).toFloat(), (top - offsetY).toFloat(),
+        (right - offsetX).toFloat(), (bottom - offsetY).toFloat())

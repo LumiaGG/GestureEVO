@@ -1490,4 +1490,9 @@ Create a rule or import templates to get started</string>
     <string name="pointer_hover_choose_link">Choose link…</string>
     <string name="pointer_hover_return">Return to pointer</string>
     <string name="pointer_hover_action_failed">Action could not be completed. Please try again.</string>
+    <string name="screen_content_link_radar_title">Screen content link radar</string>
+    <string name="screen_content_link_radar_summary">Highlight links in the selection overlay. Tap to open, or drag to select content.</string>
+    <string name="screen_content_radar_choose">Tap to choose a link</string>
+    <string name="screen_content_radar_choose_app">Tap to choose an app</string>
+    <string name="screen_content_radar_open">Tap to open link</string>
 </resources>

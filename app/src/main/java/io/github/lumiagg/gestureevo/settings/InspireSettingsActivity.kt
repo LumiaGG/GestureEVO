@@ -66,6 +66,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         // Preference keys
         const val KEY_OCR_PRIORITY = "inspire_ocr_priority"
         const val KEY_INSPIRE_DOUBLE_CHECK = "key_inspire_double_check"
+        const val KEY_SCREEN_CONTENT_LINK_RADAR = "key_screen_content_link_radar"
         const val KEY_INSPIRE_SELECTION_VIBRATE = "key_inspire_selection_vibrate"
         const val KEY_INSPIRE_EDGE_BACK = "key_inspire_edge_back"
         const val KEY_INSPIRE_DELAY_REMOVE_IMAGE = "key_inspire_delay_remove_image"
@@ -196,6 +197,8 @@ class InspireSettingsActivity : AppCompatActivity() {
                 DEFAULT_NOTIFICATION_IMAGE_DISPLAY_SECONDS
             )
         )
+
+        binding.screenContentLinkRadarSwitch.isChecked = settingsStore.readKey(KEY_SCREEN_CONTENT_LINK_RADAR, false)
 
         // Pointer trail
         binding.pointerTrailSwitch.isChecked =
@@ -518,6 +521,10 @@ class InspireSettingsActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 settingsStore.saveKey(KEY_ENABLE_POINTER_DRAG_MODE, isChecked)
             }
+        }
+
+        binding.screenContentLinkRadarSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch { settingsStore.saveKey(KEY_SCREEN_CONTENT_LINK_RADAR, isChecked) }
         }
 
         binding.pointerHoverMenuSwitch.setOnCheckedChangeListener { _, isChecked ->

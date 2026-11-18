@@ -12,6 +12,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.View.GONE
 import android.view.WindowManager
+import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.Toast
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.gesture.GestureManager.InteractionMode
@@ -25,6 +27,7 @@ import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.K
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_DEFAULT_SHARE_IMAGE_APP
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_SELECTION_VIBRATE
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_EDGE_BACK
+import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_SCREEN_CONTENT_LINK_RADAR
 import io.github.lumiagg.gestureevo.share.ImageShareLauncher
 import io.github.lumiagg.gestureevo.utils.ClipboardUtils
 import io.github.lumiagg.gestureevo.utils.MlKitOcr
@@ -47,6 +50,18 @@ class InspireFloating(private val context: GestureService) :
     private val inspireView: InspireView by lazy {
         val themeContext: Context = ContextThemeWrapper(context, R.style.Theme_GestureEVO)
         InspireViewBinding.inflate(LayoutInflater.from(themeContext)).root
+    }
+
+    private val linkRadarLazy = lazy {
+        ScreenContentLinkRadar(context, inspireView.linkRadarView) { hide() }
+    }
+
+    fun cancelLinkRadar() {
+        if (linkRadarLazy.isInitialized()) linkRadarLazy.value.stop()
+    }
+
+    fun onWindowEvent(event: AccessibilityEvent) {
+        if (linkRadarLazy.isInitialized()) linkRadarLazy.value.onWindowEvent(event)
     }
 
     private val layoutParams: WindowManager.LayoutParams = WindowManager.LayoutParams()
@@ -109,6 +124,18 @@ class InspireFloating(private val context: GestureService) :
         inspireView.inspireViewCallBack = object : InspireViewCallBack {
             var taskJob: Job? = null
             var lastLongPressUptimeMs = 0L
+            override fun onLinkTouchDown(x: Float, y: Float): Boolean =
+                linkRadarLazy.isInitialized() && linkRadarLazy.value.press(x, y)
+
+            override fun onLinkTouchUp(x: Float, y: Float): Boolean =
+                linkRadarLazy.isInitialized() && linkRadarLazy.value.release(x, y)
+
+            override fun onLinkTouchCancel() {
+                if (linkRadarLazy.isInitialized()) linkRadarLazy.value.cancelPress()
+            }
+
+            override fun onLinkSelectionStarted() = cancelLinkRadar()
+
             override fun onSessionCaptureRequested(onCaptured: () -> Unit) {
                 requestSessionScreenshot(onCaptured)
             }
@@ -291,6 +318,7 @@ class InspireFloating(private val context: GestureService) :
     }
 
     private fun invalidateSessionCapture() {
+        cancelLinkRadar()
         sessionGeneration += 1
         resetTextBoxPreview()
         sessionCaptureJob?.cancel()
@@ -690,10 +718,26 @@ class InspireFloating(private val context: GestureService) :
         inspireView.showScreenShotFab(screenshotFabVisibility)
     }
 
+    @Suppress("DEPRECATION")
+    private fun sourceApplicationWindowId(): Int? {
+        val windows = context.windows
+        return try {
+            windows.filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION && (it.isActive || it.isFocused) }
+                .maxByOrNull { it.layer }?.id
+        } finally {
+            windows.forEach { it.recycle() }
+        }
+    }
+
     fun show(forceImageTextSelection: Boolean = false, side: String? = null) {
         context.postOnMain {
             resetSessionCapture()
             sessionTriggerSide = side
+            val generation = sessionGeneration
+            val radarEnabled = context.settingsStore.readKey(KEY_SCREEN_CONTENT_LINK_RADAR, false)
+            if (generation != sessionGeneration) return@postOnMain
+            val sourceWindow = if (radarEnabled) sourceApplicationWindowId() else null
+            if (sourceWindow != null) linkRadarLazy.value.start(sourceWindow, side)
             prepareScreenContentSelector(forceImageTextSelection, View.VISIBLE)
         }
     }

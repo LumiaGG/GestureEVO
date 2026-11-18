@@ -26,6 +26,8 @@ import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.InspireFunctionItemBinding
 import io.github.lumiagg.gestureevo.gesture.ui.EdgeSide
 import io.github.lumiagg.gestureevo.gesture.ui.FluidRippleView
+import io.github.lumiagg.gestureevo.inspire.ScreenContentLinkTouch
+import io.github.lumiagg.gestureevo.pointer.radar.LinkRadarView
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_DOUBLE_CHECK
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
@@ -64,6 +66,20 @@ class InspireView : ConstraintLayout {
     private var isDraggingFabTouchArea = false
     private var interactionEnabled = true
     var edgeBackEnabled = true
+
+    private val linkRadarViewLazy = lazy {
+        LinkRadarView(context).also { radar ->
+            radar.visibility = GONE
+            addView(radar, 0, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
+                startToStart = LayoutParams.PARENT_ID
+                endToEnd = LayoutParams.PARENT_ID
+                topToTop = LayoutParams.PARENT_ID
+                bottomToBottom = LayoutParams.PARENT_ID
+            })
+        }
+    }
+
+    internal val linkRadarView: LinkRadarView get() = linkRadarViewLazy.value
 
     val dragSelectRect: Rect = Rect()
     private val dragSelectPaint: Paint = Paint()
@@ -203,6 +219,7 @@ class InspireView : ConstraintLayout {
             loadingIndicator.setIndicatorColor(primary)
             functionItemBinding?.let { applyFunctionItemTheme(it) }
             overlayToast?.refreshTheme()
+            if (linkRadarViewLazy.isInitialized()) linkRadarView.refreshTheme()
             if (::fluidRippleView.isInitialized) {
                 fluidRippleView.applyAppearance()
             }
@@ -606,6 +623,7 @@ class InspireView : ConstraintLayout {
     }
 
     private fun clickShoot() {
+        inspireViewCallBack.onLinkSelectionStarted()
         val fullScreenRect = Rect(0, 0, width, height)
         if (!needDoubleCheck) {
             inspireViewCallBack.onDragUp(fullScreenRect)
@@ -683,8 +701,11 @@ class InspireView : ConstraintLayout {
         private var edgeBackSide: EdgeSide? = null
         private var edgeBackDownX = 0f
         private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+        private val linkTouch = ScreenContentLinkTouch(touchSlop.toFloat())
 
         fun reset() {
+            linkTouch.cancel()
+            inspireViewCallBack.onLinkTouchCancel()
             pendingTextBox = null
             isMovingRect = false
             isAdjustingEdge = false
@@ -737,6 +758,12 @@ class InspireView : ConstraintLayout {
                 MotionEvent.ACTION_DOWN -> {
                     touchCancel = false
                     val inSelection = isTouchInSelectionArea(event.rawX, event.rawY)
+                    linkTouch.cancel()
+                    // Existing selection handles and text boxes keep their original priority.
+                    if (!inSelection && inspireViewCallBack.onLinkTouchDown(event.rawX, event.rawY)) {
+                        linkTouch.begin(event.rawX, event.rawY)
+                        return true
+                    }
                     if (!inSelection && tryStartEdgeBack(event)) return true
                     pendingTextBox = if (needDoubleCheck) {
                         detectedTextBoxes
@@ -752,6 +779,8 @@ class InspireView : ConstraintLayout {
                 }
 
                 MotionEvent.ACTION_POINTER_DOWN -> {
+                    linkTouch.cancel()
+                    inspireViewCallBack.onLinkTouchCancel()
                     // Detect multi-touch
                     if (event.pointerCount >= 2) {
                         if (isEdgeBacking) stopEdgeBack(immediate = true)
@@ -767,6 +796,10 @@ class InspireView : ConstraintLayout {
                         return true
                     }
                     if (!touchCancel) {
+                        if (linkTouch.pending) {
+                            if (linkTouch.move(event.rawX, event.rawY)) return true
+                            startSelection(linkTouch.downX, linkTouch.downY)
+                        }
                         if (pendingTextBox != null) {
                             if (!movedPastTextBoxTap(event)) return true
                             pendingTextBox = null
@@ -782,6 +815,18 @@ class InspireView : ConstraintLayout {
                         return true
                     }
                     if (!touchCancel) {
+                        if (linkTouch.pending) {
+                            val tapped = linkTouch.release(event.rawX, event.rawY)
+                            if (tapped) {
+                                if (inspireViewCallBack.onLinkTouchUp(event.rawX, event.rawY)) {
+                                    performClick()
+                                }
+                                // A cancelled link click still owns release; it must not run selection.
+                                return true
+                            }
+                            startSelection(linkTouch.downX, linkTouch.downY)
+                            handleMove(event)
+                        }
                         val textBox = pendingTextBox
                         pendingTextBox = null
                         if (textBox != null) {
@@ -800,6 +845,8 @@ class InspireView : ConstraintLayout {
                 }
 
                 MotionEvent.ACTION_CANCEL -> {
+                    linkTouch.cancel()
+                    inspireViewCallBack.onLinkTouchCancel()
                     if (isEdgeBacking) {
                         stopEdgeBack(immediate = false)
                         return true
@@ -871,6 +918,7 @@ class InspireView : ConstraintLayout {
                 abs(event.rawY - textBoxDownY) > touchSlop
 
         private fun startSelection(x: Float, y: Float) {
+            inspireViewCallBack.onLinkSelectionStarted()
             isDrawingPath = true
             if (needDoubleCheck && !dragSelectRect.isEmpty) {
                 selectedEdge = detectEdge(x, y)
@@ -992,6 +1040,10 @@ class InspireView : ConstraintLayout {
 }
 
 interface InspireViewCallBack {
+    fun onLinkTouchDown(x: Float, y: Float): Boolean = false
+    fun onLinkTouchUp(x: Float, y: Float): Boolean = false
+    fun onLinkTouchCancel() {}
+    fun onLinkSelectionStarted() {}
     fun onSessionCaptureRequested(onCaptured: () -> Unit = {}) {}
     fun onSelectionStarted() {}
     fun onDragUp(dragSelectRect: Rect) {}
