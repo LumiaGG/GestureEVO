@@ -61,9 +61,9 @@ internal class PointerHoverMenuController(
     private val selection = PointerMenuSelection()
     private var lastInputY = 0f
     private val baseActions = listOf(PointerHoverAction.LONG_PRESS, PointerHoverAction.DOUBLE_TAP,
-        PointerHoverAction.SELECT, PointerHoverAction.DISMISS)
+        PointerHoverAction.SELECT)
     private val linkActions = listOf(PointerHoverAction.LONG_PRESS, PointerHoverAction.DOUBLE_TAP,
-        PointerHoverAction.SELECT, PointerHoverAction.OPEN_LINK, PointerHoverAction.DISMISS)
+        PointerHoverAction.SELECT, PointerHoverAction.OPEN_LINK)
     private var actions = baseActions
 
     val ownsInteraction: Boolean get() = state.hasOpened || state.phase == PointerHoverState.Phase.FINISHED
@@ -138,15 +138,13 @@ internal class PointerHoverMenuController(
     private fun scheduleModeChange(action: PointerHoverAction?) {
         selectJob?.cancel()
         selectJob = null
-        if (action == PointerHoverAction.SELECT || action == PointerHoverAction.DISMISS) {
+        if (action == PointerHoverAction.SELECT) {
             selectJob = scope?.launch {
                 delay(300)
                 if (!isShowing || state.selected != action) return@launch
                 if (!isCoordinateSpaceCurrent()) { cancel(); return@launch }
                 if (window?.matches(service) != true) { dismiss(); return@launch }
-                if (state.selected == PointerHoverAction.DISMISS) {
-                    dismiss()
-                } else if (state.enterSelection()) {
+                if (state.enterSelection()) {
                     closePreview()
                     onEnterSelection(anchor)
                 }
