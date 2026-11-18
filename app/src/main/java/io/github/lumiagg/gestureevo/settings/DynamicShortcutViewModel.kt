@@ -45,8 +45,7 @@ class DynamicShortcutViewModel(application: Application) : AndroidViewModel(appl
         )
     }
 
-    fun importSelected() {
-        val snapshot = selected.toList()
+    fun importSelected(snapshot: List<DynamicShortcutModel>) {
         dismissCandidates()
         if (snapshot.isEmpty()) return
         runOperation {

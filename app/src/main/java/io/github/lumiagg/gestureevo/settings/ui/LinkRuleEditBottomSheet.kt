@@ -46,7 +46,7 @@ class LinkRuleEditBottomSheet(
         dialog = BottomSheetDialog(themedContext, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
         binding = BottomSheetEditLinkRuleBinding.inflate(LayoutInflater.from(themedContext))
         dialog.setContentView(binding.root)
-        dialog.prepareLinkSettingsSheet(binding.root)
+        dialog.prepareSettingsSheet(binding.root)
 
         binding.title.text = activity.getString(
             if (original == null) R.string.link_rule_new_title else R.string.link_rule_edit_title

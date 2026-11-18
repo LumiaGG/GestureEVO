@@ -47,7 +47,7 @@ class LinkExemptsBottomSheet(
         dialog = BottomSheetDialog(themedContext, R.style.ThemeOverlay_BottomSheetDialog_Scrollable)
         binding = BottomSheetLinkExemptsBinding.inflate(LayoutInflater.from(themedContext))
         dialog.setContentView(binding.root)
-        dialog.prepareLinkSettingsSheet(binding.root)
+        dialog.prepareSettingsSheet(binding.root)
 
         binding.title.text = activity.getString(R.string.link_rule_exempt_title)
         binding.description.text = activity.getString(R.string.link_rule_exempt_description)

@@ -6,7 +6,6 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -14,12 +13,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.ActivityDynamicShortcutSettingsBinding
 import io.github.lumiagg.gestureevo.db.DynamicShortcutModel
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionType
 import io.github.lumiagg.gestureevo.settings.ui.DynamicShortcutAdapter
+import io.github.lumiagg.gestureevo.settings.ui.ImportOption
+import io.github.lumiagg.gestureevo.settings.ui.showImportSelectionBottomSheet
 import io.github.lumiagg.gestureevo.utils.ActionProxy
 import io.github.lumiagg.gestureevo.utils.ClipboardUtils
 import io.github.lumiagg.gestureevo.utils.GestureActionLink
@@ -30,7 +30,6 @@ import kotlinx.coroutines.launch
 class DynamicShortcutSettingsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDynamicShortcutSettingsBinding
     private lateinit var model: DynamicShortcutViewModel
-    private var selectionDialog: AlertDialog? = null
     private var shownCandidates: List<DynamicShortcutModel>? = null
     private val adapter by lazy {
         DynamicShortcutAdapter(this, lifecycleScope,
@@ -119,29 +118,26 @@ class DynamicShortcutSettingsActivity : AppCompatActivity() {
 
     private fun showSelection(records: List<DynamicShortcutModel>) {
         shownCandidates = records
-        val labels = records.map(adapter::displayLabel).toTypedArray()
-        val checked = records.map { it in model.selected }.toBooleanArray()
-        selectionDialog = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.dynamic_shortcuts_select)
-            .setMultiChoiceItems(labels, checked) { _, index, enabled ->
-                if (enabled) model.selected.add(records[index]) else model.selected.remove(records[index])
-            }
-            .setNeutralButton(R.string.dynamic_shortcuts_select_all, null)
-            .setPositiveButton(R.string.dynamic_shortcuts_import) { _, _ -> model.importSelected() }
-            .setNegativeButton(android.R.string.cancel) { _, _ -> model.dismissCandidates() }
-            .setOnCancelListener { model.dismissCandidates() }
-            .create().also { dialog ->
-                dialog.show()
-                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                    model.selected.addAll(records)
-                    records.indices.forEach { dialog.listView.setItemChecked(it, true) }
-                }
-            }
-    }
-
-    override fun onDestroy() {
-        selectionDialog?.dismiss()
-        super.onDestroy()
+        showImportSelectionBottomSheet(
+            activity = this,
+            title = getString(R.string.dynamic_shortcuts_select),
+            description = getString(R.string.dynamic_shortcuts_import_description),
+            options = records.map { record ->
+                ImportOption(
+                    value = record,
+                    title = record.label,
+                    subtitle = adapter.appLabel(record),
+                    packageName = record.packageName,
+                    status = if (record.imported) getString(R.string.dynamic_shortcuts_already_imported) else "",
+                    initiallySelected = record in model.selected,
+                )
+            },
+            onSelectionChanged = { record, selected ->
+                if (selected) model.selected.add(record) else model.selected.remove(record)
+            },
+            onCancelled = model::dismissCandidates,
+            onImport = model::importSelected,
+        )
     }
 
     private fun actionLink(record: DynamicShortcutModel): String = GestureActionLink(

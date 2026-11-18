@@ -17,7 +17,6 @@
     android:layout_height="wrap_content"
     android:paddingHorizontal="24dp"
     android:paddingTop="20dp"
-    android:text="@string/link_rule_import_title"
     android:textAppearance="?attr/textAppearanceTitleLarge"
     android:textColor="?attr/colorOnSurface" />
   <com.google.android.material.textview.MaterialTextView
@@ -27,7 +26,6 @@
     android:paddingHorizontal="24dp"
     android:paddingTop="8dp"
     android:paddingBottom="16dp"
-    android:text="@string/link_settings_templates_description"
     android:textAppearance="?attr/textAppearanceBodyMedium"
     android:textColor="?attr/colorOnSurfaceVariant" />
   <FrameLayout
@@ -48,19 +46,32 @@
       android:layout_gravity="center"
       android:gravity="center"
       android:padding="32dp"
-      android:text="@string/link_rule_empty"
+      android:text="@string/import_selection_empty"
       android:textAppearance="?attr/textAppearanceBodyMedium"
       android:textColor="?attr/colorOnSurfaceVariant"
       android:visibility="gone" />
   </FrameLayout>
-  <com.google.android.material.textview.MaterialTextView
-    android:id="@+id/selectionSummary"
+  <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingHorizontal="24dp"
-    android:paddingVertical="8dp"
-    android:textAppearance="?attr/textAppearanceLabelMedium"
-    android:textColor="?attr/colorPrimary" />
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+    <com.google.android.material.textview.MaterialTextView
+      android:id="@+id/selectionSummary"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:textAppearance="?attr/textAppearanceLabelMedium"
+      android:textColor="?attr/colorPrimary" />
+    <com.google.android.material.button.MaterialButton
+      android:id="@+id/selectAllButton"
+      style="@style/Widget.Material3.Button.TextButton"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:minHeight="48dp"
+      android:text="@string/import_selection_select_all" />
+  </LinearLayout>
   <com.google.android.material.divider.MaterialDivider
     android:layout_width="match_parent"
     android:layout_height="1dp"
@@ -73,5 +84,5 @@
     android:layout_marginHorizontal="20dp"
     android:layout_marginVertical="12dp"
     android:minHeight="48dp"
-    android:text="@string/link_rule_import_confirm" />
+    android:text="@string/import_selection_confirm" />
 </LinearLayout>

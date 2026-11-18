@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="import_selection_confirm">Import</string>
+  <string name="import_selection_select_all">Select all</string>
+  <string name="import_selection_clear_all">Clear selection</string>
+  <string name="import_selection_empty">Nothing available to import</string>
+  <string name="import_selection_selected">Selected</string>
+  <string name="import_selection_not_selected">Not selected</string>
+  <plurals name="import_selection_count">
+    <item quantity="one">%1$d item selected</item>
+    <item quantity="other">%1$d items selected</item>
+  </plurals>
+</resources>

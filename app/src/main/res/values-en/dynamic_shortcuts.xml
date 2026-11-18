@@ -26,7 +26,8 @@
     <item quantity="other">%1$d shortcuts · Tap to launch, hold to copy the action link</item>
   </plurals>
   <string name="dynamic_shortcuts_select">Select shortcuts to keep</string>
-  <string name="dynamic_shortcuts_select_all">Select all</string>
+  <string name="dynamic_shortcuts_import_description">Choose app shortcuts to keep using after switching back to your usual home app.</string>
+  <string name="dynamic_shortcuts_already_imported">Imported</string>
   <string name="dynamic_shortcuts_permission_ready">Access granted. You can select and import shortcuts.</string>
   <string name="dynamic_shortcuts_permission_needed">Reading new shortcuts requires default home access. Imported shortcuts can still be used.</string>
   <string name="dynamic_shortcuts_unsupported">Dynamic shortcuts require Android 7.1 or later.</string>

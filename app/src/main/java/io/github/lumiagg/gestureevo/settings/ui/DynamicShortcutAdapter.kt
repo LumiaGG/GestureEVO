@@ -31,9 +31,7 @@ internal class DynamicShortcutAdapter(
 
     class Holder(val binding: ItemDynamicShortcutBinding) : RecyclerView.ViewHolder(binding.root)
 
-    fun displayLabel(record: DynamicShortcutModel) = "${record.label}\n${appLabel(record)}"
-
-    private fun appLabel(record: DynamicShortcutModel) = if (record.userSerial == currentUser) record.appLabel else
+    fun appLabel(record: DynamicShortcutModel) = if (record.userSerial == currentUser) record.appLabel else
         context.getString(R.string.dynamic_shortcuts_profile_label, record.appLabel, record.userSerial)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = Holder(

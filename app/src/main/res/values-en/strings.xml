@@ -936,7 +936,6 @@
     <string name="link_rule_import_invalid">Clipboard content is not a valid rules backup</string>
     <string name="link_rule_import_templates">Import built-in templates</string>
     <string name="link_rule_import_title">Built-in link templates</string>
-    <string name="link_rule_import_confirm">Import</string>
     <string name="link_rule_import_none_installed">No templates available; install the target apps first.</string>
     <string name="link_rule_import_done">Imported %1$d rules</string>
     <string name="link_rule_import_exists">already added</string>

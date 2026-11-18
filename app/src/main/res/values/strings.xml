@@ -999,7 +999,6 @@
     <string name="link_rule_import_done">已导入 %1$d 条规则</string>
     <string name="link_rule_import_exists">已存在</string>
     <string name="link_rule_import_missing">未安装</string>
-    <string name="link_rule_import_confirm">导入</string>
     <string name="link_rule_edit_title">编辑规则</string>
     <string name="link_rule_new_title">新建规则</string>
     <string name="link_rule_name">规则名称</string>
