@@ -105,12 +105,18 @@ class PointerFloating(
     data class PointerSnapshot(val centerX: Float, val centerY: Float, val radiusPx: Float)
 
     /**
-     * True only while a drag selection box is actually being drawn, so the radar stands down
-     * for real selections but keeps highlighting links while the pointer merely hovers in
-     * drag mode (hover-stability auto-enters drag mode and would otherwise kill the radar).
+     * True only while a drag selection box is actually being drawn (not mere drag mode).
      */
     val isPointerDragSelecting: Boolean
         get() = pointerManger.isDragMode && pointerManger.isDragSelectionStarted
+
+    /**
+     * True from hover-stability until drag mode exits. The link radar yields for this whole
+     * window: its capsule and hit areas would otherwise sit on top of the selection crosshair,
+     * and its tap interception would turn a release into a link open.
+     */
+    val isPointerDragMode: Boolean
+        get() = pointerManger.isDragMode
 
     /** Current pointer center/radius in screen coordinates, null while the icon is hidden. */
     fun currentPointerSnapshot(): PointerSnapshot? = pointerManger.currentPointerSnapshot()
@@ -1091,14 +1097,12 @@ class PointerFloating(
             private fun onStableChange(isStable: Boolean, stablePoint: Point) {
                 // Dispatch UI operations to the main thread
                 context.postOnMain {
-                    if (isStable && onPointerLinkTargeted?.invoke() == true) {
-                        resetHoverLongPressHint()
-                        return@postOnMain
-                    }
                     if (isStable && !isDragMode) {
+                        // Drag selection wins once the pointer settles, even on a link: entering
+                        // it makes the radar stand down through the pointer snapshot instead.
                         if (dragModeEnabled) {
                             enterDragMode()
-                        } else {
+                        } else if (onPointerLinkTargeted?.invoke() != true) {
                             prepareHoverLongPress(stablePoint)
                         }
                     }
@@ -1240,7 +1244,7 @@ class PointerFloating(
                                         x = currentView.x + currentView.width / 2
                                         y = currentView.y + currentView.height / 2
                                         onPointerPositionChanged?.invoke(
-                                            if (pointerVisibleRequested && !isPointerDragSelecting) currentPointerSnapshot() else null
+                                            if (pointerVisibleRequested && !isPointerDragMode) currentPointerSnapshot() else null
                                         )
                                         if (onPointerLinkTargeted?.invoke() == true &&
                                             (pendingHoverLongPress || isHoverLongPressActive)) {
