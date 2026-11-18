@@ -36,7 +36,9 @@ import io.github.lumiagg.gestureevo.utils.NotificationPermissionUtils
 import io.github.lumiagg.gestureevo.utils.CurrentPackageProvider
 import io.github.lumiagg.gestureevo.utils.actionStore
 import io.github.lumiagg.gestureevo.utils.gestureStore
+import io.github.lumiagg.gestureevo.utils.app.AShell
 import io.github.lumiagg.gestureevo.utils.app.AShizuku
+import io.github.lumiagg.gestureevo.utils.app.PrivilegedLaunchPreferences
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.saveKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
@@ -46,7 +48,6 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import rikka.shizuku.Shizuku
 
 class SettingsGuideActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsGuideBinding
@@ -283,7 +284,14 @@ class SettingsGuideActivity : AppCompatActivity() {
             .setNeutralButton(R.string.background_stability_adb_title) { _, _ ->
                 showAdbAuthorization()
             }
-            .setNegativeButton(android.R.string.cancel, null)
+            .setNegativeButton(R.string.guide_root_request) { _, _ ->
+                lifecycleScope.launch {
+                    if (!AShell.requestRootAccess(this@SettingsGuideActivity)) {
+                        Toast.makeText(this@SettingsGuideActivity, R.string.root_shizuku_permission_failed, Toast.LENGTH_SHORT).show()
+                    }
+                    refreshOptionalPermissions()
+                }
+            }
             .show()
     }
 
@@ -310,10 +318,10 @@ class SettingsGuideActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) ==
                 PackageManager.PERMISSION_GRANTED
         ))
-        val shizukuGranted = Shizuku.pingBinder() &&
-            runCatching { Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED }
-                .getOrDefault(false)
-        binding.advancedStatus.setText(status(shizukuGranted))
+        lifecycleScope.launch {
+            val authorized = AShizuku.hasPermission() || PrivilegedLaunchPreferences.isRootAuthorized(this@SettingsGuideActivity)
+            binding.advancedStatus.setText(status(authorized))
+        }
     }
 
     private fun openPage(destination: Class<out AppCompatActivity>, anchorId: Int? = null) {

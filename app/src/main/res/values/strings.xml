@@ -1277,7 +1277,8 @@
     <string name="guide_ready">核心设置已就绪，已确认手势可用。</string>
     <string name="guide_trial_confirmed">我已成功触发手势并执行动作</string>
     <string name="guide_trial_pending">核心配置已就绪，实际触发手势后确认效果。</string>
-    <string name="guide_advanced_details">Root 在执行相关动作时请求。也可按需授权 Shizuku，或查看 ADB 授权方式。</string>
+    <string name="guide_advanced_details">可在这里授权 Root 或 Shizuku 来启动需要高级权限的页面。冻结和解冻应用使用 Shizuku。也可查看 ADB 授权方式。</string>
+    <string name="guide_root_request">请求 Root 权限</string>
     <string name="guide_incomplete">核心设置尚未完成，可继续设置或稍后配置。</string>
     <string name="guide_finish">完成设置</string>
     <string name="guide_skip">稍后配置</string>

@@ -169,7 +169,7 @@ class ExternalActionProxyActivity : AppCompatActivity() {
     }
 
     private suspend fun executeAndFinish(link: String) {
-        ActionProxy(applicationContext, link).execute()
+        ActionProxy(applicationContext, link).executeExternal()
         finish()
     }
 
