@@ -4,6 +4,7 @@ import android.app.role.RoleManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.UserManager
 import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
@@ -26,10 +27,12 @@ import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.ActivityDynamicShortcutSettingsBinding
 import io.github.lumiagg.gestureevo.db.DynamicShortcutModel
 import io.github.lumiagg.gestureevo.gesture.config.GestureActionType
+import io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
 import io.github.lumiagg.gestureevo.utils.ActionProxy
 import io.github.lumiagg.gestureevo.utils.ClipboardUtils
 import io.github.lumiagg.gestureevo.utils.GestureActionLink
 import io.github.lumiagg.gestureevo.utils.ToastHelper
+import io.github.lumiagg.gestureevo.utils.icon.bindAppIcon
 import io.github.lumiagg.gestureevo.utils.shortcuts.DynamicShortcuts
 import kotlinx.coroutines.launch
 
@@ -39,6 +42,9 @@ class DynamicShortcutSettingsActivity : AppCompatActivity() {
     private var selectionDialog: AlertDialog? = null
     private var shownCandidates: List<DynamicShortcutModel>? = null
     private val adapter = ImportedAdapter()
+    private val currentUserSerial by lazy {
+        getSystemService(UserManager::class.java).getSerialNumberForUser(android.os.Process.myUserHandle())
+    }
     private val homePicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         updatePermission()
     }
@@ -63,6 +69,8 @@ class DynamicShortcutSettingsActivity : AppCompatActivity() {
                     binding.status.isVisible = state.message.isNotEmpty()
                     binding.emptyList.isVisible = !state.busy && state.imported.isEmpty()
                     adapter.submitList(state.imported)
+                    binding.importedCard.setSummary(resources.getQuantityString(
+                        R.plurals.dynamic_shortcuts_list_summary, state.imported.size, state.imported.size))
                     updatePermission()
                     val candidates = state.candidates
                     if (candidates != null && shownCandidates !== candidates) showSelection(candidates)
@@ -131,8 +139,13 @@ class DynamicShortcutSettingsActivity : AppCompatActivity() {
             }
     }
 
-    private fun displayLabel(record: DynamicShortcutModel) = getString(R.string.dynamic_shortcuts_record,
-        record.label, record.appLabel, record.userSerial)
+    private fun displayLabel(record: DynamicShortcutModel) = "${record.label}\n${appLabel(record)}"
+
+    private fun appLabel(record: DynamicShortcutModel): String = if (record.userSerial == currentUserSerial) {
+        record.appLabel
+    } else {
+        getString(R.string.dynamic_shortcuts_profile_label, record.appLabel, record.userSerial)
+    }
 
     override fun onDestroy() {
         selectionDialog?.dismiss()
@@ -151,7 +164,9 @@ class DynamicShortcutSettingsActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: ImportedHolder, position: Int) {
             val record = getItem(position)
-            holder.title.text = displayLabel(record)
+            holder.title.text = record.label
+            holder.subtitle.text = appLabel(record)
+            holder.icon.bindAppIcon(lifecycleScope, record.packageName)
             holder.itemView.setOnClickListener {
                 lifecycleScope.launch { ActionProxy(this@DynamicShortcutSettingsActivity, actionLink(record)).execute() }
             }
@@ -165,6 +180,8 @@ class DynamicShortcutSettingsActivity : AppCompatActivity() {
 
     private class ImportedHolder(view: View) : RecyclerView.ViewHolder(view) {
         val title: TextView = view.findViewById(R.id.shortcutLabel)
+        val subtitle: TextView = view.findViewById(R.id.shortcutApp)
+        val icon: RoundImageTextView = view.findViewById(R.id.appIcon)
     }
 
     companion object {

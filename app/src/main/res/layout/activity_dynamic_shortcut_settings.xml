@@ -1,47 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-  xmlns:app="http://schemas.android.com/apk/res-auto"
-  android:layout_width="match_parent" android:layout_height="match_parent"
-  android:orientation="vertical" android:fitsSystemWindows="true">
-  <androidx.appcompat.widget.Toolbar
-    android:id="@+id/toolbar" android:layout_width="match_parent"
-    android:layout_height="?attr/actionBarSize" app:title="@string/dynamic_shortcuts_title" />
-  <androidx.core.widget.NestedScrollView
-    android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
-    android:clipToPadding="false">
-    <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard
-      android:layout_width="match_parent" android:layout_height="wrap_content"
-      android:layout_marginHorizontal="@dimen/settings_card_spacing"
-      app:settingsCardTitle="@string/dynamic_shortcuts_import"
-      app:settingsCardSummary="@string/dynamic_shortcuts_description"
-      app:settingsCardExpandable="false">
-      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:paddingHorizontal="12dp" android:paddingBottom="12dp" android:orientation="vertical">
-        <TextView android:id="@+id/permissionStatus" android:layout_width="match_parent"
-          android:layout_height="wrap_content" android:padding="8dp" />
-        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/grantHome"
-          android:layout_width="match_parent" android:layout_height="wrap_content"
-          app:settingsRowTitle="@string/dynamic_shortcuts_grant" />
-        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/queryShortcuts"
-          android:layout_width="match_parent" android:layout_height="wrap_content"
-          app:settingsRowTitle="@string/dynamic_shortcuts_query" />
-        <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/restoreHome"
-          android:layout_width="match_parent" android:layout_height="wrap_content"
-          app:settingsRowTitle="@string/dynamic_shortcuts_restore" />
-      </LinearLayout>
-    </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:fitsSystemWindows="true">
+  <com.google.android.material.appbar.AppBarLayout android:layout_width="match_parent" android:layout_height="@dimen/app_bar_height">
+    <com.google.android.material.appbar.CollapsingToolbarLayout android:layout_width="match_parent" android:layout_height="match_parent" android:fitsSystemWindows="true" app:layout_scrollFlags="scroll|exitUntilCollapsed" app:toolbarId="@+id/toolbar">
+      <androidx.appcompat.widget.Toolbar android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="?attr/actionBarSize" app:layout_collapseMode="pin" app:title="@string/dynamic_shortcuts_title" />
+    </com.google.android.material.appbar.CollapsingToolbarLayout>
+  </com.google.android.material.appbar.AppBarLayout>
+  <androidx.core.widget.NestedScrollView android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" app:layout_behavior="@string/appbar_scrolling_view_behavior">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="@dimen/settings_card_spacing" android:paddingVertical="16dp">
+      <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/importCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/settings_card_spacing" app:settingsCardTitle="@string/dynamic_shortcuts_import" app:settingsCardSummary="@string/dynamic_shortcuts_import_summary" app:settingsCardExpanded="false">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+          <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingHorizontal="4dp" android:text="@string/dynamic_shortcuts_description" android:textAppearance="?attr/textAppearanceBodySmall" android:textColor="?attr/colorOnSurfaceVariant" />
+          <TextView android:id="@+id/permissionStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_settings_tile_quiet" android:padding="12dp" android:textAppearance="?attr/textAppearanceBodySmall" android:textColor="?attr/colorPrimary" />
+          <com.google.android.material.button.MaterialButton android:id="@+id/grantHome" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:minHeight="48dp" android:text="@string/dynamic_shortcuts_grant" />
+          <com.google.android.material.button.MaterialButton android:id="@+id/queryShortcuts" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/dynamic_shortcuts_query" app:icon="@drawable/baseline_add_24" app:iconGravity="textStart" />
+          <com.google.android.material.button.MaterialButton android:id="@+id/restoreHome" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/dynamic_shortcuts_restore" />
+        </LinearLayout>
+      </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+      <com.google.android.material.progressindicator.LinearProgressIndicator android:id="@+id/progress" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:indeterminate="true" android:visibility="gone" />
+      <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:background="@drawable/bg_settings_tile_quiet" android:padding="14dp" android:textAppearance="?attr/textAppearanceBodySmall" android:textColor="?attr/colorOnSurfaceVariant" android:visibility="gone" />
+      <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/importedCard" android:layout_width="match_parent" android:layout_height="wrap_content" app:settingsCardTitle="@string/dynamic_shortcuts_source" app:settingsCardSummary="@string/dynamic_shortcuts_list_hint" app:settingsCardExpanded="true">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+          <TextView android:id="@+id/emptyList" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_settings_tile_quiet" android:gravity="center" android:paddingHorizontal="20dp" android:paddingVertical="32dp" android:text="@string/dynamic_shortcuts_empty" android:textAppearance="?attr/textAppearanceBodyMedium" android:textColor="?attr/colorOnSurfaceVariant" />
+          <androidx.recyclerview.widget.RecyclerView android:id="@+id/importedList" android:layout_width="match_parent" android:layout_height="wrap_content" android:nestedScrollingEnabled="false" />
+        </LinearLayout>
+      </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+    </LinearLayout>
   </androidx.core.widget.NestedScrollView>
-  <com.google.android.material.progressindicator.LinearProgressIndicator android:id="@+id/progress"
-    android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:indeterminate="true" android:visibility="gone" />
-  <TextView android:id="@+id/status" android:layout_width="match_parent"
-    android:layout_height="wrap_content" android:padding="16dp" android:visibility="gone" />
-  <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:padding="16dp" android:text="@string/dynamic_shortcuts_list_hint" />
-  <TextView android:id="@+id/emptyList" android:layout_width="match_parent"
-    android:layout_height="wrap_content" android:paddingHorizontal="16dp"
-    android:text="@string/dynamic_shortcuts_empty" />
-  <androidx.recyclerview.widget.RecyclerView android:id="@+id/importedList"
-    android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
-    android:clipToPadding="false" android:paddingHorizontal="16dp" android:paddingBottom="16dp" />
-</LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

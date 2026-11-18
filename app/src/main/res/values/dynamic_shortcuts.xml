@@ -8,6 +8,11 @@
   <string name="dynamic_shortcuts_query">2. 读取并选择快捷方式</string>
   <string name="dynamic_shortcuts_restore">3. 切回原桌面</string>
   <string name="dynamic_shortcuts_import">导入快捷方式</string>
+  <string name="dynamic_shortcuts_import_summary">导入新入口后，可切回原桌面继续使用</string>
+  <string name="dynamic_shortcuts_profile_label">%1$s · 用户 %2$d</string>
+  <plurals name="dynamic_shortcuts_list_summary">
+    <item quantity="other">%1$d 个快捷方式 · 轻点启动，长按复制动作链接</item>
+  </plurals>
   <string name="dynamic_shortcuts_select">选择要保留的快捷方式</string>
   <string name="dynamic_shortcuts_select_all">全选</string>
   <string name="dynamic_shortcuts_permission_ready">已获得读取权限，可以选择并导入快捷方式。</string>

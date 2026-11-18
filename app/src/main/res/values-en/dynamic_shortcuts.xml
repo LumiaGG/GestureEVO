@@ -8,6 +8,12 @@
   <string name="dynamic_shortcuts_query">2. Read and select shortcuts</string>
   <string name="dynamic_shortcuts_restore">3. Switch back to your usual home app</string>
   <string name="dynamic_shortcuts_import">Import shortcuts</string>
+  <string name="dynamic_shortcuts_import_summary">Import new shortcuts, then switch back to your usual home app</string>
+  <string name="dynamic_shortcuts_profile_label">%1$s · User %2$d</string>
+  <plurals name="dynamic_shortcuts_list_summary">
+    <item quantity="one">%1$d shortcut · Tap to launch, hold to copy the action link</item>
+    <item quantity="other">%1$d shortcuts · Tap to launch, hold to copy the action link</item>
+  </plurals>
   <string name="dynamic_shortcuts_select">Select shortcuts to keep</string>
   <string name="dynamic_shortcuts_select_all">Select all</string>
   <string name="dynamic_shortcuts_permission_ready">Access granted. You can select and import shortcuts.</string>

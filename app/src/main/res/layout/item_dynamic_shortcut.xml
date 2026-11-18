@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
-  android:id="@+id/shortcutLabel" android:layout_width="match_parent"
-  android:layout_height="wrap_content" android:minHeight="64dp" android:gravity="center_vertical"
-  android:padding="12dp" android:textAppearance="?attr/textAppearanceBodyLarge"
-  android:foreground="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" />
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:minHeight="72dp" android:background="@drawable/bg_link_settings_item" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="12dp">
+  <io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView android:id="@+id/appIcon" android:layout_width="40dp" android:layout_height="40dp" android:layout_marginEnd="12dp" android:importantForAccessibility="no" />
+  <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+    <TextView android:id="@+id/shortcutLabel" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="2" android:textAppearance="?attr/textAppearanceTitleSmall" android:textColor="?attr/colorOnSurface" />
+    <TextView android:id="@+id/shortcutApp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:ellipsize="end" android:maxLines="1" android:textAppearance="?attr/textAppearanceBodySmall" android:textColor="?attr/colorOnSurfaceVariant" />
+  </LinearLayout>
+  <androidx.appcompat.widget.AppCompatImageView android:layout_width="20dp" android:layout_height="20dp" android:layout_marginStart="12dp" android:importantForAccessibility="no" app:srcCompat="@drawable/ic_chevron_right" app:tint="?attr/colorOnSurfaceVariant" />
+</LinearLayout>
