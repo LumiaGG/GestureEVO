@@ -10,11 +10,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-/** Original app colors and the same global icon shape used by search results. */
+/** Preserve the view's shape policy: global for lists, local configuration for wheels. */
 internal fun RoundImageTextView.setAppIcon(icon: Drawable?, placeholder: Int = R.drawable.baseline_image_24) {
-    applyGlobalImageRoundPercent = icon != null
     if (icon == null) setImageWithBackplate(placeholder, iconInset = 6.dp2px.toInt())
-    else setImage(icon) // setImage clears tint and applies IconHelper's global round percentage.
+    else setImage(icon) // setImage clears tint and respects the view's existing shape policy.
 }
 
 /** Cancel stale row loads; IconHelper owns the shared icon cache. */

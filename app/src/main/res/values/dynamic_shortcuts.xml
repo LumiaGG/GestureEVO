@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+  <string name="dynamic_shortcuts_freeform_unsupported">当前小窗后端需要应用页面 Intent，无法直接打开动态快捷方式。请关闭此动作的小窗选项后使用。</string>
   <string name="shortcut_source_dynamic">动态快捷方式</string>
   <string name="shortcut_source_dynamic_summary">从已导入的应用快捷入口中选择</string>
   <string name="shortcut_source_local_summary">打开应用提供的快捷方式创建页</string>

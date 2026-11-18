@@ -81,6 +81,8 @@ class DynamicShortcutSettingsActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Returning from Appearance can change icons without changing the shortcut records.
+        adapter.notifyItemRangeChanged(0, adapter.itemCount)
         updatePermission()
         model.refresh()
     }

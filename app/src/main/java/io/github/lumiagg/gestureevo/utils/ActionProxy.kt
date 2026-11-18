@@ -60,6 +60,8 @@ import io.github.lumiagg.gestureevo.utils.app.AShell
 import io.github.lumiagg.gestureevo.utils.app.AShizuku
 import io.github.lumiagg.gestureevo.utils.app.AShizuku.ensureAppEnabledIfFrozen
 import io.github.lumiagg.gestureevo.utils.shortcuts.DynamicShortcuts
+import io.github.lumiagg.gestureevo.utils.shortcuts.ShortcutLaunchActivity
+import io.github.lumiagg.gestureevo.utils.shortcuts.ShortcutLaunchRequests
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
@@ -99,6 +101,16 @@ class ActionProxy(private val context: Context, linkString: String) {
         return executeTracked(anchor, side) {
             val uri = otherLink ?: return@executeTracked false
             launchUri(uri, pkg.orEmpty())
+        }
+    }
+
+    /** Only called by the non-exported activity after the ROM launch protocol has completed. */
+    internal suspend fun executePinnedShortcutContinuation(options: Bundle?): Boolean {
+        require(context is ShortcutLaunchActivity && event == GestureActionType.OTHER_SHORTCUT)
+        val uri = requireNotNull(otherLink).toUri()
+        require(uri.scheme == DynamicShortcuts.SCHEME)
+        return executeTracked(null, null) {
+            launchDynamicShortcut(uri, pkg.orEmpty(), continued = true, shortcutOptions = options)
         }
     }
 
@@ -359,33 +371,110 @@ class ActionProxy(private val context: Context, linkString: String) {
         return false
     }
 
-    private suspend fun launchDynamicShortcut(uri: Uri, expectedPackage: String): Boolean =
-        withContext(Dispatchers.IO) {
-            try {
-                val shortcut = DynamicShortcuts.requireImported(context, uri, expectedPackage)
-                val users = context.getSystemService(UserManager::class.java)
-                val user = users.getUserForSerialNumber(shortcut.userSerial)
-                    ?: error("Shortcut profile no longer exists")
+    private suspend fun launchDynamicShortcut(
+        uri: Uri,
+        expectedPackage: String,
+        continued: Boolean = false,
+        shortcutOptions: Bundle? = null,
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val shortcut = DynamicShortcuts.requireImported(context, uri, expectedPackage)
+            val users = context.getSystemService(UserManager::class.java)
+            val user = users.getUserForSerialNumber(shortcut.userSerial)
+                ?: error("Shortcut profile no longer exists")
+            launchWithWindowRouting(
+                shortcutUri = uri,
+                targetPackage = shortcut.packageName,
+                continued = continued,
+                options = shortcutOptions,
+            ) { options ->
                 // The existing unfreeze backend operates on the current user only.
                 if (user == android.os.Process.myUserHandle() &&
-                    !ensureAppEnabledIfFrozen(shortcut.packageName, context)) return@withContext false
+                    !ensureAppEnabledIfFrozen(shortcut.packageName, context)) return@launchWithWindowRouting false
                 if (Build.VERSION.SDK_INT < 25) error("Dynamic shortcuts require Android 7.1")
                 context.getSystemService(LauncherApps::class.java).startShortcut(
-                    shortcut.packageName, shortcut.shortcutId, null,
-                    if (freeform) getActivityOptions().toBundle() else null, user,
+                    shortcut.packageName, shortcut.shortcutId, null, options, user,
                 )
                 recordOpenCount(shortcut.packageName)
                 AppLogger.event(LogModule.ACTION, "dynamic_shortcut_launch_submitted", trace = trace,
                     fields = mapOf("package" to shortcut.packageName))
                 true
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLogger.event(LogModule.ACTION, "dynamic_shortcut_launch_failed", LogLevel.ERROR, trace, error = e)
-                ToastHelper.showInUIThread(context, context.getString(R.string.dynamic_shortcuts_launch_failed))
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.event(LogModule.ACTION, "dynamic_shortcut_launch_failed", LogLevel.ERROR, trace, error = e)
+            ToastHelper.showInUIThread(context, context.getString(R.string.dynamic_shortcuts_launch_failed))
+            false
+        }
+    }
+
+    /** Shared ROM dispatch for normal links, app activities and system-owned shortcuts. */
+    private suspend fun launchWithWindowRouting(
+        targetIntent: Intent? = null,
+        shortcutUri: Uri? = null,
+        targetPackage: String? = null,
+        continued: Boolean = false,
+        options: Bundle? = null,
+        launchDirect: suspend (Bundle?) -> Boolean,
+    ): Boolean {
+        val rom = if (freeform) getFreeFormCode(context) else 0
+        val route = if (continued && freeform) ActionWindowRoute.SYSTEM_FREEFORM else actionWindowRoute(
+            freeform, rom == RomFreeFormCode.VIVO.code, rom == RomFreeFormCode.NUBIA.code,
+        )
+        AppLogger.event(LogModule.ACTION, "window_launch_route", LogLevel.DEBUG, trace,
+            fields = mapOf("route" to route.name, "systemShortcut" to (shortcutUri != null)))
+        return when (route) {
+            ActionWindowRoute.NORMAL -> launchDirect(null)
+            ActionWindowRoute.SYSTEM_FREEFORM -> launchDirect(options ?: getActivityOptions().toBundle())
+            ActionWindowRoute.VIVO_SHARE -> if (targetIntent != null) {
+                shareOpenIntent(targetIntent).success
+            } else {
+                launchShortcutThroughVivo(requireNotNull(shortcutUri), requireNotNull(targetPackage))
+            }
+            ActionWindowRoute.NUBIA_INTENT -> if (targetIntent != null) {
+                startNubiaFreeformActivity(context, targetIntent)
+                true
+            } else {
+                // This protocol modifies the publisher's Intent, which LauncherApps does not expose.
+                AppLogger.event(LogModule.ACTION, "shortcut_freeform_backend_unsupported", LogLevel.WARN, trace,
+                    fields = mapOf("rom" to rom))
+                ToastHelper.showInUIThread(context, context.getString(R.string.dynamic_shortcuts_freeform_unsupported))
                 false
             }
         }
+    }
+
+    private suspend fun launchShortcutThroughVivo(uri: Uri, targetPackage: String): Boolean = coroutineScope {
+        val requestId = UUID.randomUUID().toString()
+        val continuation = link.buildUpon().path(GestureActionType.OTHER_SHORTCUT.name).clearQuery().apply {
+            link.queryParameterNames.filter { it != "triggerSide" }.forEach { key ->
+                appendQueryParameter(key, link.getQueryParameter(key))
+            }
+            TriggerSide.peek()?.let { appendQueryParameter("triggerSide", it) }
+        }.build().toString()
+        // Snapshot bounds and trigger coordinates before entering the asynchronous share flow.
+        val options = getActivityOptions().toBundle()
+        val bridge = Intent(context, ShortcutLaunchActivity::class.java).apply {
+            putExtra(ShortcutLaunchActivity.EXTRA_REQUEST, requestId)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            data = uri
+        }
+        val result = async(start = CoroutineStart.UNDISPATCHED) {
+            withTimeoutOrNull(10_000L) { ShareOpenResultManager.awaitResult(requestId) }
+        }
+        try {
+            ShortcutLaunchRequests.register(requestId, continuation, options)
+            AppLogger.event(LogModule.ACTION, "shortcut_vivo_share_requested", trace = trace,
+                fields = mapOf("package" to targetPackage))
+            // Use the same chooser/proxy protocol as ordinary vivo freeform launches.
+            if (!launchIntent(bridge)) return@coroutineScope false
+            result.await()?.success == true
+        } finally {
+            ShortcutLaunchRequests.forget(requestId)
+            result.cancel()
+        }
+    }
 
     private suspend fun launchCustomTabsIntent(intent: Intent, pkgName: String): Boolean {
         if (intent.action != Intent.ACTION_VIEW) return false
@@ -501,19 +590,13 @@ class ActionProxy(private val context: Context, linkString: String) {
                 "foreground" to AppLogger.foreground, "method" to if (freeform) "freeform" else "startActivity")
             AppLogger.event(LogModule.ACTION, "launch_requested", trace = trace, fields = metadata)
             try {
-                if (freeform) {
-                    when (getFreeFormCode(context)) {
-                        RomFreeFormCode.VIVO.code -> {
-                            if (!shareOpenIntent(intent).success) {
-                                AppLogger.event(LogModule.ACTION, "launch_failed", LogLevel.WARN, trace, fields = metadata)
-                                return@withContext false
-                            }
-                        }
-                        RomFreeFormCode.NUBIA.code -> startNubiaFreeformActivity(context, intent)
-                        else -> context.startActivity(intent, getActivityOptions().toBundle())
-                    }
-                } else {
-                    context.startActivity(intent)
+                val launched = launchWithWindowRouting(targetIntent = intent, targetPackage = target) { options ->
+                    if (options == null) context.startActivity(intent) else context.startActivity(intent, options)
+                    true
+                }
+                if (!launched) {
+                    AppLogger.event(LogModule.ACTION, "launch_failed", LogLevel.WARN, trace, fields = metadata)
+                    return@withContext false
                 }
                 AppLogger.event(LogModule.ACTION, "launch_request_submitted", trace = trace, fields = metadata)
                 return@withContext true
