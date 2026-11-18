@@ -369,8 +369,8 @@
     <string name="edit_bottomsheet_cancel">取消</string>
     <string name="edit_bottomsheet_confirm">确定</string>
     <string name="shortcut_source_select_title">选择快捷方式来源</string>
-    <string name="shortcut_source_select_local">本地中支持的应用</string>
-    <string name="shortcut_source_select_online">其他用户添加的快捷方式（本地集成）</string>
+    <string name="shortcut_source_select_local">应用创建的快捷方式</string>
+    <string name="shortcut_source_select_online">内置快捷方式模板</string>
     <string name="se_direct_link_title">直接链接配置</string>
     <string name="se_direct_link_example">最常见的搜索链接, 比如: https://www.bing.com/search?s=</string>
     <string name="se_direct_link_placeholder" formatted="false">使用 %s 或 %q 作为搜索关键词占位符\n %s: 将被URL编码(推荐)\n %q: 不会被编码</string>

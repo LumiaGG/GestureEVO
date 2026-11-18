@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+  <string name="shortcut_source_dynamic">动态快捷方式</string>
+  <string name="shortcut_source_dynamic_summary">从已导入的应用快捷入口中选择</string>
+  <string name="shortcut_source_local_summary">打开应用提供的快捷方式创建页</string>
+  <string name="shortcut_source_templates_summary">从预置的应用功能入口中选择</string>
+  <string name="dynamic_shortcuts_search">搜索快捷方式或应用</string>
+  <string name="dynamic_shortcuts_no_match">没有匹配的快捷方式</string>
+  <plurals name="dynamic_shortcuts_picker_count">
+    <item quantity="other">%1$d 项</item>
+  </plurals>
   <string name="dynamic_shortcuts_title">动态快捷方式</string>
   <string name="dynamic_shortcuts_summary">临时设为桌面，导入应用快捷方式后继续使用</string>
   <string name="dynamic_shortcuts_home_label">GestureEVO 快捷方式导入</string>

@@ -50,6 +50,7 @@ import io.github.lumiagg.gestureevo.settings.ui.SelectShortcutCallback
 import io.github.lumiagg.gestureevo.settings.ui.ShortcutModel
 import io.github.lumiagg.gestureevo.settings.ui.ShortcutSelectAPPBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.showActionSelectBottomSheet
+import io.github.lumiagg.gestureevo.settings.ui.showDynamicShortcutSelectBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.showEditTextBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.showPieGroupSelectBottomSheet
 import io.github.lumiagg.gestureevo.utils.GestureActionLink
@@ -790,17 +791,11 @@ class GestureAddActionActivity : AppCompatActivity() {
                         }
                         .setNegativeButton(android.R.string.cancel, null).show()
                 } else {
-                    MaterialAlertDialogBuilder(this@GestureAddActionActivity)
-                        .setTitle(R.string.dynamic_shortcuts_source)
-                        .setItems(records.map {
-                            getString(R.string.dynamic_shortcuts_record, it.label, it.appLabel, it.userSerial)
-                        }.toTypedArray()) { _, index ->
-                            val record = records[index]
-                            actionLink.addParams("uri", DynamicShortcuts.uri(record))
-                            actionLink.addParams("pkg", record.packageName)
-                            commitAction(configBinding, actionLink)
-                        }
-                        .setNegativeButton(android.R.string.cancel, null).show()
+                    showDynamicShortcutSelectBottomSheet(this@GestureAddActionActivity, records) { record ->
+                        actionLink.addParams("uri", DynamicShortcuts.uri(record))
+                        actionLink.addParams("pkg", record.packageName)
+                        commitAction(configBinding, actionLink)
+                    }
                 }
             }
         }
@@ -814,7 +809,7 @@ class GestureAddActionActivity : AppCompatActivity() {
                         shortcutIntent.setPackage(model.pkgName)
                         val activities = packageManager.queryIntentActivities(shortcutIntent, 0)
                         if (activities.isNotEmpty()) {
-                            pendingShortcutLink = actionLink
+                            pendingShortcutLink = actionLink.apply { addParams("pkg", model.pkgName) }
                             shortcutPickerLauncher.launch(shortcutIntent)
                         } else {
                             Toast.makeText(

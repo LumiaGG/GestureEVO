@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+  <string name="shortcut_source_dynamic">Dynamic shortcuts</string>
+  <string name="shortcut_source_dynamic_summary">Choose from imported app shortcuts</string>
+  <string name="shortcut_source_local_summary">Open the shortcut creator provided by an app</string>
+  <string name="shortcut_source_templates_summary">Choose from bundled app feature templates</string>
+  <string name="dynamic_shortcuts_search">Search shortcuts or apps</string>
+  <string name="dynamic_shortcuts_no_match">No matching shortcuts</string>
+  <plurals name="dynamic_shortcuts_picker_count">
+    <item quantity="one">%1$d item</item>
+    <item quantity="other">%1$d items</item>
+  </plurals>
   <string name="dynamic_shortcuts_title">Dynamic shortcuts</string>
   <string name="dynamic_shortcuts_summary">Temporarily switch home apps to import app shortcuts for continued use</string>
   <string name="dynamic_shortcuts_home_label">GestureEVO shortcut import</string>

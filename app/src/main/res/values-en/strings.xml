@@ -334,8 +334,8 @@
     <string name="edit_bottomsheet_cancel">Cancel</string>
     <string name="edit_bottomsheet_confirm">Confirm</string>
     <string name="shortcut_source_select_title">Select Shortcut Source</string>
-    <string name="shortcut_source_select_local">Supported Apps Locally</string>
-    <string name="shortcut_source_select_online">Shortcuts Added by Other Users (Local)</string>
+    <string name="shortcut_source_select_local">App-created shortcuts</string>
+    <string name="shortcut_source_select_online">Built-in shortcut templates</string>
     <string name="se_direct_link_title">Direct Link Configuration</string>
     <string name="se_direct_link_example">Most common search link, e.g.: https://www.bing.com/search?s=</string>
     <string name="se_direct_link_placeholder" formatted="false">Use %%s or %%q as search keyword placeholder\n %%s: Will be URL encoded (recommended)\n %%q: Will not be encoded</string>
