@@ -9,7 +9,8 @@ import android.graphics.PathEffect
 import android.graphics.Rect
 import android.graphics.RectF
 import android.view.View
-import com.google.zxing.common.detector.MathUtils.distance
+import androidx.annotation.MainThread
+import io.github.lumiagg.gestureevo.pointer.PointerDragSelection
 import io.github.lumiagg.gestureevo.inspire.ui.InspireView.Companion.DRAG_SELECT_CLICK_THRESHOLD
 import io.github.lumiagg.gestureevo.inspire.ui.InspireView.Companion.DRAG_SELECT_PAINT_WIDTH_HALF
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
@@ -47,38 +48,36 @@ class HighlightRectView(context: Context) : View(context) {
     }
 
     var enable = false
-    var rect: Rect = Rect()
-        private set
+    val rect: Rect = Rect()
+    private val selection = PointerDragSelection(DRAG_SELECT_CLICK_THRESHOLD, 10.dp2px)
 
     private val dragSelectShrunkRect = RectF()
     private val potentialRectF = RectF()
     private var potentialRect: Rect? = null
 
-    var isOverSize = false
-    var isBackToOrigin = false
+    val isBackToOrigin: Boolean get() = selection.isBackToOrigin
 
     fun setStrokeColor(color: Int) = post {
         strokePaint.color = color
         potentialStrokePaint.color = color
         fillPaint.color = Color.argb(46, Color.red(color), Color.green(color), Color.blue(color))
         potentialFillPaint.color = Color.argb(24, Color.red(color), Color.green(color), Color.blue(color))
-        if (enable) invalidate()
+        if (enable || potentialRect != null) invalidate()
     }
 
-    fun showPotentialRect(rect: Rect) = post {
+    @MainThread
+    fun showPotentialRect(rect: Rect) {
         potentialRect = Rect(rect)
         invalidate()
     }
 
-    fun hidePotentialRect() = post {
+    @MainThread
+    fun hidePotentialRect() {
         potentialRect = null
         invalidate()
     }
 
-    fun shouldUseDragSelection(endPoint: Point): Boolean {
-        return kotlin.math.abs(endPoint.x - rect.left) >= DRAG_SELECT_CLICK_THRESHOLD &&
-                kotlin.math.abs(endPoint.y - rect.top) >= DRAG_SELECT_CLICK_THRESHOLD
-    }
+    fun shouldUseDragSelection(endPoint: Point): Boolean = selection.shouldUseDragSelection(endPoint)
 
     fun currentSelectionRect(endPoint: Point): Rect {
         val endX = endPoint.x.toInt()
@@ -91,36 +90,26 @@ class HighlightRectView(context: Context) : View(context) {
         )
     }
 
-    fun updateRect(endPoint: Point) = post {
-        val distance = distance(
-            rect.left, rect.top,
-            endPoint.x.toInt(), endPoint.y.toInt()
-        )
-        if (!isOverSize) {
-            isOverSize = shouldUseDragSelection(endPoint)
-        } else {
-            isBackToOrigin = distance < 10.dp2px
-        }
-
-        rect.set(
-            rect.left, rect.top, endPoint.x.toInt(),
-            endPoint.y.toInt()
-        )
-        invalidate()
+    @MainThread
+    fun updateRect(endPoint: Point) {
+        selection.update(endPoint)
+        syncSelectionRect()
     }
 
-    fun showRect(startPoint: Point) = post {
+    @MainThread
+    fun showRect(startPoint: Point, endPoint: Point = startPoint) {
         enable = true
-        isOverSize = false
-        isBackToOrigin = false
-        rect.set(
-            startPoint.x.toInt(), startPoint.y.toInt(), startPoint.x.toInt(),
-            startPoint.y.toInt()
-        )
+        selection.begin(startPoint, endPoint)
+        syncSelectionRect()
+    }
+
+    private fun syncSelectionRect() {
+        rect.set(selection.start.x.toInt(), selection.start.y.toInt(), selection.end.x.toInt(), selection.end.y.toInt())
         invalidate()
     }
 
-    fun hideRect() = post {
+    @MainThread
+    fun hideRect() {
         enable = false
         invalidate()
     }
@@ -134,6 +123,9 @@ class HighlightRectView(context: Context) : View(context) {
                 rect.right.toFloat(),
                 rect.bottom.toFloat()
             )
+            // A menu's vertical-only or horizontal-only preview still needs visible geometry.
+            if (potentialRectF.width() == 0f) potentialRectF.inset(-DRAG_SELECT_PAINT_WIDTH_HALF, 0f)
+            if (potentialRectF.height() == 0f) potentialRectF.inset(0f, -DRAG_SELECT_PAINT_WIDTH_HALF)
             canvas.drawRoundRect(potentialRectF, 8f.dp2px, 8f.dp2px, potentialFillPaint)
             canvas.drawRoundRect(potentialRectF, 8f.dp2px, 8f.dp2px, potentialStrokePaint)
         }

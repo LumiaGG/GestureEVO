@@ -35,6 +35,8 @@ internal class PointerHoverMenuController(
     private val onEnterSelection: (Point) -> Unit,
     private val onReturnToPointer: (Point) -> Unit,
     private val onScreenAction: suspend (PointerHoverAction, Point, () -> Boolean) -> Unit,
+    private val onSelectionPreview: (Point?) -> Unit,
+    private val isCoordinateSpaceCurrent: () -> Boolean,
 ) {
     private val state = PointerHoverState()
     private val menuLazy = lazy {
@@ -118,19 +120,19 @@ internal class PointerHoverMenuController(
 
     fun move(inputY: Float) {
         if (!isShowing) return
+        if (!isCoordinateSpaceCurrent()) { cancel(); return }
         val movedVertically = kotlin.math.abs(inputY - lastInputY) > service.resources.displayMetrics.density
         lastInputY = inputY
         val index = selection.move(inputY, actions.size, actions.indexOf(state.selected),
             service.resources.getDimension(R.dimen.pointer_hover_menu_step))
-        if (index == null) {
-            if (movedVertically) scheduleModeChange(state.selected)
-            return
+        if (index != null) {
+            val hit = actions[index]
+            state.highlight(hit)
+            menu.highlight(hit)
+            if (vibrate) VibratorUtils.vibrator(service, false)
         }
-        val hit = actions[index]
-        state.highlight(hit)
-        menu.highlight(hit)
-        if (vibrate) VibratorUtils.vibrator(service, false)
-        scheduleModeChange(hit)
+        onSelectionPreview(anchor.takeIf { state.isSelectionPreviewActive })
+        if (index != null || movedVertically) scheduleModeChange(state.selected)
     }
 
     private fun scheduleModeChange(action: PointerHoverAction?) {
@@ -140,6 +142,7 @@ internal class PointerHoverMenuController(
             selectJob = scope?.launch {
                 delay(300)
                 if (!isShowing || state.selected != action) return@launch
+                if (!isCoordinateSpaceCurrent()) { cancel(); return@launch }
                 if (window?.matches(service) != true) { dismiss(); return@launch }
                 if (state.selected == PointerHoverAction.DISMISS) {
                     dismiss()
@@ -159,7 +162,7 @@ internal class PointerHoverMenuController(
         val targetWindow = window
         val capturedLinks = links.toList()
         closePreview()
-        if (action != null && targetWindow?.matches(service) == true) {
+        if (action != null && isCoordinateSpaceCurrent() && targetWindow?.matches(service) == true) {
             service.launch(Dispatchers.Main.immediate) {
                 if (!targetWindow.matches(service)) return@launch
                 try {
@@ -208,6 +211,7 @@ internal class PointerHoverMenuController(
         selectJob = null
         links = emptyList()
         vibrate = false
+        onSelectionPreview(null)
         if (menuLazy.isInitialized()) menu.visibility = View.GONE
     }
 }
