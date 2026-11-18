@@ -77,7 +77,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
     }
 
     override fun onInterrupt() {
-        gestureManager?.cancelPointerHoverInteraction()
+        gestureManager?.onAccessibilityInterrupted()
         globalPressDragSource?.cancel("accessibility_interrupted")
         AppLogger.event(
             LogModule.SERVICE, "accessibility_interrupted",

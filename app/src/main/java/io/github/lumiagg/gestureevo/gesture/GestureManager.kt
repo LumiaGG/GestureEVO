@@ -600,6 +600,7 @@ class GestureManager(
     }
 
     fun onWindowStateChanged(event: AccessibilityEvent) {
+        if (inspireFloatingLazy.isInitialized()) inspireFloating.onWindowEvent(event)
         if (pointerFloatingLazy.isInitialized()) pointerFloating.onWindowEvent(event)
         if (pointerLinks.active && (
                 event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED ||
@@ -619,6 +620,11 @@ class GestureManager(
             currentPackage = packageName,
             currentActivity = className
         )
+    }
+
+    fun onAccessibilityInterrupted() {
+        cancelPointerHoverInteraction()
+        if (inspireFloatingLazy.isInitialized()) inspireFloating.cancelLinkRadar()
     }
 
     fun cancelPointerHoverInteraction() {

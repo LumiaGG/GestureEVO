@@ -1492,4 +1492,9 @@
     <string name="pointer_hover_choose_link">选择链接…</string>
     <string name="pointer_hover_return">返回指针</string>
     <string name="pointer_hover_action_failed">操作未完成，请重试</string>
+    <string name="screen_content_link_radar_title">屏幕内容链接雷达</string>
+    <string name="screen_content_link_radar_summary">框选悬浮窗中高亮链接，轻点打开；从链接上拖动仍可框选</string>
+    <string name="screen_content_radar_choose">轻点选择链接</string>
+    <string name="screen_content_radar_choose_app">轻点选择打开应用</string>
+    <string name="screen_content_radar_open">轻点打开链接</string>
 </resources>
