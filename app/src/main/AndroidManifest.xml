@@ -206,7 +206,7 @@
                 android:resource="@xml/accessibility_service" />
         </service>
         <activity
-            android:name=".link.radar.LinkSelectionActivity"
+            android:name=".pointer.radar.LinkSelectionActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:theme="@style/Theme.GestureEVO.transparent" />

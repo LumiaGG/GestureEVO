@@ -1483,4 +1483,13 @@
     <string name="link_rule_not_selected">未选择</string>
     <string name="link_rule_enable_named">启用规则：%1$s</string>
     <string name="link_settings_templates_description">已为你勾选已安装应用的可用规则，可按需调整后导入。</string>
+    <string name="pointer_hover_menu_title">悬停显示操作菜单</string>
+    <string name="pointer_hover_menu_summary">悬停后上下滑动选择长按、双击、框选和链接目标。松手执行；停留在“框选”或“返回指针”上切换模式。</string>
+    <string name="pointer_hover_menu_overrides_drag">已由操作菜单接管悬停；可通过菜单中的“框选”进入框选模式。</string>
+    <string name="pointer_hover_long_press">长按</string>
+    <string name="pointer_hover_double_tap">双击</string>
+    <string name="pointer_hover_select">框选</string>
+    <string name="pointer_hover_choose_link">选择链接…</string>
+    <string name="pointer_hover_return">返回指针</string>
+    <string name="pointer_hover_action_failed">操作未完成，请重试</string>
 </resources>

@@ -177,7 +177,7 @@
               android:id="@+id/radarSwitch"
               android:layout_width="wrap_content"
               android:layout_height="wrap_content"
-              android:checked="true" />
+              android:checked="false" />
           </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
           <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
             android:layout_width="match_parent"

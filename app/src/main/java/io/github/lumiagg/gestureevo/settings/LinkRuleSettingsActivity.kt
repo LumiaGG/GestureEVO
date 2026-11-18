@@ -35,6 +35,7 @@ import io.github.lumiagg.gestureevo.settings.ui.LinkExemptsBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.LinkExtractsBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.LinkTemplateImportBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.LinkRuleEditBottomSheet
+import io.github.lumiagg.gestureevo.settings.ui.bindLinkRadarSwitch
 import io.github.lumiagg.gestureevo.utils.app.appDisplayNameFromDatabase
 import io.github.lumiagg.gestureevo.utils.icon.bindAppIcon
 import kotlinx.coroutines.CoroutineScope
@@ -51,12 +52,6 @@ import io.github.lumiagg.gestureevo.utils.ToastHelper
  * or target app without changing the underlying order.
  */
 class LinkRuleSettingsActivity : AppCompatActivity() {
-
-    companion object {
-        const val KEY_LINK_RADAR_ENABLED = "key_link_radar_enabled"
-        const val DEFAULT_LINK_RADAR_ENABLED = true
-    }
-
 
     private lateinit var binding: ActivityLinkRuleSettingsBinding
     private lateinit var adapter: RuleAdapter
@@ -92,17 +87,7 @@ class LinkRuleSettingsActivity : AppCompatActivity() {
 
     /** 链接雷达开关：雷达运行时读取同一 key。 */
     private fun setupRadarSwitch() {
-        lifecycleScope.launch {
-            binding.radarSwitch.isChecked = settingsStore.readKey(
-                KEY_LINK_RADAR_ENABLED,
-                DEFAULT_LINK_RADAR_ENABLED
-            )
-        }
-        binding.radarSwitch.setOnCheckedChangeListener { _, isChecked ->
-            lifecycleScope.launch {
-                settingsStore.saveKey(KEY_LINK_RADAR_ENABLED, isChecked)
-            }
-        }
+        bindLinkRadarSwitch(binding.radarSwitch)
         lifecycleScope.launch {
             binding.smallWindowSwitch.isChecked = settingsStore.readKey(
                 LinkLauncher.KEY_LINK_OPEN_IN_SMALL_WINDOW, false

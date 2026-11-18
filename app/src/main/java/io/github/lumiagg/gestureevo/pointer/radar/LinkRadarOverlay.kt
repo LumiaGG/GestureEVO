@@ -1,6 +1,5 @@
-package io.github.lumiagg.gestureevo.link.radar
+package io.github.lumiagg.gestureevo.pointer.radar
 
-import android.content.Intent
 import android.graphics.drawable.Drawable
 import android.os.SystemClock
 import android.util.Log
@@ -9,7 +8,6 @@ import androidx.annotation.MainThread
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
 import io.github.lumiagg.gestureevo.gesture.GestureService
-import io.github.lumiagg.gestureevo.link.LinkLauncher
 import io.github.lumiagg.gestureevo.link.previewLinkTarget
 import io.github.lumiagg.gestureevo.pointer.PointerFloating
 import io.github.lumiagg.gestureevo.settings.ActionViewSettingsActivity.Companion.KEY_MAIN_SHOW_VIBRATE
@@ -31,6 +29,7 @@ class LinkRadarOverlay(
     private val service: GestureService,
     private val pointerStateProvider: () -> PointerFloating.PointerSnapshot?,
     private val triggerSideProvider: () -> String? = { null },
+    private val captureLinks: suspend () -> List<LinkRegion> = { LinkRadarScanner.scan(service) },
 ) : BaseFloatingWindow(service, service, "LinkRadarOverlay") {
     private val overlayView by lazy { LinkRadarView(service) }
     private val layoutParams = WindowManager.LayoutParams().apply {
@@ -57,7 +56,7 @@ class LinkRadarOverlay(
         attachViewSafely(overlayView, layoutParams, shouldRetry = { sessionScope != null })
         sessionScope?.launch { vibrate = service.settingsStore.readKey(KEY_MAIN_SHOW_VIBRATE, false) }
         sessionScope?.launch {
-            regions = try { LinkRadarScanner.scan(service) }
+            regions = try { captureLinks() }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) { Log.w("LinkRadar", "Screen link capture failed", error); emptyList() }
             areas = hitAreas(regions)
@@ -164,18 +163,7 @@ class LinkRadarOverlay(
         overlayView.clear()
         // Opening is an accepted action and survives the pointer session closing on release.
         service.launch(Dispatchers.Main.immediate) {
-            if (hits.size == 1) {
-                val hit = hits.first()
-                LinkLauncher.openUrl(service, hit.url, hit.sourcePackage, hit.sourceText, side = triggerSide)
-            } else {
-                service.startActivity(Intent(service, LinkSelectionActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    putStringArrayListExtra(LinkSelectionActivity.EXTRA_URLS, ArrayList(hits.map { it.url }))
-                    putStringArrayListExtra(LinkSelectionActivity.EXTRA_SOURCE_PACKAGES, ArrayList(hits.map { it.sourcePackage }))
-                    putStringArrayListExtra(LinkSelectionActivity.EXTRA_SOURCE_TEXTS, ArrayList(hits.map { it.sourceText }))
-                    putExtra(io.github.lumiagg.gestureevo.gesture.TriggerSide.EXTRA_TRIGGER_SIDE, triggerSide)
-                })
-            }
+            openPointerLinks(service, hits, triggerSide)
         }
         return true
     }
