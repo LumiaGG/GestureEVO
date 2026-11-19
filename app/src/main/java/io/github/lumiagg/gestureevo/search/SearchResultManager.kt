@@ -34,7 +34,6 @@ import io.github.lumiagg.gestureevo.databinding.SearchResultItemBinding
 import io.github.lumiagg.gestureevo.databinding.SearchResultPasteImageItemBinding
 import io.github.lumiagg.gestureevo.db.APPModel
 import io.github.lumiagg.gestureevo.db.SearchResultPinModel
-import io.github.lumiagg.gestureevo.db.ShortcutModel
 import io.github.lumiagg.gestureevo.db.getAPPDao
 import io.github.lumiagg.gestureevo.db.getHiddenSearchResultDao
 import io.github.lumiagg.gestureevo.db.getSearchResultPinDao
@@ -45,6 +44,7 @@ import io.github.lumiagg.gestureevo.search.config.SearchResult
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity.Companion.KEY_BOTTOM_INPUT_LAYOUT
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity.Companion.KEY_RESULT_DOUBLE_COLUMN
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity.Companion.KEY_SEARCH_CONTACT
+import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity.Companion.KEY_SEARCH_DYNAMIC_SHORTCUTS
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity.Companion.KEY_SEARCH_HISTORY
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity.Companion.KEY_SEARCH_SETTINGS_SHORTCUTS
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity.Companion.KEY_SHOW_CLIPBOARD_CONTENT
@@ -71,8 +71,8 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -90,9 +90,11 @@ class SearchResultManager(
     private val ioDispatcher = Dispatchers.IO
     private val imageLoadMutex = Mutex()
     private val imageJobs = WeakHashMap<View, Job>()
+    private var dynamicShortcutSearch = DynamicShortcutSearch(activity)
 
     private var contactSearchEnabled = false
     private var settingsShortcutsSearchEnabled = false
+    private var dynamicShortcutSearchEnabled = true
     private var searchHistoryEnabled = true
     private var bottomInputLayoutEnabled = false
     private var resultDoubleColumnEnabled = false
@@ -174,6 +176,10 @@ class SearchResultManager(
                 initResultRecycler()
                 bindAvailableSpaceListener()
                 activity.lifecycle.addObserver(object : DefaultLifecycleObserver {
+                    override fun onStop(owner: LifecycleOwner) {
+                        dynamicShortcutSearch = DynamicShortcutSearch(activity)
+                    }
+
                     override fun onDestroy(owner: LifecycleOwner) {
                         panelHeightAnimator?.cancel()
                         binding.searchContainer.removeOnLayoutChangeListener(availableSpaceLayoutListener)
@@ -184,6 +190,7 @@ class SearchResultManager(
 
                 isInitialized = true
                 observeHiddenResults()
+                observeDynamicShortcutSearchSetting()
             }
         }
     }
@@ -192,6 +199,7 @@ class SearchResultManager(
         contactSearchEnabled = preferences.readKey(KEY_SEARCH_CONTACT, false)
         settingsShortcutsSearchEnabled =
             preferences.readKey(KEY_SEARCH_SETTINGS_SHORTCUTS, false)
+        dynamicShortcutSearchEnabled = preferences.readKey(KEY_SEARCH_DYNAMIC_SHORTCUTS, true)
         searchHistoryEnabled = preferences.readKey(KEY_SEARCH_HISTORY, true)
         bottomInputLayoutEnabled = preferences.readKey(KEY_BOTTOM_INPUT_LAYOUT, false)
         resultDoubleColumnEnabled = preferences.readKey(KEY_RESULT_DOUBLE_COLUMN, false)
@@ -205,6 +213,20 @@ class SearchResultManager(
                     val newKeys = keys.toHashSet()
                     if (newKeys != hiddenResultKeys) {
                         hiddenResultKeys = newKeys
+                        updateSearchResults(binding.searchInput.text?.toString().orEmpty())
+                    }
+                }
+            }
+        }
+    }
+
+    private fun observeDynamicShortcutSearchSetting() {
+        lifecycleScope.launch(uiDispatcher) {
+            activity.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                activity.settingsStore.data.collect { preferences ->
+                    val enabled = preferences.readKey(KEY_SEARCH_DYNAMIC_SHORTCUTS, true)
+                    if (enabled != dynamicShortcutSearchEnabled) {
+                        dynamicShortcutSearchEnabled = enabled
                         updateSearchResults(binding.searchInput.text?.toString().orEmpty())
                     }
                 }
@@ -273,7 +295,7 @@ class SearchResultManager(
                 val functionIcon = itemView.findViewById<RoundImageTextView?>(R.id.function_icon)
                 val hasMenu = when (model) {
                     is SearchResult.ClearHistoryAction, is SearchResult.PasteImageResult -> false
-                    is SearchResult.ShortcutResult -> !model.shortcut.uri.isNullOrBlank()
+                    is SearchResult.ShortcutResult -> !model.uri.isNullOrBlank()
                     else -> true
                 }
                 functionIcon?.visibility = if (hasMenu) View.VISIBLE else View.GONE
@@ -289,7 +311,7 @@ class SearchResultManager(
             onClick(R.id.result_container) {
                 when (val result = getModel<SearchResult>()) {
                     is SearchResult.AppResult -> openApp(result.app, false)
-                    is SearchResult.ShortcutResult -> openShortcut(result.shortcut, false)
+                    is SearchResult.ShortcutResult -> openShortcut(result, false)
                     is SearchResult.ContactResult -> callContact(activity, result.contact)
                     is SearchResult.HistoryResult -> clickText(result.text)
                     is SearchResult.ClearHistoryAction -> confirmClearAllHistory()
@@ -305,7 +327,7 @@ class SearchResultManager(
             onLongClick(R.id.result_container) {
                 when (val result = getModel<SearchResult>()) {
                     is SearchResult.AppResult -> openApp(result.app, true)
-                    is SearchResult.ShortcutResult -> openShortcut(result.shortcut, true)
+                    is SearchResult.ShortcutResult -> openShortcut(result, true)
                     is SearchResult.HistoryResult -> removeHistory(result.text)
                     is SearchResult.ContactResult -> copyContactNumber(activity, result.contact)
 
@@ -333,14 +355,14 @@ class SearchResultManager(
 
     private fun bindShortcutResult(itemView: View, model: SearchResult.ShortcutResult) {
         val itemBinding = SearchResultItemBinding.bind(itemView)
-        itemBinding.resultText.text = model.shortcut.name
+        itemBinding.resultText.text = model.title
         applyResultTextStyle(itemBinding.resultText, isUrl = false)
-        itemBinding.icon.applyGlobalImageRoundPercent = true
-        bindBuiltInResultIcon(itemBinding.icon, R.drawable.baseline_settings_24)
-        loadResultImage(itemView, { IconHelper.getIcon(activity, "com.android.settings") }) { icon ->
+        val placeholder = if (model.dynamicPackage == null) R.drawable.baseline_settings_24 else R.drawable.baseline_image_24
+        bindBuiltInResultIcon(itemBinding.icon, placeholder)
+        val packageName = model.dynamicPackage ?: "com.android.settings"
+        loadResultImage(itemView, { IconHelper.getIcon(activity, packageName) }) { icon ->
             itemBinding.icon.applyGlobalImageRoundPercent = true
-            itemBinding.icon.setImage(icon)
-            itemBinding.icon.clearTint()
+            itemBinding.icon.setAppIcon(icon)
         }
     }
 
@@ -758,8 +780,11 @@ class SearchResultManager(
 
     private fun searchResultKey(result: SearchResult): String = when (result) {
         is SearchResult.AppResult -> "app:${result.app.pkgName}:${result.app.userId}"
-        is SearchResult.ShortcutResult ->
-            "shortcut:${result.shortcut.id}:${result.shortcut.name}:${result.shortcut.uri}"
+        is SearchResult.ShortcutResult -> if (result.settingsRowId != null) {
+            "shortcut:${result.settingsRowId}:${result.title}:${result.uri}"
+        } else {
+            "shortcut:${result.uri}"
+        }
         is SearchResult.ContactResult -> "contact:${result.contact.phoneNumber}:${result.contact.name}"
         is SearchResult.HistoryResult -> "history:${result.text}"
         is SearchResult.UrlResult -> "url:${result.url}"
@@ -832,7 +857,7 @@ class SearchResultManager(
         val first = lastResults.firstOrNull() ?: return false
         when (first) {
             is SearchResult.AppResult -> openApp(first.app, false)
-            is SearchResult.ShortcutResult -> openShortcut(first.shortcut, false)
+            is SearchResult.ShortcutResult -> openShortcut(first, false)
             is SearchResult.ContactResult -> callContact(activity, first.contact)
             is SearchResult.HistoryResult -> {
                 if (first.text == binding.searchInput.text?.toString().orEmpty()) return false
@@ -995,12 +1020,18 @@ class SearchResultManager(
         }
     }
 
-    private suspend fun filterShortcuts(query: String): List<SearchResult.ShortcutResult> {
-        if (!settingsShortcutsSearchEnabled) return emptyList()
-        return withContext(ioDispatcher) {
-            SettingsShortcutSearchHelper.searchShortcuts(query)
-                .map { SearchResult.ShortcutResult(it) }
+    private suspend fun filterShortcuts(query: String): List<SearchResult.ShortcutResult> = coroutineScope {
+        val settingsResults = async(ioDispatcher) {
+            if (settingsShortcutsSearchEnabled) {
+                SettingsShortcutSearchHelper.searchShortcuts(query).map {
+                    SearchResult.ShortcutResult(it.name, it.uri, settingsRowId = it.id)
+                }
+            } else {
+                emptyList()
+            }
         }
+        val dynamicResults = if (dynamicShortcutSearchEnabled) dynamicShortcutSearch.search(query) else emptyList()
+        dynamicResults + settingsResults.await()
     }
 
     private suspend fun filterHistory(query: String): List<SearchResult> {
@@ -1025,16 +1056,24 @@ class SearchResultManager(
         }
     }
 
-    private fun openShortcut(model: ShortcutModel, freeform: Boolean) {
+    private fun openShortcut(result: SearchResult.ShortcutResult, freeform: Boolean) {
         lifecycleScope.launch(uiDispatcher) {
-            val link = uriBuilder(GestureActionType.OTHER_LINK)
-                .appendQueryParameter("uri", model.uri)
+            val dynamicPackage = result.dynamicPackage
+            val type = if (dynamicPackage == null) GestureActionType.OTHER_LINK else GestureActionType.OTHER_SHORTCUT
+            val link = uriBuilder(type)
+                .appendQueryParameter("uri", result.uri)
                 .appendQueryParameter("freeform", freeform.toString())
                 .apply {
+                    dynamicPackage?.let { appendQueryParameter("pkg", it) }
                     activity.triggerSide?.let { appendQueryParameter("triggerSide", it) }
                 }
                 .build()
-            ActionProxy(activity, link.toString()).execute(side = activity.triggerSide)
+            val action = ActionProxy(activity, link.toString())
+            if (dynamicPackage == null) {
+                action.execute(side = activity.triggerSide)
+            } else if (!action.executeLink(side = activity.triggerSide)) {
+                return@launch
+            }
             activity.finishWithAnimation()
         }
     }

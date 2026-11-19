@@ -317,6 +317,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
+            app:settingsRowTitle="@string/search_engine_settings_search_dynamic_shortcuts">
+            <com.google.android.material.materialswitch.MaterialSwitch
+              android:id="@+id/search_dynamic_shortcuts_switch"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content" />
+          </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+          <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             app:settingsRowTitle="@string/search_engine_settings_enter_first_result">
             <com.google.android.material.materialswitch.MaterialSwitch
               android:id="@+id/search_enter_first_result_switch"

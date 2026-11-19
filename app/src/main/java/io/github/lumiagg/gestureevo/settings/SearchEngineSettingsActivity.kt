@@ -55,6 +55,7 @@ class SearchEngineSettingsActivity : AppCompatActivity() {
         const val KEY_SEARCH_HISTORY = "search_history"
         const val KEY_SEARCH_CONTACT = "search_contact"
         const val KEY_SEARCH_SETTINGS_SHORTCUTS = "search_settings_shortcuts"
+        const val KEY_SEARCH_DYNAMIC_SHORTCUTS = "search_dynamic_shortcuts"
         const val KEY_ENTER_FIRST_RESULT = "search_enter_first_result"
         const val KEY_KEEP_LAST_SEARCH_RESULT = "search_keep_last_search_result"
         const val KEY_DEFAULT_SEARCH_PAGE = "default_search_page"
@@ -231,6 +232,14 @@ class SearchEngineSettingsActivity : AppCompatActivity() {
         binding.searchSettingsShortcutsSwitch.setOnCheckedChangeListener { _, isChecked ->
             lifecycleScope.launch {
                 settingsStore.saveKey(KEY_SEARCH_SETTINGS_SHORTCUTS, isChecked)
+            }
+        }
+
+        binding.searchDynamicShortcutsSwitch.isChecked =
+            settingsStore.readKey(KEY_SEARCH_DYNAMIC_SHORTCUTS, true)
+        binding.searchDynamicShortcutsSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_SEARCH_DYNAMIC_SHORTCUTS, isChecked)
             }
         }
 

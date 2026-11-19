@@ -10,7 +10,7 @@ internal fun SearchResult.hiddenRecord(context: Context): HiddenSearchResultMode
     val name = when (this) {
         is SearchResult.AppResult -> app.name
         is SearchResult.ContactResult -> "${contact.name} - ${contact.phoneNumber}"
-        is SearchResult.ShortcutResult -> shortcut.name
+        is SearchResult.ShortcutResult -> title
         is SearchResult.HistoryResult -> text
         is SearchResult.UrlResult -> url
         is SearchResult.PhoneResult -> phone
