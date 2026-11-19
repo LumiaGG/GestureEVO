@@ -15,13 +15,11 @@ import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
-import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.card.MaterialCardView
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
-import io.github.lumiagg.gestureevo.gesture.ui.RoundImageTextView
 import io.github.lumiagg.gestureevo.search.QuickSearchEnginePager
 import io.github.lumiagg.gestureevo.search.config.SearchEngine
 import io.github.lumiagg.gestureevo.search.config.SearchEngineDataManager
@@ -38,7 +36,6 @@ import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_SIDEB
 import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_FILL_HEIGHT
 import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_FILL_COLUMNS
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
-import io.github.lumiagg.gestureevo.utils.ScreenUtil
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.dp2px
 import io.github.lumiagg.gestureevo.utils.readKey
@@ -90,11 +87,9 @@ internal class ExternalDropFloating(
     private val targets = LayoutInflater.from(themeContext)
         .inflate(if (sidebar) R.layout.external_drop_sidebar else R.layout.external_drop_floating, null)
     private val enginePager = targets.findViewById<QuickSearchEnginePager>(R.id.externalDropEngines)
-    private val previewIcon = RoundImageTextView(themeContext).apply {
-        alpha = 0f
-        setTransparentBackground(true)
-        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-    }
+    private val actionPreview = DragActionPreview(
+        context, scope, themeContext, position, observer, "GestureEVO:ExternalDrop:Preview",
+    )
     private var previewAction: Action? = null
     private var previewEngine: SearchEngine? = null
     private var previewPageDirection = 0
@@ -154,26 +149,6 @@ internal class ExternalDropFloating(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) setFitInsetsTypes(0)
         }
     }
-    private val previewParams = WindowManager.LayoutParams().apply {
-        configureAccessibilityOverlay(
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-            width = 100.dp2px.toInt(),
-            height = 100.dp2px.toInt(),
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL,
-            allowDisplayCutout = false,
-            title = "GestureEVO:ExternalDrop:Preview",
-        )
-        if (sidebar) {
-            flags = flags or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) setFitInsetsTypes(0)
-        }
-    }
-
     init {
         targets.findViewById<View>(R.id.externalDropTools).visibility = if (showTools) View.VISIBLE else View.GONE
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -488,8 +463,7 @@ internal class ExternalDropFloating(
         sidebarConfig?.let(::configureSidebar)
         positionSidebar()
         updateViewLayoutSafely(targets, targetParams)
-        positionPreview()
-        updateViewLayoutSafely(previewIcon, previewParams)
+        actionPreview.updatePosition()
     }
 
     private fun configureSidebar(config: QuickSearchEnginePager.Config) {
@@ -570,25 +544,7 @@ internal class ExternalDropFloating(
             targets.paddingTop + targets.paddingBottom
     }
 
-    private fun sidebarBounds(): Rect {
-        val bounds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Rect(windowManager.currentWindowMetrics.bounds)
-        } else {
-            Rect(0, 0, ScreenUtil.getScreenWidth(context), ScreenUtil.getScreenHeight(context))
-        }
-        val insets = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            WindowInsetsCompat.toWindowInsetsCompat(windowManager.currentWindowMetrics.windowInsets)
-        } else {
-            observer.rootWindowInsets?.let { WindowInsetsCompat.toWindowInsetsCompat(it, observer) }
-        }?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-        if (insets != null) {
-            bounds.left += insets.left
-            bounds.top += insets.top
-            bounds.right -= insets.right
-            bounds.bottom -= insets.bottom
-        }
-        return bounds
-    }
+    private fun sidebarBounds(): Rect = windowManager.dropSafeBounds(context, observer)
 
     @SuppressLint("RtlHardcoded")
     private fun positionSidebar() {
@@ -600,21 +556,6 @@ internal class ExternalDropFloating(
         targetParams.y = bounds.top + ExternalDropSidebarPolicy.topOffset(
             bounds.height(), panelHeight, targetParams.height,
         )
-    }
-
-    @SuppressLint("RtlHardcoded")
-    private fun positionPreview() {
-        if (!sidebar) {
-            previewParams.y = ScreenUtil.getScreenHeight(context) / 3
-            return
-        }
-        val bounds = sidebarBounds()
-        val horizontalFraction = if (position == EXTERNAL_DROP_POSITION_LEFT) 0.7f else 0.3f
-        previewParams.gravity = Gravity.TOP or Gravity.LEFT
-        previewParams.x = (bounds.left + bounds.width() * horizontalFraction - previewParams.width / 2f)
-            .toInt().coerceIn(bounds.left, (bounds.right - previewParams.width).coerceAtLeast(bounds.left))
-        previewParams.y = (bounds.top + bounds.height() * 0.25f - previewParams.height / 2f)
-            .toInt().coerceIn(bounds.top, (bounds.bottom - previewParams.height).coerceAtLeast(bounds.top))
     }
 
     private fun showSidebarPage() {
@@ -719,10 +660,9 @@ internal class ExternalDropFloating(
             targets.scrollTo(0, 0)
             positionSidebar()
         }
-        positionPreview()
         appearance.show { dragActive && !destroyed }
         val accepted = attachViewSafely(targets, targetParams, shouldRetry = { dragActive && !destroyed })
-        attachViewSafely(previewIcon, previewParams, shouldRetry = { dragActive && !destroyed })
+        actionPreview.attach { dragActive && !destroyed }
         DropDiagnostics.event("drop_targets_shown", if (internalContent != null) "internal" else "system", dragGeneration,
             reason = if (appearance.backgroundBlurActive) "blur_enabled" else "blur_disabled", width = targets.width,
             height = targets.height, flags = targetParams.flags)
@@ -740,9 +680,7 @@ internal class ExternalDropFloating(
         previewAction = null
         previewEngine = null
         previewPageDirection = 0
-        previewIcon.animate().cancel()
-        previewIcon.alpha = 0f
-        detachViewSafely(previewIcon)
+        actionPreview.detach()
         detachViewSafely(targets)
         appearance.hide()
     }
@@ -753,21 +691,20 @@ internal class ExternalDropFloating(
         previewAction = action
         previewEngine = engine
         previewPageDirection = pageDirection
-        previewIcon.animate().cancel()
-        previewIcon.setBadge(null)
-        if (action == Action.SEARCH) {
-            setEngineIcon(themeContext, previewIcon, checkNotNull(engine), showImageBadge)
-        } else {
-            val icon = when (action) {
-                Action.POOL -> R.drawable.pinboard_24px
-                Action.PIN -> R.drawable.baseline_push_pin_24
-                Action.TOKENIZE -> R.drawable.outline_center_focus_weak_24
-                Action.CONVERT -> R.drawable.ic_text_image_convert_24
-                else -> if (pageDirection < 0) R.drawable.ic_chevron_up_24 else R.drawable.ic_chevron_down_24
+        actionPreview.show { preview ->
+            if (action == Action.SEARCH) {
+                setEngineIcon(themeContext, preview, checkNotNull(engine), showImageBadge)
+            } else {
+                val icon = when (action) {
+                    Action.POOL -> R.drawable.pinboard_24px
+                    Action.PIN -> R.drawable.baseline_push_pin_24
+                    Action.TOKENIZE -> R.drawable.outline_center_focus_weak_24
+                    Action.CONVERT -> R.drawable.ic_text_image_convert_24
+                    else -> if (pageDirection < 0) R.drawable.ic_chevron_up_24 else R.drawable.ic_chevron_down_24
+                }
+                preview.setImageWithBackplate(icon)
             }
-            previewIcon.setImageWithBackplate(icon)
         }
-        previewIcon.animate().alpha(1f).setDuration(150).start()
     }
 
     private fun hidePreview(action: Action? = null) {
@@ -778,8 +715,7 @@ internal class ExternalDropFloating(
         previewAction = null
         previewEngine = null
         previewPageDirection = 0
-        previewIcon.animate().cancel()
-        previewIcon.animate().alpha(0f).setDuration(150).start()
+        actionPreview.hide()
     }
 
     private fun bindTarget(id: Int, action: Action) {

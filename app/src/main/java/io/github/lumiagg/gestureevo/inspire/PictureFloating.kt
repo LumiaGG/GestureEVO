@@ -1,7 +1,5 @@
 package io.github.lumiagg.gestureevo.inspire
 
-import io.github.lumiagg.gestureevo.databinding.PinDragCancelBarBinding
-
 import androidx.core.graphics.scale
 
 import android.animation.AnimatorSet
@@ -42,9 +40,12 @@ import com.google.android.material.color.MaterialColors
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.PinFloatingControlPanelBinding
 import io.github.lumiagg.gestureevo.databinding.PinFloatingViewBinding
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_POSITION_BOTTOM
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_POSITION
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
 import io.github.lumiagg.gestureevo.gesture.GestureService
 import io.github.lumiagg.gestureevo.pin.PinDragSend
+import io.github.lumiagg.gestureevo.pin.PinDragTargets
 import io.github.lumiagg.gestureevo.gesture.TriggerSide
 import io.github.lumiagg.gestureevo.pin.PinPoolFloating
 import io.github.lumiagg.gestureevo.pin.PinPoolReminderManager
@@ -57,6 +58,8 @@ import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
 import io.github.lumiagg.gestureevo.utils.postOnMain
+import io.github.lumiagg.gestureevo.utils.readKey
+import io.github.lumiagg.gestureevo.utils.settingsStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -131,8 +134,7 @@ class PictureFloating(
     private var dragSendDroppedOnCancel = false
     private var dragSendGeneration = 0
     private var pinAlphaBeforeDrag = 1f
-    private lateinit var sendCancelBar: View
-    private val sendCancelParams = WindowManager.LayoutParams()
+    private var dragTargets: PinDragTargets? = null
     private val touchSlop by lazy { ViewConfiguration.get(context).scaledTouchSlop }
     private val longPressRunnable = Runnable { armDragSend() }
     private val sendCancelTimeoutRunnable = Runnable { endDragSend(sent = false) }
@@ -212,7 +214,7 @@ class PictureFloating(
         initDropTarget()
         initNotificationDropTarget()
         initDeleteDropTarget()
-        initSendCancelBar()
+        bindDragSendResult()
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -690,28 +692,7 @@ class PictureFloating(
         deleteDropTargetView.visibility = View.GONE
     }
 
-    private fun initSendCancelBar() {
-        sendCancelBar = PinDragCancelBarBinding.inflate(LayoutInflater.from(DynamicColorUtils.dynamicThemedContext(context))).root
-        PinDragSend.applyBarTheme(sendCancelBar)
-        sendCancelParams.apply {
-            configureAccessibilityOverlay(
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-                width = WindowManager.LayoutParams.MATCH_PARENT,
-                height = WindowManager.LayoutParams.WRAP_CONTENT,
-                gravity = Gravity.BOTTOM,
-                allowDisplayCutout = false,
-                title = "GestureEVO:PictureFloating:DragCancel",
-            )
-        }
-        PinDragSend.attachCancelTarget(
-            sendCancelBar,
-            onDropped = { dragSendDroppedOnCancel = true },
-        ) { droppedOnCancel, accepted ->
-            endDragSend(sent = accepted && !droppedOnCancel)
-        }
+    private fun bindDragSendResult() {
         contentView.setOnDragListener { _, event ->
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> true
@@ -736,6 +717,7 @@ class PictureFloating(
         VibratorUtils.vibrator(context, true)
         context.launch(Dispatchers.IO) {
             val clip = buildDragClip()
+            val position = context.settingsStore.readKey(KEY_EXTERNAL_DROP_POSITION, EXTERNAL_DROP_POSITION_BOTTOM)
             withContext(Dispatchers.Main) {
                 if (generation != dragSendGeneration || isRemoving) {
                     dragSending = false
@@ -745,7 +727,7 @@ class PictureFloating(
                     failDragSendStart()
                     return@withContext
                 }
-                showSendCancelBar()
+                showSendCancelBar(position)
                 if (!PinDragSend.start(contentView, clip)) {
                     hideSendCancelBar()
                     failDragSendStart()
@@ -771,16 +753,20 @@ class PictureFloating(
         }
     }
 
-    private fun showSendCancelBar() {
-        PinDragSend.applyBarTheme(sendCancelBar)
-        sendCancelBar.removeCallbacks(sendCancelTimeoutRunnable)
-        sendCancelBar.visibility = View.VISIBLE
-        if (!sendCancelBar.isAttachedToWindow) {
-            addViewSafely(sendCancelBar, sendCancelParams)
-        } else {
-            updateViewLayoutSafely(sendCancelBar, sendCancelParams)
+    private fun showSendCancelBar(position: String) {
+        val targets = PinDragTargets(
+            context,
+            context,
+            position,
+            windowType = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            title = "GestureEVO:PictureFloating:DragCancel",
+            onCancel = { dragSendDroppedOnCancel = true },
+        ) { accepted ->
+            endDragSend(sent = accepted && !dragSendDroppedOnCancel)
         }
-        sendCancelBar.postDelayed(sendCancelTimeoutRunnable, SEND_CANCEL_TIMEOUT_MS)
+        dragTargets = targets
+        targets.show()
+        contentView.postDelayed(sendCancelTimeoutRunnable, SEND_CANCEL_TIMEOUT_MS)
     }
 
     private fun hidePinWhileDragging() {
@@ -832,12 +818,10 @@ class PictureFloating(
     }
 
     private fun hideSendCancelBar() {
-        if (!::sendCancelBar.isInitialized) return
-        sendCancelBar.removeCallbacks(sendCancelTimeoutRunnable)
-        sendCancelBar.visibility = View.GONE
-        if (sendCancelBar.isAttachedToWindow) {
-            detachViewSafely(sendCancelBar, immediate = true)
-        }
+        val targets = dragTargets ?: return
+        dragTargets = null
+        contentView.removeCallbacks(sendCancelTimeoutRunnable)
+        targets.hide()
     }
 
     private fun buildDropTargetView(): View {
@@ -1863,7 +1847,7 @@ class PictureFloating(
         if (!::controlPanelView.isInitialized || !::contentBinding.isInitialized) return@postOnMain
         applyControlPanelTheme()
         setBorderColor(DynamicColorUtils.primaryColor)
-        if (::sendCancelBar.isInitialized) PinDragSend.applyBarTheme(sendCancelBar)
+        dragTargets?.refreshTheme()
         applyContentTheme()
     }
 

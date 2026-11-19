@@ -1172,6 +1172,7 @@
     <string name="inspire_settings_external_drop">Show Tool Buttons when Dragging</string>
     <string name="inspire_settings_external_drop_desc">Show the Pin Pool, Pin, and Tokenize tool buttons when dragging text or images from other apps</string>
     <string name="inspire_settings_external_drop_position">Drag and Drop Overlay Position</string>
+    <string name="inspire_settings_external_drop_position_summary">Applies to drag and drop tools and the drag-to-send buttons for pinned content and Pin Pool</string>
     <string name="inspire_settings_external_drop_position_bottom">Bottom</string>
     <string name="inspire_settings_external_drop_position_left">Left</string>
     <string name="inspire_settings_external_drop_position_right">Right</string>
