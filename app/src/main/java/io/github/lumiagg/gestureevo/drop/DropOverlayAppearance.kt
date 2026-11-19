@@ -11,6 +11,8 @@ import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.R as MaterialR
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
@@ -85,12 +87,7 @@ internal class DropOverlayAppearance(private val context: Context, scope: Corout
     }
 
     fun setHighlighted(card: MaterialCardView, active: Boolean) {
-        card.strokeWidth = (if (active) 2 else 1).dp2px.toInt().coerceAtLeast(1)
-        card.strokeColor = if (active) DynamicColorUtils.primaryColor
-            else ColorUtils.setAlphaComponent(DynamicColorUtils.onSurfaceColor, 28)
-        card.setCardBackgroundColor(
-            if (active) DynamicColorUtils.secondaryContainerColor else targetSurfaceColor()
-        )
+        styleDropTarget(card, active, if (cardBlurEnabled) 199 else 255)
     }
 
     private fun targetSurfaceColor(): Int = ColorUtils.setAlphaComponent(
@@ -176,4 +173,26 @@ internal class DropOverlayAppearance(private val context: Context, scope: Corout
         const val BLUR_ANIMATION_MILLIS = 250L
         const val PANEL_ELEVATION_DP = 2
     }
+}
+
+internal fun styleDropTarget(card: MaterialCardView, active: Boolean, surfaceAlpha: Int = 255) {
+    val onSurface = DynamicColorUtils.onSurfaceColor.takeIf { it != 0 }
+        ?: MaterialColors.getColor(card, MaterialR.attr.colorOnSurface)
+    val stroke = if (active) {
+        DynamicColorUtils.primaryColor.takeIf { it != 0 }
+            ?: MaterialColors.getColor(card, androidx.appcompat.R.attr.colorPrimary)
+    } else {
+        ColorUtils.setAlphaComponent(onSurface, 28)
+    }
+    val surface = if (active) {
+        DynamicColorUtils.secondaryContainerColor.takeIf { it != 0 }
+            ?: MaterialColors.getColor(card, MaterialR.attr.colorSecondaryContainer)
+    } else {
+        val idle = DynamicColorUtils.surfaceContainerHighColor.takeIf { it != 0 }
+            ?: MaterialColors.getColor(card, MaterialR.attr.colorSurfaceContainerHigh)
+        ColorUtils.setAlphaComponent(idle, surfaceAlpha)
+    }
+    card.strokeWidth = (if (active) 2 else 1).dp2px.toInt().coerceAtLeast(1)
+    card.strokeColor = stroke
+    card.setCardBackgroundColor(surface)
 }

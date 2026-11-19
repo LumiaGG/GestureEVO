@@ -17,22 +17,15 @@ import android.os.Build
 import android.os.Environment
 import android.os.PersistableBundle
 import android.provider.MediaStore
-import android.view.DragEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
-import android.view.ViewGroup
-import android.widget.TextView
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.google.android.material.card.MaterialCardView
-import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.drop.ExternalDropPolicy
 import io.github.lumiagg.gestureevo.utils.DeleteImageWorker
-import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
-import io.github.lumiagg.gestureevo.utils.dp2px
 import java.io.File
 import java.io.FileInputStream
 import java.util.concurrent.TimeUnit
@@ -199,119 +192,6 @@ object PinDragSend {
         val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
         SHARE_PACKAGES.forEach { pkg ->
             runCatching { context.grantUriPermission(pkg, uri, flags) }
-        }
-    }
-
-    fun applyBarTheme(root: View) {
-        val surface = DynamicColorUtils.surfaceContainerHighColor
-        val onSurface = DynamicColorUtils.onSurfaceColor
-        val outline = DynamicColorUtils.outlineColor
-        barCards(root).forEach { card ->
-            if (surface != 0) card.setCardBackgroundColor(surface)
-            if (outline != 0) card.strokeColor = outline
-            if (onSurface != 0) tintBarLabel(card, onSurface)
-        }
-    }
-
-    private fun barCards(root: View): List<MaterialCardView> = listOfNotNull(
-        root.findViewById(R.id.cancelCard),
-        root.findViewById(R.id.pinCard),
-    )
-
-    private fun tintBarLabel(parent: View, color: Int) {
-        if (parent is TextView) {
-            parent.setTextColor(color)
-            return
-        }
-        if (parent is ViewGroup) {
-            for (index in 0 until parent.childCount) {
-                tintBarLabel(parent.getChildAt(index), color)
-            }
-        }
-    }
-
-    fun attachDropZone(
-        zone: View,
-        activeColor: Int,
-        onDropped: () -> Unit = {},
-        onEnded: () -> Unit = {},
-    ) {
-        val card = zone as? MaterialCardView ?: zone.findViewById(R.id.cancelCard)
-        val idleStroke = 1.dp2px.toInt()
-        val activeStroke = 2.dp2px.toInt()
-        zone.setOnDragListener { _, event ->
-            when (event.action) {
-                DragEvent.ACTION_DRAG_STARTED -> true
-                DragEvent.ACTION_DRAG_ENTERED -> {
-                    card?.strokeWidth = activeStroke
-                    card?.strokeColor = activeColor
-                    true
-                }
-                DragEvent.ACTION_DRAG_LOCATION -> true
-                DragEvent.ACTION_DRAG_EXITED -> {
-                    card?.strokeWidth = idleStroke
-                    card?.strokeColor = DynamicColorUtils.outlineColor
-                    true
-                }
-                DragEvent.ACTION_DROP -> {
-                    card?.strokeWidth = idleStroke
-                    card?.strokeColor = DynamicColorUtils.outlineColor
-                    onDropped()
-                    true
-                }
-                DragEvent.ACTION_DRAG_ENDED -> {
-                    card?.strokeWidth = idleStroke
-                    card?.strokeColor = DynamicColorUtils.outlineColor
-                    onEnded()
-                    false
-                }
-                else -> false
-            }
-        }
-    }
-
-    fun attachCancelTarget(
-        root: View,
-        onDropped: () -> Unit = {},
-        onEnded: (droppedOnCancel: Boolean, accepted: Boolean) -> Unit,
-    ) {
-        val card = root.findViewById<MaterialCardView>(R.id.cancelCard)
-        val idleStroke = 1.dp2px.toInt()
-        val activeStroke = 2.dp2px.toInt()
-        var droppedHere = false
-        root.setOnDragListener { _, event ->
-            when (event.action) {
-                DragEvent.ACTION_DRAG_STARTED -> {
-                    droppedHere = false
-                    true
-                }
-                DragEvent.ACTION_DRAG_ENTERED -> {
-                    card?.strokeWidth = activeStroke
-                    card?.strokeColor = 0xFFE5484D.toInt()
-                    true
-                }
-                DragEvent.ACTION_DRAG_LOCATION -> true
-                DragEvent.ACTION_DRAG_EXITED -> {
-                    card?.strokeWidth = idleStroke
-                    card?.strokeColor = DynamicColorUtils.outlineColor
-                    true
-                }
-                DragEvent.ACTION_DROP -> {
-                    droppedHere = true
-                    card?.strokeWidth = idleStroke
-                    card?.strokeColor = DynamicColorUtils.outlineColor
-                    onDropped()
-                    true
-                }
-                DragEvent.ACTION_DRAG_ENDED -> {
-                    card?.strokeWidth = idleStroke
-                    card?.strokeColor = DynamicColorUtils.outlineColor
-                    onEnded(droppedHere, event.result)
-                    droppedHere = false
-                    false
-                }
-                else -> false
-            }
         }
     }
 }

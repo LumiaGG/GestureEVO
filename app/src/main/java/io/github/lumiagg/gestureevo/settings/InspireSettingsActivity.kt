@@ -718,8 +718,6 @@ class InspireSettingsActivity : AppCompatActivity() {
         binding.externalDropConversionSwitch.isEnabled = binding.externalDropSwitch.isChecked
         binding.externalDropConversionRow.alpha = if (binding.externalDropSwitch.isChecked) 1f else 0.5f
         val enabled = binding.externalDropSwitch.isChecked || binding.externalDropEnginesSwitch.isChecked
-        binding.externalDropPositionRow.isEnabled = enabled
-        binding.externalDropPositionRow.alpha = if (enabled) 1f else 0.5f
         val sidebarEnabled = enabled && (externalDropPosition == EXTERNAL_DROP_POSITION_LEFT ||
             externalDropPosition == EXTERNAL_DROP_POSITION_RIGHT)
         listOf(
