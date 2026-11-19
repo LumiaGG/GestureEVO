@@ -76,13 +76,13 @@ internal class SearchResultGridLayout(
     }
 
     private fun needsFullWidth(result: SearchResult, halfWidth: Int): Boolean {
-        val menuWidth = if (result is SearchResult.ShortcutResult && result.shortcut.uri.isNullOrBlank()) 0 else menuSize
+        val menuWidth = if (result is SearchResult.ShortcutResult && result.uri.isNullOrBlank()) 0 else menuSize
         val textWidth = halfWidth - cardMargins - paddingStart - menuWidth - iconSize - iconGap
         return when (result) {
             is SearchResult.HistoryResult -> !fitsTwoLines(result.text, textWidth)
             is SearchResult.PhoneResult -> !fitsOneLine(result.phone, textWidth)
             is SearchResult.AppResult -> !fitsTwoLines(result.app.name, textWidth)
-            is SearchResult.ShortcutResult -> !fitsTwoLines(result.shortcut.name, textWidth)
+            is SearchResult.ShortcutResult -> !fitsTwoLines(result.title, textWidth)
             is SearchResult.GestureActionResult -> !fitsTwoLines(result.actionType.showName(context), textWidth)
             is SearchResult.AppSettingsResult -> !fitsTwoLines(context.getString(R.string.quick_search_app_settings), textWidth)
             else -> true

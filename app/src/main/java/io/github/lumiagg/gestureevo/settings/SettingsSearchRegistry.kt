@@ -440,6 +440,14 @@ object SettingsSearchRegistry {
             keywords = listOf("系统设置", "快捷方式", "settings shortcut")
         ),
         entry(
+            id = "search_dynamic_shortcuts",
+            titleResId = R.string.search_engine_settings_search_dynamic_shortcuts,
+            pageTitleResId = R.string.search_engine_settings_title,
+            targetActivity = SearchEngineSettingsActivity::class.java,
+            targetViewId = R.id.functionSettingsCard,
+            keywords = listOf("动态快捷方式", "已导入", "dynamic shortcuts", "imported shortcuts")
+        ),
+        entry(
             id = "search_enter_first",
             titleResId = R.string.search_engine_settings_enter_first_result,
             pageTitleResId = R.string.search_engine_settings_title,

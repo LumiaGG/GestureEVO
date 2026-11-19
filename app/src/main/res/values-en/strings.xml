@@ -294,6 +294,7 @@
     <string name="search_engine_settings_search_history">Search History</string>
     <string name="search_engine_settings_search_contacts">Search Contacts</string>
     <string name="search_engine_settings_search_settings">Search System Settings</string>
+    <string name="search_engine_settings_search_dynamic_shortcuts">Search Dynamic Shortcuts</string>
     <string name="search_engine_settings_enter_first_result">Press Enter to Open First Result</string>
     <string name="search_engine_settings_keep_last_result">Keep Last Search Results</string>
     <string name="search_engine_settings_default_search_page">Show Search When Opening App</string>

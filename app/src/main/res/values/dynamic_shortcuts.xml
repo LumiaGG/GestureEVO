@@ -13,7 +13,8 @@
   <string name="dynamic_shortcuts_title">动态快捷方式</string>
   <string name="dynamic_shortcuts_summary">临时设为桌面，导入应用快捷方式后继续使用</string>
   <string name="dynamic_shortcuts_home_label">GestureEVO 快捷方式导入</string>
-  <string name="dynamic_shortcuts_description">先将 GestureEVO 临时设为默认桌面，再选择并导入应用已发布的快捷方式。导入后可切回原桌面，在手势或轮盘的快捷方式中使用。应用禁用入口或卸载后，快捷方式可能失效。</string>
+  <string name="dynamic_shortcuts_description">先将 GestureEVO 临时设为默认桌面，再选择并导入应用已发布的快捷方式。导入后可切回原桌面，在快速搜索、手势或轮盘中使用。应用禁用入口或卸载后，快捷方式可能失效。</string>
+  <string name="quick_search_dynamic_shortcut_label">%1$s · %2$s</string>
   <string name="dynamic_shortcuts_grant">1. 临时设为默认桌面</string>
   <string name="dynamic_shortcuts_query">2. 读取并选择快捷方式</string>
   <string name="dynamic_shortcuts_restore">3. 切回原桌面</string>

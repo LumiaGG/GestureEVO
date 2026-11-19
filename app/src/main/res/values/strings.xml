@@ -323,6 +323,7 @@
     <string name="search_engine_settings_search_history">搜索历史记录</string>
     <string name="search_engine_settings_search_contacts">搜索联系人</string>
     <string name="search_engine_settings_search_settings">搜索系统设置</string>
+    <string name="search_engine_settings_search_dynamic_shortcuts">搜索动态快捷方式</string>
     <string name="search_engine_settings_enter_first_result">回车打开首条结果</string>
     <string name="search_engine_settings_keep_last_result">保留上次搜索结果</string>
     <string name="search_engine_settings_default_search_page">打开应用时显示搜索页面</string>
