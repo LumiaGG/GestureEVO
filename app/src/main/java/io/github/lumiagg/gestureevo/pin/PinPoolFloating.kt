@@ -53,6 +53,8 @@ import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.PinPoolFloatingViewBinding
 import io.github.lumiagg.gestureevo.databinding.PinPoolItemBinding
 import io.github.lumiagg.gestureevo.db.APPModel
+import io.github.lumiagg.gestureevo.drop.DropPreferences.EXTERNAL_DROP_POSITION_BOTTOM
+import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_EXTERNAL_DROP_POSITION
 import io.github.lumiagg.gestureevo.gesture.TriggerSide
 import io.github.lumiagg.gestureevo.gesture.EventBusManager
 import io.github.lumiagg.gestureevo.gesture.InspireEvent
@@ -82,6 +84,7 @@ import io.github.lumiagg.gestureevo.utils.RecentAppsRecorder
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.TransparentActivityLauncher
 import io.github.lumiagg.gestureevo.utils.dp2px
+import io.github.lumiagg.gestureevo.utils.observeKey
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
 import kotlinx.coroutines.Dispatchers
@@ -109,6 +112,7 @@ class PinPoolFloating : AppCompatActivity() {
     private var displayMode = PIN_POOL_DISPLAY_MODE_RIGHT_SIDEBAR
     private var triggerSide: String? = null
     private var dragSending = false
+    private var dragTargetPosition = EXTERNAL_DROP_POSITION_BOTTOM
     private var preparedDragItemId: String? = null
     private var preparedDragUri: Uri? = null
     private val imageBoundsCache = mutableMapOf<String, Pair<Int, Int>>()
@@ -135,6 +139,7 @@ class PinPoolFloating : AppCompatActivity() {
         triggerSide = intent.getStringExtra(EXTRA_SIDE)
         lifecycleScope.launch {
             initAppearanceConfig()
+            dragTargetPosition = settingsStore.readKey(KEY_EXTERNAL_DROP_POSITION, EXTERNAL_DROP_POSITION_BOTTOM)
             displayMode = resolveDisplayMode(
                 settingsStore.readKey(
                     KEY_PIN_POOL_DISPLAY_MODE,
@@ -150,6 +155,9 @@ class PinPoolFloating : AppCompatActivity() {
             }
             binding.root.doOnPreDraw {
                 if (!isClosing && !isFinishing && !isDestroyed) showWithAnimation()
+            }
+            settingsStore.observeKey(KEY_EXTERNAL_DROP_POSITION, EXTERNAL_DROP_POSITION_BOTTOM).collect {
+                dragTargetPosition = it
             }
         }
     }
@@ -578,6 +586,7 @@ class PinPoolFloating : AppCompatActivity() {
     }
 
     private fun startItemDragSend(anchorView: View, item: PinPoolItem): Boolean {
+        if (dragSending) return false
         val clip = when (item.type) {
             PinType.TEXT -> {
                 val text = item.text?.trim().orEmpty()
@@ -600,11 +609,11 @@ class PinPoolFloating : AppCompatActivity() {
                 PinDragSend.clipForImage(this, uri)
             }
         }
-        PinDragCancelOverlay.show(applicationContext, item) {
+        PinDragCancelOverlay.show(applicationContext, lifecycleScope, dragTargetPosition, item) {
             finishAfterDragSend()
         }
         if (!PinDragSend.start(anchorView, clip, shadowView = anchorView)) {
-            PinDragCancelOverlay.hide()
+            PinDragCancelOverlay.hide(notify = false)
             ToastHelper.showInUIThread(this, getString(R.string.pin_drag_send_failed))
             return false
         }
@@ -616,7 +625,6 @@ class PinPoolFloating : AppCompatActivity() {
     }
 
     private fun finishAfterDragSend() {
-        PinDragCancelOverlay.hide()
         dragSending = false
         if (!isFinishing) {
             finish()
@@ -1206,7 +1214,7 @@ class PinPoolFloating : AppCompatActivity() {
     override fun onDestroy() {
         GlassEffectUtils.applyWindowBlur(window, false)
         reminderCandidateDialog?.dismiss()
-        PinDragCancelOverlay.hide()
+        if (dragSending) PinDragCancelOverlay.hide(notify = false)
         super.onDestroy()
     }
 

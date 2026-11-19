@@ -492,6 +492,7 @@
     <string name="inspire_settings_external_drop">拖放时显示工具按钮</string>
     <string name="inspire_settings_external_drop_desc">其他应用拖动文字或图片时，显示 Pin池、Pin图和分词三个工具按钮</string>
     <string name="inspire_settings_external_drop_position">拖放悬浮窗位置</string>
+    <string name="inspire_settings_external_drop_position_summary">适用于拖放工具以及 Pin 图和 Pin 池的拖动发送按钮</string>
     <string name="inspire_settings_external_drop_position_bottom">底部</string>
     <string name="inspire_settings_external_drop_position_left">左侧</string>
     <string name="inspire_settings_external_drop_position_right">右侧</string>
