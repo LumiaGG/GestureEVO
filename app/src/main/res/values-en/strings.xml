@@ -438,6 +438,14 @@
 
     <!-- Inspire Settings Strings -->
     <string name="inspire_settings_title">Feature Settings</string>
+    <string name="inspire_settings_accessibility_title">Accessibility Settings</string>
+    <string name="inspire_settings_accessibility_description">Set accessibility restrictions by app</string>
+    <string name="accessibility_blacklist_title">Accessibility blocklist</string>
+    <string name="accessibility_blacklist_summary">In listed apps, EVO blocks simulated taps, swipes, automatic text input, accessibility content reading, and long-press drag. Screenshots and screenshot text recognition remain available.</string>
+    <plurals name="accessibility_blacklist_count">
+        <item quantity="one">%d app added</item>
+        <item quantity="other">%d apps added</item>
+    </plurals>
     <string name="inspire_settings_screen_content_title">Screen Content Settings</string>
     <string name="inspire_settings_ocr_priority">Prioritize OCR Recognition</string>
     <string name="inspire_settings_ocr_priority_desc">Choose the preferred text acquisition method, Accessibility or OCR</string>
@@ -1447,9 +1455,9 @@
     <string name="app_select_whitelist_title">App allowlist</string>
     <string name="app_select_blacklist_hint">Turn on a switch to add an app to the blocklist. Bulk actions apply only to the current category and search results.</string>
     <string name="app_select_whitelist_hint">Turn on a switch to add an app to the allowlist. Bulk actions apply only to the current category and search results.</string>
-    <string name="app_select_enable_all">Enable all</string>
-    <string name="app_select_disable_all">Disable all</string>
-    <string name="app_select_enabled_count">%1$d / %2$d on</string>
+    <string name="app_select_enable_all">Add all to list</string>
+    <string name="app_select_disable_all">Remove all from list</string>
+    <string name="app_select_enabled_count">%1$d of %2$d on the list</string>
     <string name="app_select_empty">No matching apps</string>
     <string name="app_select_save_failed">Could not save app settings. Please try again.</string>
     <string name="app_select_load_failed">Could not load apps. Please try again.</string>

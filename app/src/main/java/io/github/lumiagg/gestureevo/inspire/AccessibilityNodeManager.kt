@@ -5,6 +5,7 @@ import android.graphics.Rect
 import android.os.Build
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
+import io.github.lumiagg.gestureevo.utils.AccessibilityBlacklist
 import android.accessibilityservice.AccessibilityService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -128,7 +129,12 @@ private fun getWindowRoots(service: AccessibilityService): List<AccessibilityNod
         buildList {
             for (window in windows) {
                 if (window.type == AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY) continue
-                window.root?.let(::add)
+                val root = window.root ?: continue
+                if (AccessibilityBlacklist.isBlocked(root.packageName?.toString())) {
+                    root.recycle()
+                    continue
+                }
+                add(root)
             }
         }
     } finally { windows.forEach { it.recycle() } }

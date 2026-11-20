@@ -32,6 +32,7 @@ import io.github.lumiagg.gestureevo.drop.PressInputStatus
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.ActivityInspireSettingsBinding
 import io.github.lumiagg.gestureevo.db.APPModel
+import io.github.lumiagg.gestureevo.db.getAPPDao
 import io.github.lumiagg.gestureevo.gesture.EventBusManager.produceKeyboardEvent
 import io.github.lumiagg.gestureevo.gesture.KeyboardEvent
 import io.github.lumiagg.gestureevo.quick.ui.KeyboardType
@@ -125,7 +126,14 @@ class InspireSettingsActivity : AppCompatActivity() {
         }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                PressInputStatus.message.collect { binding.globalPressStatusText.setText(it) }
+                launch { PressInputStatus.message.collect { binding.globalPressStatusText.setText(it) } }
+                getAPPDao().observeSelectedPackages(APPModel.FLAG_ACCESSIBILITY_DISABLED).collect { packages ->
+                    binding.accessibilityBlacklistCount.text = resources.getQuantityString(
+                        R.plurals.accessibility_blacklist_count,
+                        packages.size,
+                        packages.size,
+                    )
+                }
             }
         }
     }
@@ -426,6 +434,15 @@ class InspireSettingsActivity : AppCompatActivity() {
                     override fun selectCompleted(model: APPModel) {}
                 },
                 blackListFlag = APPModel.FLAG_NOTIFICATION_APPS_ENABLE
+            ).show()
+        }
+
+        binding.accessibilityBlacklistRow.setOnClickListener {
+            BlackListSelectAPPBottomSheet(
+                this,
+                lifecycleScope,
+                object : SelectAPPCallBack {},
+                blackListFlag = APPModel.FLAG_ACCESSIBILITY_DISABLED,
             ).show()
         }
 

@@ -474,6 +474,13 @@
 
     <!-- Inspire Settings Strings -->
     <string name="inspire_settings_title">功能设置</string>
+    <string name="inspire_settings_accessibility_title">无障碍设置</string>
+    <string name="inspire_settings_accessibility_description">按应用设置无障碍使用限制</string>
+    <string name="accessibility_blacklist_title">无障碍黑名单</string>
+    <string name="accessibility_blacklist_summary">在名单内的应用中，EVO 不会模拟点击、滑动、自动输入或读取无障碍页面内容，长按拖放也不可用。截图和截图文字识别仍可使用。</string>
+    <plurals name="accessibility_blacklist_count">
+        <item quantity="other">已添加 %d 个应用</item>
+    </plurals>
     <string name="inspire_settings_screen_content_title">屏幕内容设置</string>
     <string name="inspire_settings_screen_content_description">管理屏幕内容识别、复制和截图相关选项</string>
     <string name="inspire_settings_ocr_priority">优先使用OCR识别</string>
@@ -1449,9 +1456,9 @@
     <string name="app_select_whitelist_title">应用白名单</string>
     <string name="app_select_blacklist_hint">开启开关即加入黑名单。批量操作仅对当前分类和搜索结果生效。</string>
     <string name="app_select_whitelist_hint">开启开关即加入白名单。批量操作仅对当前分类和搜索结果生效。</string>
-    <string name="app_select_enable_all">全部开启</string>
-    <string name="app_select_disable_all">全部关闭</string>
-    <string name="app_select_enabled_count">已开启 %1$d / %2$d</string>
+    <string name="app_select_enable_all">全部加入名单</string>
+    <string name="app_select_disable_all">全部移出名单</string>
+    <string name="app_select_enabled_count">已加入 %1$d / %2$d</string>
     <string name="app_select_empty">没有匹配的应用</string>
     <string name="app_select_save_failed">应用设置保存失败，请重试</string>
     <string name="app_select_load_failed">无法加载应用列表，请重试</string>

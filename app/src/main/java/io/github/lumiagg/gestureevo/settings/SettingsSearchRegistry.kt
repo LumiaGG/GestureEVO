@@ -950,6 +950,15 @@ object SettingsSearchRegistry {
             keywords = listOf("通知白名单", "whitelist")
         ),
         entry(
+            id = "accessibility_blacklist",
+            titleResId = R.string.accessibility_blacklist_title,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.accessibilitySettingsCard,
+            summaryResId = R.string.accessibility_blacklist_summary,
+            keywords = listOf("无障碍", "黑名单", "accessibility", "blacklist", "blocklist")
+        ),
+        entry(
             id = "inspire_notification_blacklist",
             titleResId = R.string.inspire_settings_notification_blacklist,
             pageTitleResId = R.string.inspire_settings_title,

@@ -9,6 +9,7 @@ import io.github.lumiagg.gestureevo.share.ImageShareLauncher
 import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
 import io.github.lumiagg.gestureevo.inspire.captureScreenContent
 import io.github.lumiagg.gestureevo.inspire.resolveScreenContentRect
+import io.github.lumiagg.gestureevo.utils.AccessibilityBlacklist
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -100,7 +101,7 @@ internal class PressContentCapture(
     /** Read only the long-click event's current snapshot; do not refresh or traverse its tree. */
     @Suppress("DEPRECATION")
     fun longClickText(event: android.view.accessibility.AccessibilityEvent, x: Float, y: Float, origin: String): String? {
-        if (event.isPassword) return null
+        if (event.isPassword || AccessibilityBlacklist.isBlocked(origin)) return null
         val node = event.source ?: return null
         try {
             val bounds = Rect().also(node::getBoundsInScreen)

@@ -6,6 +6,8 @@ import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import io.github.lumiagg.gestureevo.gesture.GestureService
+import io.github.lumiagg.gestureevo.utils.AccessibilityBlacklist
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -22,27 +24,18 @@ data class InjectionTask(
     val startTime: Long = System.currentTimeMillis()
 )
 
-/**
- * Automated text injection performer.
- * Optimizes the injection pipeline for reliability and reduces false positives.
- */
+/** Waits for the target screen, then injects and verifies text within a bounded retry window. */
 class AutomatePerformer(private val service: GestureService) {
 
-    // Task state
-    private sealed class TaskState {
-        object Idle : TaskState()
-        data class Pending(val startTime: Long) : TaskState()
-        data class Running(val startTime: Long) : TaskState()
-        object Completed : TaskState()
-        object Cancelled : TaskState()
-    }
+    private enum class TaskState { IDLE, PENDING, RUNNING }
 
+    private enum class AttemptResult { SUCCESS, NO_EDIT_BOX, RETRY, BLOCKED }
 
     @Volatile
     private var currentTask: InjectionTask? = null
 
     @Volatile
-    private var taskState: TaskState = TaskState.Idle
+    private var taskState = TaskState.IDLE
 
     private var monitorJob: Job? = null
 
@@ -89,7 +82,7 @@ class AutomatePerformer(private val service: GestureService) {
 
         // Create new task
         currentTask = task
-        taskState = TaskState.Pending(System.currentTimeMillis())
+        taskState = TaskState.PENDING
 
         // Start timeout monitor
         startTimeoutMonitor()
@@ -100,11 +93,7 @@ class AutomatePerformer(private val service: GestureService) {
      */
     fun checkAndInject(currentPackage: String, currentActivity: String) {
         val task = currentTask ?: return
-
-        // Check task state
-        if (taskState !is TaskState.Pending && taskState !is TaskState.Running) {
-            return
-        }
+        if (taskState != TaskState.PENDING) return
 
         Log.d(
             TAG,
@@ -123,14 +112,8 @@ class AutomatePerformer(private val service: GestureService) {
             return
         }
 
-        // Guard against duplicate execution
-        if (taskState is TaskState.Running) {
-            Log.d(TAG, "Task is already executing, skipping")
-            return
-        }
-
         Log.i(TAG, "Target screen reached, starting injection")
-        taskState = TaskState.Running(System.currentTimeMillis())
+        taskState = TaskState.RUNNING
 
         // Perform injection
         service.launch {
@@ -138,20 +121,25 @@ class AutomatePerformer(private val service: GestureService) {
                 // Brief delay ensuring view hierarchy is fully loaded
                 delay(50)
 
-                val success = performInjectionWithRetry(task.query)
+                val result = performInjectionWithRetry(task)
+                if (currentTask !== task) return@launch
 
-                if (success) {
-                    Log.i(TAG, "✓ Injection succeeded")
-                    taskState = TaskState.Completed
-                    completeTask()
-                } else {
-                    Log.e(TAG, "✗ Injection failed after reaching maximum retry attempts")
-                    taskState = TaskState.Cancelled
-                    cancelCurrentTask()
+                when (result) {
+                    AttemptResult.SUCCESS -> completeTask()
+                    AttemptResult.BLOCKED -> {
+                        Log.i(TAG, "Injection blocked by the accessibility blocklist")
+                        cancelCurrentTask()
+                    }
+                    else -> {
+                        Log.e(TAG, "Injection failed after reaching maximum retry attempts")
+                        cancelCurrentTask()
+                    }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                if (currentTask !== task) return@launch
                 Log.e(TAG, "Exception during injection process", e)
-                taskState = TaskState.Cancelled
                 cancelCurrentTask()
             }
         }
@@ -173,110 +161,99 @@ class AutomatePerformer(private val service: GestureService) {
         return currentClassName == targetClassName
     }
 
-    /**
-     * Executes injection and verifies result with retries.
-     */
-    private suspend fun performInjectionWithRetry(query: String): Boolean =
-        withContext(Dispatchers.Default) {
-            var attempts = 0
+    private suspend fun performInjectionWithRetry(task: InjectionTask): AttemptResult {
+        repeat(MAX_INJECTION_ATTEMPTS) {
+            if (currentTask !== task) return AttemptResult.RETRY
 
-            while (attempts < MAX_INJECTION_ATTEMPTS) {
-                attempts++
+            val result = withTargetEditBox(task) { node -> inject(task, node) }
+            when (result) {
+                AttemptResult.BLOCKED -> return result
+                AttemptResult.NO_EDIT_BOX -> delay(EDITBOX_SEARCH_INTERVAL_MS)
+                AttemptResult.RETRY -> delay(RETRY_DELAY_MS)
+                AttemptResult.SUCCESS -> {
+                    delay(VERIFICATION_DELAY_MS)
+                    if (currentTask !== task) return AttemptResult.RETRY
+                    if (task.usePaste && task.query.isBlank()) return AttemptResult.SUCCESS
 
-                // Check whether task has been cancelled
-                if (taskState is TaskState.Cancelled) {
-                    Log.d(TAG, "Task cancelled")
-                    return@withContext false
-                }
-
-                // Find editable input node
-                val editBox = findEditBoxInTree()
-                if (editBox == null) {
-                    Log.d(TAG, "Attempt $attempts: no editable node found")
-                    delay(EDITBOX_SEARCH_INTERVAL_MS)
-                    continue
-                }
-
-                // Perform injection
-                val injected = if (currentTask?.usePaste == true) {
-                    pasteToNode(editBox)
-                } else {
-                    injectTextToNode(editBox, query)
-                }
-                if (!injected) {
-                    Log.d(TAG, "Attempt $attempts: injection operation failed")
-                    delay(RETRY_DELAY_MS)
-                    continue
-                }
-
-                // Verify injection result
-                delay(VERIFICATION_DELAY_MS)
-
-                val verified = if (currentTask?.usePaste == true) {
-                    if (query.isBlank()) true else verifyInjection(query)
-                } else {
-                    verifyInjection(query)
-                }
-                if (verified) {
-                    Log.i(TAG, "Injection verified successfully ($attempts attempts)")
-                    return@withContext true
-                } else {
-                    Log.d(TAG, "Attempt $attempts: verification failed, content mismatch")
-                    delay(RETRY_DELAY_MS)
+                    when (val verified = withTargetEditBox(task) { node -> verifyInjection(task, node) }) {
+                        AttemptResult.SUCCESS, AttemptResult.BLOCKED -> return verified
+                        else -> delay(RETRY_DELAY_MS)
+                    }
                 }
             }
+        }
+        return AttemptResult.RETRY
+    }
 
-            Log.e(TAG, "Reached maximum retry limit ($MAX_INJECTION_ATTEMPTS)")
-            return@withContext false
+    @Suppress("DEPRECATION")
+    private suspend fun withTargetEditBox(
+        task: InjectionTask,
+        useNode: suspend (AccessibilityNodeInfoCompat) -> AttemptResult,
+    ): AttemptResult = withContext(Dispatchers.Default) {
+        val root = service.rootInActiveWindow ?: return@withContext AttemptResult.NO_EDIT_BOX
+        val packageName = root.packageName?.toString()
+        val unavailable = when {
+            packageName != task.targetPackage -> AttemptResult.NO_EDIT_BOX
+            AccessibilityBlacklist.isBlocked(packageName) -> AttemptResult.BLOCKED
+            else -> null
+        }
+        if (unavailable != null) {
+            root.recycle()
+            return@withContext unavailable
         }
 
-    /**
-     * Searches for edit box node in accessibility tree.
-     */
-    private fun findEditBoxInTree(): AccessibilityNodeInfoCompat? {
-        val rootNode = service.rootInActiveWindow?.let {
-            AccessibilityNodeInfoCompat.wrap(it)
-        } ?: return null
+        val node = findEditBoxInTree(AccessibilityNodeInfoCompat.wrap(root), task.targetPackage)
+            ?: return@withContext AttemptResult.NO_EDIT_BOX
+        try {
+            useNode(node)
+        } finally {
+            node.recycle()
+        }
+    }
 
-        val task = currentTask ?: return null
-
+    @Suppress("DEPRECATION")
+    private fun findEditBoxInTree(
+        rootNode: AccessibilityNodeInfoCompat,
+        targetPackage: String,
+    ): AccessibilityNodeInfoCompat? {
         // Breadth-first search prioritizing visible and editable nodes
         val queue = ArrayDeque<Pair<AccessibilityNodeInfoCompat, Int>>()
         queue.add(rootNode to 0)
 
-        val candidates = mutableListOf<AccessibilityNodeInfoCompat>()
+        var best: AccessibilityNodeInfoCompat? = null
+        var bestPriority = 0
+        var completed = false
+        try {
+            while (queue.isNotEmpty()) {
+                val (node, depth) = queue.removeFirst()
+                try {
+                    val packageName = node.packageName?.toString()
+                    if (packageName != null && packageName != targetPackage) continue
 
-        while (queue.isNotEmpty()) {
-            val (node, depth) = queue.removeFirst()
+                    if (isEditBox(node)) {
+                        val priority = calculateNodePriority(node)
+                        if (priority > bestPriority) {
+                            best?.recycle()
+                            best = node
+                            bestPriority = priority
+                        }
+                    }
 
-            // Depth limit
-            if (depth > MAX_TREE_DEPTH) continue
-
-            // Validate package name to prevent cross-app mismatch
-            val nodePackage = node.unwrap()?.packageName?.toString()
-            if (nodePackage != null && nodePackage != task.targetPackage) {
-                continue
-            }
-
-            // Check whether node is an edit box
-            if (isEditBox(node)) {
-                // Filter by priority: visible > editable > focusable
-                val priority = calculateNodePriority(node)
-                if (priority > 0) {
-                    candidates.add(node)
+                    if (depth < MAX_TREE_DEPTH) {
+                        for (i in 0 until node.childCount) {
+                            node.getChild(i)?.let { queue.add(it to depth + 1) }
+                        }
+                    }
+                } finally {
+                    if (node !== best) node.recycle()
                 }
             }
-
-            // Add child nodes to search queue
-            for (i in 0 until node.childCount) {
-                node.getChild(i)?.let { child ->
-                    queue.add(child to depth + 1)
-                }
-            }
+            completed = true
+            return best
+        } finally {
+            if (!completed) best?.recycle()
+            queue.forEach { (node, _) -> node.recycle() }
         }
-
-        // Return candidate node with highest priority score
-        return candidates.maxByOrNull { calculateNodePriority(it) }
     }
 
     /**
@@ -316,95 +293,65 @@ class AutomatePerformer(private val service: GestureService) {
         return priority
     }
 
-    /**
-     * Injects text into target accessibility node.
-     */
-    private suspend fun injectTextToNode(
-        node: AccessibilityNodeInfoCompat,
-        text: String
-    ): Boolean = withContext(Dispatchers.Main) {
-        try {
-            // Attempt focusing first
+    private suspend fun inject(task: InjectionTask, node: AccessibilityNodeInfoCompat): AttemptResult = try {
+        withContext(Dispatchers.Main) {
             if (!node.isFocused) {
-                node.performAction(AccessibilityNodeInfoCompat.ACTION_FOCUS)
+                val focus = performNodeAction(task, node, AccessibilityNodeInfoCompat.ACTION_FOCUS)
+                if (focus == AttemptResult.BLOCKED) return@withContext focus
                 delay(50)
             }
 
-            // Clear existing content
+            if (task.usePaste) {
+                return@withContext performNodeAction(task, node, AccessibilityNodeInfoCompat.ACTION_PASTE)
+            }
+
             if (!node.text.isNullOrEmpty()) {
-                val clearBundle = Bundle().apply {
-                    putCharSequence(
-                        AccessibilityNodeInfoCompat.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                        ""
-                    )
-                }
-                node.performAction(AccessibilityNodeInfoCompat.ACTION_SET_TEXT, clearBundle)
+                val clear = setNodeText(task, node, "")
+                if (clear == AttemptResult.BLOCKED) return@withContext clear
                 delay(50)
             }
-
-            // Inject text
-            val setTextBundle = Bundle().apply {
-                putCharSequence(
-                    AccessibilityNodeInfoCompat.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                    text
-                )
-            }
-            val setTextSuccess = node.performAction(
-                AccessibilityNodeInfoCompat.ACTION_SET_TEXT,
-                setTextBundle
-            )
-
-            if (!setTextSuccess) {
-                Log.w(TAG, "ACTION_SET_TEXT returned false")
-                return@withContext false
-            }
-
-            return@withContext true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error injecting text", e)
-            return@withContext false
+            setNodeText(task, node, task.query)
         }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.e(TAG, "Error injecting text", e)
+        AttemptResult.RETRY
     }
 
-    private suspend fun pasteToNode(node: AccessibilityNodeInfoCompat): Boolean =
-        withContext(Dispatchers.Main) {
-            try {
-                if (!node.isFocused) {
-                    node.performAction(AccessibilityNodeInfoCompat.ACTION_FOCUS)
-                    delay(50)
-                }
-                val pasted = node.performAction(AccessibilityNodeInfoCompat.ACTION_PASTE)
-                if (!pasted) {
-                    Log.w(TAG, "ACTION_PASTE returned false")
-                }
-                return@withContext pasted
-            } catch (e: Exception) {
-                Log.e(TAG, "Error pasting text", e)
-                return@withContext false
-            }
+    private fun setNodeText(
+        task: InjectionTask,
+        node: AccessibilityNodeInfoCompat,
+        text: String,
+    ): AttemptResult {
+        val arguments = Bundle().apply {
+            putCharSequence(AccessibilityNodeInfoCompat.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
         }
+        return performNodeAction(task, node, AccessibilityNodeInfoCompat.ACTION_SET_TEXT, arguments)
+    }
 
-    /**
-     * Verifies injection result against expected text.
-     */
-    private suspend fun verifyInjection(expectedText: String): Boolean =
-        withContext(Dispatchers.Default) {
-            val editBox = findEditBoxInTree() ?: return@withContext false
-
-            val actualText = editBox.text?.toString()?.trim() ?: ""
-            val expected = expectedText.trim()
-
-            // Exact match or prefix match (accounting for auto-complete)
-            if (actualText == expected || actualText.startsWith(expected)) {
-                // Trigger IME submit action (Android R+)
-                if (currentTask?.inputEnter == true && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    editBox.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
-                }
-                Log.d(TAG, "verifyInjection: trigger IME enter")
-                return@withContext true
-            }
-            return@withContext false
+    private fun performNodeAction(
+        task: InjectionTask,
+        node: AccessibilityNodeInfoCompat,
+        action: Int,
+        arguments: Bundle? = null,
+    ): AttemptResult {
+        if (currentTask !== task || AccessibilityBlacklist.isBlocked(task.targetPackage)) {
+            return AttemptResult.BLOCKED
         }
+        return if (node.performAction(action, arguments)) AttemptResult.SUCCESS else AttemptResult.RETRY
+    }
+
+    private fun verifyInjection(task: InjectionTask, node: AccessibilityNodeInfoCompat): AttemptResult {
+        val actual = node.text?.toString()?.trim().orEmpty()
+        if (!actual.startsWith(task.query.trim())) return AttemptResult.RETRY
+
+        if (task.inputEnter && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val submit = performNodeAction(task, node, AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+            if (submit == AttemptResult.BLOCKED) return submit
+        }
+        return AttemptResult.SUCCESS
+    }
 
     /**
      * Starts timeout monitoring coroutine.
@@ -414,20 +361,18 @@ class AutomatePerformer(private val service: GestureService) {
         monitorJob = service.launch {
             delay(TASK_TIMEOUT_MS)
 
-            when (val state = taskState) {
-                is TaskState.Pending -> {
+            when (taskState) {
+                TaskState.PENDING -> {
                     Log.w(TAG, "Task timeout: target interface not reached")
                     cancelCurrentTask()
                 }
 
-                is TaskState.Running -> {
+                TaskState.RUNNING -> {
                     Log.w(TAG, "Task timeout: injection execution timed out")
                     cancelCurrentTask()
                 }
 
-                else -> {
-                    // Already completed or cancelled, no action needed
-                }
+                TaskState.IDLE -> Unit
             }
         }
     }
@@ -438,7 +383,7 @@ class AutomatePerformer(private val service: GestureService) {
     private fun completeTask() {
         monitorJob?.cancel()
         currentTask = null
-        taskState = TaskState.Completed
+        taskState = TaskState.IDLE
         Log.i(TAG, "Task completed")
     }
 
@@ -448,7 +393,7 @@ class AutomatePerformer(private val service: GestureService) {
     fun cancelCurrentTask() {
         monitorJob?.cancel()
         currentTask = null
-        taskState = TaskState.Cancelled
+        taskState = TaskState.IDLE
         Log.i(TAG, "Task cancelled")
     }
 
@@ -456,6 +401,6 @@ class AutomatePerformer(private val service: GestureService) {
      * Checks whether a task is currently active.
      */
     fun isTaskActive(): Boolean {
-        return taskState is TaskState.Pending || taskState is TaskState.Running
+        return taskState != TaskState.IDLE
     }
 }

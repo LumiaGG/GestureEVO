@@ -59,12 +59,14 @@ abstract class MultiSelectAPPBottomSheet(activity: Activity, coroutineScope: Lif
     protected abstract fun selected(model: APPModel): Boolean
     protected abstract suspend fun saveSelection(apps: List<APPModel>, enabled: Boolean)
 
+    protected open val titleResId: Int
+        get() = if (whitelist) R.string.app_select_whitelist_title else R.string.app_select_blacklist_title
+
     override fun setupSelection() {
-        bottomSheetDialog.findViewById<TextView>(R.id.selectionTitle)?.setText(
-            if (whitelist) R.string.app_select_whitelist_title else R.string.app_select_blacklist_title)
         bottomSheetDialog.findViewById<TextView>(R.id.selectionTitle)?.let { title ->
-            TooltipCompat.setTooltipText(title, activity.getString(
-                if (whitelist) R.string.app_select_whitelist_hint else R.string.app_select_blacklist_hint))
+            title.setText(titleResId)
+            val hintResId = if (whitelist) R.string.app_select_whitelist_hint else R.string.app_select_blacklist_hint
+            TooltipCompat.setTooltipText(title, activity.getString(hintResId))
         }
         bottomSheetDialog.findViewById<View>(R.id.selectionCount)?.visibility = View.VISIBLE
         bottomSheetDialog.findViewById<View>(R.id.selectionActions)?.apply {
@@ -120,22 +122,43 @@ abstract class MultiSelectAPPBottomSheet(activity: Activity, coroutineScope: Lif
     }
 }
 
-class BlackListSelectAPPBottomSheet(activity: Activity, coroutineScope: LifecycleCoroutineScope,
+class BlackListSelectAPPBottomSheet(
+    activity: Activity,
+    coroutineScope: LifecycleCoroutineScope,
     selectAPPCallBack: SelectAPPCallBack,
     private val blackListFlag: Int = APPModel.FLAG_GESTURE_DISABLE,
-) : MultiSelectAPPBottomSheet(activity, coroutineScope, selectAPPCallBack,
-    whitelist = blackListFlag == APPModel.FLAG_NOTIFICATION_APPS_ENABLE) {
+) : MultiSelectAPPBottomSheet(
+    activity,
+    coroutineScope,
+    selectAPPCallBack,
+    whitelist = blackListFlag == APPModel.FLAG_NOTIFICATION_APPS_ENABLE,
+) {
+    private val matchByPackage = blackListFlag == APPModel.FLAG_ACCESSIBILITY_DISABLED
+
+    override val titleResId: Int
+        get() = if (matchByPackage) R.string.accessibility_blacklist_title else super.titleResId
+
     override fun selected(model: APPModel): Boolean = model.getState(blackListFlag)
 
-    override suspend fun queryApps(flag: Int): List<APPModel> =
-        getAPPDao().getAll(flag).sortedByDescending(::selected)
+    override suspend fun queryApps(flag: Int): List<APPModel> {
+        val apps = getAPPDao().getAll(flag).sortedByDescending(::selected)
+        return if (matchByPackage) apps.distinctBy(APPModel::pkgName) else apps
+    }
 
     override suspend fun saveSelection(apps: List<APPModel>, enabled: Boolean) {
         // Update only this bit, preserving concurrent changes to the other application settings.
         withContext(Dispatchers.IO) {
-            DatabaseManager.db.withTransaction {
-                apps.map { it.id }.chunked(500).forEach { ids ->
-                    getAPPDao().setSelectionFlag(ids, blackListFlag, enabled)
+            val database = DatabaseManager.db
+            database.withTransaction {
+                val dao = database.appDao
+                if (matchByPackage) {
+                    apps.map(APPModel::pkgName).chunked(SELECTION_BATCH_SIZE).forEach { packages ->
+                        dao.setPackageSelectionFlag(packages, blackListFlag, enabled)
+                    }
+                } else {
+                    apps.map { it.id }.chunked(SELECTION_BATCH_SIZE).forEach { ids ->
+                        dao.setSelectionFlag(ids, blackListFlag, enabled)
+                    }
                 }
             }
         }
@@ -143,6 +166,10 @@ class BlackListSelectAPPBottomSheet(activity: Activity, coroutineScope: Lifecycl
             it.setState(blackListFlag, enabled)
             selectAPPCallBack.selectCompleted(it)
         }
+    }
+
+    private companion object {
+        const val SELECTION_BATCH_SIZE = 500
     }
 }
 
