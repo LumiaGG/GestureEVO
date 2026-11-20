@@ -37,6 +37,8 @@ class APPModel() : BaseModel() {
 
         // Notification icon blacklisted applications
         const val FLAG_NOTIFICATION_ICON_DISABLE: Int = 1.shl(8)
+
+        const val FLAG_ACCESSIBILITY_DISABLED: Int = 1.shl(9)
     }
 
     override fun equals(other: Any?): Boolean {

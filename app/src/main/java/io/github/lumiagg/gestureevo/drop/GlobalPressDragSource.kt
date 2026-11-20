@@ -20,6 +20,7 @@ import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_ALLOWE
 import io.github.lumiagg.gestureevo.drop.DropPreferences.KEY_GLOBAL_PRESS_TIMEOUT
 import io.github.lumiagg.gestureevo.drop.DropPreferences.DEFAULT_GLOBAL_PRESS_TIMEOUT_MS
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_SELECTION_VIBRATE
+import io.github.lumiagg.gestureevo.utils.AccessibilityBlacklist
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
@@ -144,6 +145,7 @@ internal class GlobalPressDragSource(
                     origin == null -> "source_unavailable"
                     origin !in settings.whitelist -> "app_not_allowed"
                     capture.excludedPackage(origin) -> "protected_package"
+                    AccessibilityBlacklist.isBlocked(origin) -> "blacklisted_package"
                     else -> null
                 }
                 withContext(Dispatchers.Main) {

@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface APPDao {
@@ -96,6 +97,12 @@ interface APPDao {
 
     @Query("UPDATE APPModel SET state = CASE WHEN :enabled THEN state | :flag ELSE state & ~:flag END, isRemove = 0 WHERE id IN (:ids)")
     suspend fun setSelectionFlag(ids: List<Int>, flag: Int, enabled: Boolean)
+
+    @Query("SELECT DISTINCT pkgName FROM APPModel WHERE (state & :flag) = :flag ORDER BY pkgName")
+    fun observeSelectedPackages(flag: Int): Flow<List<String>>
+
+    @Query("UPDATE APPModel SET state = CASE WHEN :enabled THEN state | :flag ELSE state & ~:flag END WHERE pkgName IN (:packages)")
+    suspend fun setPackageSelectionFlag(packages: List<String>, flag: Int, enabled: Boolean)
 
     @Delete
     suspend fun delete(model: APPModel)

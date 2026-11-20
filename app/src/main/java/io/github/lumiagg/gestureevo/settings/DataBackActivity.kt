@@ -68,6 +68,11 @@ class DataBackActivity : AppCompatActivity() {
         const val WEBDAV_BACKUPS_DIR = "GestureEvoBackups"
         const val EXTERNAL_ACTION_PERMISSIONS_FILE = "external_action_permissions.json"
         const val APP_ALIASES_FILE = "app_aliases.json"
+        private const val GESTURE_BLACKLIST_FILE = "gesture_black.txt"
+        private const val RECENT_BLACKLIST_FILE = "recent_black.txt"
+        private const val NOTIFICATION_ICON_BLACKLIST_FILE = "notification_icon_black.txt"
+        private const val NOTIFICATION_LISTENER_WHITELIST_FILE = "notification_listener_white.txt"
+        private const val ACCESSIBILITY_BLACKLIST_FILE = "accessibility_blacklist.txt"
     }
 
     private data class AppAliasEntry(
@@ -673,27 +678,18 @@ class DataBackActivity : AppCompatActivity() {
     }
 
     private suspend fun backupDbStates(targetDir: File) {
-        val dao = getAPPDao()
+        val apps = getAPPDao().getAll()
+        val states = BackupAppStates.fromApps(apps)
 
-        // Create files for each type of state
-        val gestureBlackFile = File(targetDir, "gesture_black.txt")
-        val recentBlackFile = File(targetDir, "recent_black.txt")
-        val notificationIconBlackFile = File(targetDir, "notification_icon_black.txt")
-        val notificationListenerWhiteFile = File(targetDir, "notification_listener_white.txt")
+        fun writePackages(fileName: String, packages: Iterable<String>) {
+            File(targetDir, fileName).writeText(packages.joinToString("\n"))
+        }
 
-        // Write package names to files
-        dao.getAll(state = APPModel.FLAG_GESTURE_DISABLE).joinToString("\n") { it.pkgName }
-            .let { gestureBlackFile.writeText(it) }
-
-        dao.getAll(state = APPModel.FLAG_RECENT_APPS_DISABLE).joinToString("\n") { it.pkgName }
-            .let { recentBlackFile.writeText(it) }
-
-        dao.getAll(state = APPModel.FLAG_NOTIFICATION_ICON_DISABLE)
-            .joinToString("\n") { it.pkgName }
-            .let { notificationIconBlackFile.writeText(it) }
-
-        dao.getAll(state = APPModel.FLAG_NOTIFICATION_APPS_ENABLE).joinToString("\n") { it.pkgName }
-            .let { notificationListenerWhiteFile.writeText(it) }
+        writePackages(GESTURE_BLACKLIST_FILE, states.gestureDisabled)
+        writePackages(RECENT_BLACKLIST_FILE, states.recentDisabled)
+        writePackages(NOTIFICATION_ICON_BLACKLIST_FILE, states.notificationIconDisabled)
+        writePackages(NOTIFICATION_LISTENER_WHITELIST_FILE, states.notificationEnabled)
+        writePackages(ACCESSIBILITY_BLACKLIST_FILE, states.accessibilityDisabled.sorted())
 
         val externalPermissionsFile = File(targetDir, EXTERNAL_ACTION_PERMISSIONS_FILE)
         val externalPermissionsJson =
@@ -701,22 +697,22 @@ class DataBackActivity : AppCompatActivity() {
         externalPermissionsFile.writeText(externalPermissionsJson)
 
         val appAliasesFile = File(targetDir, APP_ALIASES_FILE)
-        val appAliasesJson = MoshiUtils.toJson(collectAppAliases(dao.getAll()), true)
+        val appAliasesJson = MoshiUtils.toJson(collectAppAliases(apps), true)
         appAliasesFile.writeText(appAliasesJson)
     }
 
     private suspend fun restoreDbStates(sourceDir: File) {
         if (!sourceDir.exists()) return
 
-        // Get the DAO
-        val dao = getAPPDao()
+        fun readPackages(fileName: String): Set<String> =
+            readPackageListFromFile(File(sourceDir, fileName))
 
-        // Read package names from files
         val backedUpStates = BackupAppStates(
-            gestureDisabled = readPackageListFromFile(File(sourceDir, "gesture_black.txt")),
-            recentDisabled = readPackageListFromFile(File(sourceDir, "recent_black.txt")),
-            notificationIconDisabled = readPackageListFromFile(File(sourceDir, "notification_icon_black.txt")),
-            notificationEnabled = readPackageListFromFile(File(sourceDir, "notification_listener_white.txt")),
+            gestureDisabled = readPackages(GESTURE_BLACKLIST_FILE),
+            recentDisabled = readPackages(RECENT_BLACKLIST_FILE),
+            notificationIconDisabled = readPackages(NOTIFICATION_ICON_BLACKLIST_FILE),
+            notificationEnabled = readPackages(NOTIFICATION_LISTENER_WHITELIST_FILE),
+            accessibilityDisabled = readPackages(ACCESSIBILITY_BLACKLIST_FILE),
         )
         val externalPermissionsFile = File(sourceDir, EXTERNAL_ACTION_PERMISSIONS_FILE)
         val externalPermissions =
@@ -727,21 +723,7 @@ class DataBackActivity : AppCompatActivity() {
         val appAliases = MoshiUtils.toModel<List<AppAliasEntry>>(
             appAliasesFile.takeIf { it.exists() }?.readText().orEmpty()
         ) ?: emptyList()
-        val appAliasMap = appAliases.associate { it.pkgName to it.alias }
-
-        // Clear and rebuild DB
-        dao.deleteAll()
-        syncAppCatalog(applicationContext)
-
-        // Apply states to apps
-        dao.getAll().forEach { appModel ->
-            appAliasMap[appModel.pkgName]?.let { alias ->
-                appModel.name = alias
-            }
-            backedUpStates.applyTo(appModel)
-            // Update database
-            updateDB(appModel)
-        }
+        rebuildAppCatalog(backedUpStates, appAliases)
 
         ContactSearchHelper.syncContactsToDatabase(applicationContext, force = true)
         SettingsShortcutSearchHelper.syncShortcutsToDatabase(applicationContext, force = true)
@@ -859,47 +841,8 @@ class DataBackActivity : AppCompatActivity() {
             binding.rebuildDBProgress.visibility = View.VISIBLE
         }
 
-        val dao = getAPPDao()
-        val appAliases = collectAppAliases(dao.getAll())
-        val appAliasMap = appAliases.associate { it.pkgName to it.alias }
-        // Retrieve package names for gestureBlack and recentBlack
-        val gestureBlackPackages =
-            dao.getAll(state = APPModel.FLAG_GESTURE_DISABLE).map { it.pkgName }
-        val recentBlackPackages =
-            dao.getAll(state = APPModel.FLAG_RECENT_APPS_DISABLE).map { it.pkgName }
-        val notificationIconBlackPackages =
-            dao.getAll(state = APPModel.FLAG_NOTIFICATION_ICON_DISABLE).map { it.pkgName }
-        val notificationListenerWhitePackages =
-            dao.getAll(state = APPModel.FLAG_NOTIFICATION_APPS_ENABLE).map { it.pkgName }
-
-        dao.deleteAll()
-        syncAppCatalog(applicationContext)
-
-        dao.getAll().forEach { appModel ->
-            appAliasMap[appModel.pkgName]?.let { alias ->
-                appModel.name = alias
-            }
-            // Set status if package name is present in gestureBlackPackages or recentBlackPackages
-            when {
-                gestureBlackPackages.contains(appModel.pkgName) -> {
-                    appModel.setState(APPModel.FLAG_GESTURE_DISABLE, true)
-                }
-
-                recentBlackPackages.contains(appModel.pkgName) -> {
-                    appModel.setState(APPModel.FLAG_RECENT_APPS_DISABLE, true)
-                }
-
-                notificationIconBlackPackages.contains(appModel.pkgName) -> {
-                    appModel.setState(APPModel.FLAG_NOTIFICATION_ICON_DISABLE, true)
-                }
-
-                notificationListenerWhitePackages.contains(appModel.pkgName) -> {
-                    appModel.setState(APPModel.FLAG_NOTIFICATION_APPS_ENABLE, true)
-                }
-            }
-            // Update database
-            updateDB(appModel)
-        }
+        val apps = getAPPDao().getAll()
+        rebuildAppCatalog(BackupAppStates.fromApps(apps), collectAppAliases(apps))
 
         ContactSearchHelper.syncContactsToDatabase(applicationContext, force = true)
         SettingsShortcutSearchHelper.syncShortcutsToDatabase(applicationContext, force = true)
@@ -947,6 +890,19 @@ class DataBackActivity : AppCompatActivity() {
                 }
             }
         )
+    }
+
+    private suspend fun rebuildAppCatalog(states: BackupAppStates, aliases: List<AppAliasEntry>) {
+        val dao = getAPPDao()
+        val aliasesByPackage = aliases.associate { it.pkgName to it.alias }
+        dao.deleteAll()
+        syncAppCatalog(applicationContext)
+
+        for (app in dao.getAll()) {
+            aliasesByPackage[app.pkgName]?.let { app.name = it }
+            states.applyTo(app)
+            updateDB(app)
+        }
     }
 
     private fun collectAppAliases(apps: List<APPModel>): List<AppAliasEntry> {
