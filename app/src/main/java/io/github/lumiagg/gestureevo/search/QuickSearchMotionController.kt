@@ -64,6 +64,7 @@ internal class QuickSearchMotionController(
         WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout() or imeType
     private var imeAnimation: WindowInsetsAnimationCompat? = null
     private var animatedBottomInset: Int? = null
+    private val settleImeMotion = Runnable { finishImeMotion() }
     private var layoutBottomInset = 0
     private val initialRootPaddingLeft = binding.root.paddingLeft
     private val initialRootPaddingTop = binding.root.paddingTop
@@ -86,9 +87,21 @@ internal class QuickSearchMotionController(
                 object : WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
                     override fun onPrepare(animation: WindowInsetsAnimationCompat) {
                         if (animation.typeMask and imeType != 0) {
+                            binding.root.removeCallbacks(settleImeMotion)
                             imeAnimation = animation
-                            animatedBottomInset = animatedBottomInset ?: layoutBottomInset
+                            animatedBottomInset = null
                         }
+                    }
+
+                    override fun onStart(
+                        animation: WindowInsetsAnimationCompat,
+                        bounds: WindowInsetsAnimationCompat.BoundsCompat
+                    ): WindowInsetsAnimationCompat.BoundsCompat {
+                        if (animation === imeAnimation && animation.durationMillis >= 0) {
+                            // Some IMEs stop sending frames without delivering an end callback.
+                            binding.root.postDelayed(settleImeMotion, animation.durationMillis + 64L)
+                        }
+                        return bounds
                     }
 
                     override fun onProgress(
@@ -104,9 +117,7 @@ internal class QuickSearchMotionController(
 
                     override fun onEnd(animation: WindowInsetsAnimationCompat) {
                         if (animation !== imeAnimation) return
-                        imeAnimation = null
-                        animatedBottomInset = null
-                        applyCardMotion()
+                        finishImeMotion()
                     }
                 }
             )
@@ -142,8 +153,34 @@ internal class QuickSearchMotionController(
 
     fun onWindowFocusChanged(hasFocus: Boolean) {
         if (hasFocus) {
+            refreshViewport()
             showKeyboardIfPossible()
+        } else {
+            finishImeMotion()
         }
+    }
+
+    fun requestKeyboardOnActivation() {
+        pendingShowKeyboard = true
+        refreshViewport()
+        showKeyboardIfPossible()
+    }
+
+    fun refreshViewport() {
+        if (!handlesWindowInsets || !binding.root.isAttachedToWindow) return
+        if (imeAnimation == null) {
+            ViewCompat.getRootWindowInsets(binding.root)?.let(::applyViewportInsets)
+        }
+        ViewCompat.requestApplyInsets(binding.root)
+    }
+
+    fun finishImeMotion() {
+        binding.root.removeCallbacks(settleImeMotion)
+        if (imeAnimation == null && animatedBottomInset == null) return
+        imeAnimation = null
+        animatedBottomInset = null
+        applyCardMotion()
+        refreshViewport()
     }
 
     fun release() {
@@ -151,6 +188,7 @@ internal class QuickSearchMotionController(
         binding.searchInput.removeCallbacks(keyboardRequestRunnable)
         keyboardRequestPosted = false
         visibilityAnimator?.cancel()
+        binding.root.removeCallbacks(settleImeMotion)
         if (handlesWindowInsets && keyboardFollowAnimationEnabled) {
             ViewCompat.setWindowInsetsAnimationCallback(binding.root, null)
         }
@@ -215,12 +253,14 @@ internal class QuickSearchMotionController(
             binding.searchInput.requestFocus()
         }
         pendingShowKeyboard = false
-        val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-        val shown =
-            imm?.showSoftInput(binding.searchInput, InputMethodManager.SHOW_IMPLICIT) == true
-        if (!shown) {
-            WindowCompat.getInsetsController(window, binding.root)
-                .show(imeType)
+        val insetsController = WindowCompat.getInsetsController(window, binding.root)
+        if (handlesWindowInsets) {
+            insetsController.show(imeType)
+        } else {
+            val imm = activity.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            if (imm?.showSoftInput(binding.searchInput, InputMethodManager.SHOW_IMPLICIT) != true) {
+                insetsController.show(imeType)
+            }
         }
         activity.onKeyboardRequestDispatched()
     }

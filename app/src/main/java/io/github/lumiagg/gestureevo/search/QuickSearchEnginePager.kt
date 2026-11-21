@@ -35,9 +35,7 @@ class QuickSearchEnginePager @JvmOverloads constructor(
         val showLabel: Boolean,
         val showImageBadge: Boolean,
         val previewSortMode: Boolean
-    ) {
-        val pageSize: Int = (rowCount * columnCount).coerceAtLeast(1)
-    }
+    )
 
     private val engines = mutableListOf<SearchEngine>()
     private val inflater = LayoutInflater.from(context)
@@ -62,6 +60,11 @@ class QuickSearchEnginePager @JvmOverloads constructor(
         showImageBadge = true,
         previewSortMode = false
     )
+    private var heightLimit: Int? = null
+    private var visibleRows = config.rowCount
+    private var pageAnchor: Int? = null
+    private val visiblePageSize: Int
+        get() = (visibleRows * config.columnCount).coerceAtLeast(1)
     private var onEngineClick: (SearchEngine) -> Unit = {}
     private var onEngineLongClick: (SearchEngine) -> Unit = {}
     private var onOrderChanged: (List<SearchEngine>) -> Unit = {}
@@ -279,6 +282,12 @@ class QuickSearchEnginePager @JvmOverloads constructor(
         post { scrollTo(scrollX.coerceIn(0, maxScrollX), 0) }
     }
 
+    internal fun limitHeight(height: Int) {
+        if (heightLimit == height) return
+        heightLimit = height
+        requestLayout()
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val widthSize = MeasureSpec.getSize(widthMeasureSpec)
         val contentWidth = (widthSize - paddingStart - paddingEnd).coerceAtLeast(1)
@@ -294,6 +303,21 @@ class QuickSearchEnginePager @JvmOverloads constructor(
             MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
         )
         val rowHeight = template.measuredHeight + templateParams.topMargin + templateParams.bottomMargin
+        val verticalPadding = paddingTop + paddingBottom
+        val configuredRows = config.rowCount.coerceAtLeast(1)
+        val maxHeight = heightLimit
+        val rows = if (maxHeight != null && rowHeight > 0) {
+            ((maxHeight - verticalPadding) / rowHeight).coerceIn(1, configuredRows)
+        } else {
+            configuredRows
+        }
+        if (rows != visibleRows) {
+            if (maxHeight != null) {
+                pageAnchor = pageAnchor ?: currentPage * visiblePageSize
+                scroller.forceFinished(true)
+            }
+            visibleRows = rows
+        }
 
         children.forEach { child ->
             val layoutParams = child.layoutParams as MarginLayoutParams
@@ -308,7 +332,7 @@ class QuickSearchEnginePager @JvmOverloads constructor(
             child.measure(childWidthSpec, childHeightSpec)
         }
 
-        val desiredHeight = paddingTop + paddingBottom + rowHeight * config.rowCount.coerceAtLeast(1)
+        val desiredHeight = verticalPadding + rowHeight * visibleRows
         val measuredHeight = resolveSize(desiredHeight, heightMeasureSpec)
         setMeasuredDimension(widthSize, measuredHeight)
     }
@@ -318,7 +342,7 @@ class QuickSearchEnginePager @JvmOverloads constructor(
         if (contentWidth <= 0) return
 
         val cellWidth = (contentWidth / config.columnCount.coerceAtLeast(1)).coerceAtLeast(1)
-        val rowHeight = ((height - paddingTop - paddingBottom) / config.rowCount.coerceAtLeast(1))
+        val rowHeight = ((height - paddingTop - paddingBottom) / visibleRows)
             .coerceAtLeast(1)
 
         children.forEachIndexed { desktopPosition, child ->
@@ -328,8 +352,8 @@ class QuickSearchEnginePager @JvmOverloads constructor(
             val oldTranslationX = child.translationX
             val oldTranslationY = child.translationY
             val shouldAnimateChild = animateNextLayout && child != draggedView && child.width > 0
-            val page = desktopPosition / config.pageSize
-            val inPagePosition = desktopPosition % config.pageSize
+            val page = desktopPosition / visiblePageSize
+            val inPagePosition = desktopPosition % visiblePageSize
             val row = inPagePosition / config.columnCount
             val column = inPagePosition % config.columnCount
             val cellLeft = paddingStart + page * contentWidth + column * cellWidth
@@ -367,7 +391,9 @@ class QuickSearchEnginePager @JvmOverloads constructor(
 
         animateNextLayout = false
 
-        scrollTo(scrollX.coerceIn(0, maxScrollX), 0)
+        val newScrollX = pageAnchor?.let { it / visiblePageSize * contentWidth } ?: scrollX
+        pageAnchor = null
+        scrollTo(newScrollX.coerceIn(0, maxScrollX), 0)
     }
 
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
@@ -543,7 +569,7 @@ class QuickSearchEnginePager @JvmOverloads constructor(
         if (contentWidth <= 0 || engines.isEmpty()) return NO_POSITION
 
         val cellWidth = (contentWidth / config.columnCount.coerceAtLeast(1)).coerceAtLeast(1)
-        val rowHeight = ((height - paddingTop - paddingBottom) / config.rowCount.coerceAtLeast(1))
+        val rowHeight = ((height - paddingTop - paddingBottom) / visibleRows)
             .coerceAtLeast(1)
         val centerX = x + scrollX - dragTouchOffsetX + child.width / 2f
         val centerY = y - dragTouchOffsetY + child.height / 2f
@@ -552,8 +578,8 @@ class QuickSearchEnginePager @JvmOverloads constructor(
         val page = (centerX / contentWidth).toInt().coerceIn(0, pageCount - 1)
         val pageX = centerX - page * contentWidth - paddingStart
         val column = (pageX / cellWidth).toInt().coerceIn(0, config.columnCount - 1)
-        val row = ((centerY - paddingTop) / rowHeight).toInt().coerceIn(0, config.rowCount - 1)
-        val position = page * config.pageSize + row * config.columnCount + column
+        val row = ((centerY - paddingTop) / rowHeight).toInt().coerceIn(0, visibleRows - 1)
+        val position = page * visiblePageSize + row * config.columnCount + column
         return position.takeIf { it in engines.indices } ?: NO_POSITION
     }
 
@@ -682,7 +708,7 @@ class QuickSearchEnginePager @JvmOverloads constructor(
         get() = (width - paddingStart - paddingEnd).coerceAtLeast(1)
 
     private val pageCount: Int
-        get() = ((engines.size + config.pageSize - 1) / config.pageSize).coerceAtLeast(1)
+        get() = ((engines.size + visiblePageSize - 1) / visiblePageSize).coerceAtLeast(1)
 
     private val maxScrollX: Int
         get() = (pageCount - 1) * pageWidth

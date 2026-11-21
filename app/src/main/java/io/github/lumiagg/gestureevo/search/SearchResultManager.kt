@@ -163,6 +163,8 @@ class SearchResultManager(
         firstFrame: Deferred<Unit>? = null,
         inputWindowReady: Deferred<Unit>? = null
     ) {
+        bindAvailableSpaceListener()
+        onAvailableSpaceChanged()
         initializationJob = lifecycleScope.launch(uiDispatcher) {
             initMutex.withLock {
                 if (isInitialized) return@launch
@@ -174,7 +176,6 @@ class SearchResultManager(
                 firstFrame?.await()
                 inputWindowReady?.await()
                 initResultRecycler()
-                bindAvailableSpaceListener()
                 activity.lifecycle.addObserver(object : DefaultLifecycleObserver {
                     override fun onStop(owner: LifecycleOwner) {
                         dynamicShortcutSearch = DynamicShortcutSearch(activity)
@@ -573,6 +574,13 @@ class SearchResultManager(
     }
 
     internal fun onAvailableSpaceChanged() {
+        val contentHeight = maxFlexibleContentHeight() ?: return
+        val engineCard = binding.bottomEngineCard
+        if (engineCard.isVisible) {
+            val availableForPager = contentHeight - engineCardMargin() -
+                engineCard.paddingTop - engineCard.paddingBottom
+            binding.enginePager.limitHeight(availableForPager.coerceAtLeast(0))
+        }
         val available = maxResultPanelHeight()
         if (available == Int.MAX_VALUE || available == lastAvailablePanelHeight) return
         lastAvailablePanelHeight = available
@@ -609,8 +617,24 @@ class SearchResultManager(
         binding.resultRecycler.heightForCount(itemCount).coerceAtMost(maxResultPanelHeight())
 
     private fun maxResultPanelHeight(): Int {
+        val contentHeight = maxFlexibleContentHeight() ?: return Int.MAX_VALUE
+        val engineCard = binding.bottomEngineCard
+        val engineSpace = if (engineCard.isVisible) {
+            engineCard.measuredHeight + engineCardMargin()
+        } else {
+            0
+        }
+        return (contentHeight - engineSpace).coerceAtLeast(0)
+    }
+
+    private fun engineCardMargin(): Int {
+        if (bottomInputLayoutEnabled) return 0
+        return (binding.bottomEngineCard.layoutParams as? ViewGroup.MarginLayoutParams)?.bottomMargin ?: 0
+    }
+
+    private fun maxFlexibleContentHeight(): Int? {
         val parent = binding.searchContainer
-        if (parent.height <= 0) return Int.MAX_VALUE
+        if (parent.height <= 0) return null
         val card = binding.topSearchCard
         val margins = card.layoutParams as? ViewGroup.MarginLayoutParams
         val inputHeight = binding.searchInputRow.height.takeIf { it > 0 }
@@ -627,18 +651,8 @@ class SearchResultManager(
         val staticTopCardHeight = inputHeight + dragBarHeight + card.paddingTop + card.paddingBottom
         val topMargin = margins?.topMargin ?: 0
         val bottomMargin = margins?.bottomMargin ?: 0
-        val engineCard = binding.bottomEngineCard
-        val engineMargins = engineCard.layoutParams as? ViewGroup.MarginLayoutParams
-        val engineSpace = if (engineCard.isVisible) {
-            // Read the layout's measured height, including a partially collapsed
-            // engine card, without measuring the child a second time.
-            val engineHeight = engineCard.measuredHeight
-            engineHeight + if (bottomInputLayoutEnabled) 0 else engineMargins?.bottomMargin ?: 0
-        } else {
-            0
-        }
         val viewportHeight = parent.height - parent.paddingTop - parent.paddingBottom
-        return (viewportHeight - topMargin - bottomMargin - staticTopCardHeight - engineSpace)
+        return (viewportHeight - topMargin - bottomMargin - staticTopCardHeight)
             .coerceAtLeast(0)
     }
 

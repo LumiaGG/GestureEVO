@@ -317,14 +317,9 @@ class QuickSearchActivity : AppCompatActivity() {
         binding.root.doOnPreDraw {
             binding.root.post {
                 firstFrame.complete(Unit)
-                if (!isClosing && !isDestroyed) {
-                    lifecycleScope.launch(uiDispatcher) {
-                        engineManager.initEngineData()
-                        updateLandscapeEnginesVisibility(binding.searchInput.text?.toString().orEmpty())
-                    }
-                }
             }
         }
+        engineManager.ensureEnginesLoaded()
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -387,7 +382,6 @@ class QuickSearchActivity : AppCompatActivity() {
                         isHighlighting = false
                     }
                 }
-                this@QuickSearchActivity.updateLandscapeEnginesVisibility(text)
                 resultManager.updateSearchResults(analysis)
                 updateInputLines(text)
                 updateInputActionVisibility(text)
@@ -467,24 +461,6 @@ class QuickSearchActivity : AppCompatActivity() {
             )
             binding.imageAttachButton.contentDescription =
                 getString(R.string.quick_search_add_image)
-        }
-    }
-
-    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
-        super.onConfigurationChanged(newConfig)
-        if (!::binding.isInitialized) return
-        val text = binding.searchInput.text?.toString().orEmpty()
-        updateLandscapeEnginesVisibility(text)
-    }
-
-    private fun updateLandscapeEnginesVisibility(text: String) {
-        val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        if (!bottomInputLayoutEnabled) {
-            val shouldShow = engineManager.reservesEngineSpace && (!isLandscape || text.isEmpty())
-            if (binding.bottomEngineCard.isVisible != shouldShow) {
-                binding.bottomEngineCard.isVisible = shouldShow
-                resultManager.onAvailableSpaceChanged()
-            }
         }
     }
 
@@ -574,8 +550,17 @@ class QuickSearchActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (!::motionController.isInitialized || isClosing) return
+        engineManager.ensureEnginesLoaded()
+        motionController.refreshViewport()
+        onSearchViewportChanged()
+    }
+
     override fun onPause() {
         super.onPause()
+        if (::motionController.isInitialized) motionController.finishImeMotion()
         cancelPendingSearch()
         if (!::binding.isInitialized || !inputReadyForSave) return
         val currentText = binding.searchInput.text?.toString() ?: ""
@@ -623,6 +608,10 @@ class QuickSearchActivity : AppCompatActivity() {
         inputRevision++
         triggerSide = intent.getStringExtra(TriggerSide.EXTRA_TRIGGER_SIDE)
         if (!::binding.isInitialized) return
+        if (!isClosing) {
+            engineManager.ensureEnginesLoaded()
+            motionController.requestKeyboardOnActivation()
+        }
         if (::positionManager.isInitialized) {
             positionManager.onTriggerSideChanged()
         }
