@@ -613,7 +613,6 @@ class SearchResultManager(
         if (parent.height <= 0) return Int.MAX_VALUE
         val card = binding.topSearchCard
         val margins = card.layoutParams as? ViewGroup.MarginLayoutParams
-        val cardGap = activity.resources.getDimensionPixelSize(R.dimen.quick_search_card_gap)
         val inputHeight = binding.searchInputRow.height.takeIf { it > 0 }
             ?: binding.searchInputRow.layoutParams?.height?.coerceAtLeast(0)
             ?: 64.dp2px.toInt()
@@ -626,53 +625,21 @@ class SearchResultManager(
             0
         }
         val staticTopCardHeight = inputHeight + dragBarHeight + card.paddingTop + card.paddingBottom
-        val topMargin = (margins?.topMargin ?: 0).coerceAtLeast(8.dp2px.toInt())
-        val bottomMargin = (margins?.bottomMargin ?: 0).coerceAtLeast(8.dp2px.toInt())
-
-        val available = if (bottomInputLayoutEnabled) {
-            val engineHeight = if (binding.bottomEngineCard.isVisible) {
-                var h = binding.bottomEngineCard.height.takeIf { it > 0 }
-                    ?: binding.bottomEngineCard.measuredHeight.takeIf { it > 0 }
-                    ?: 0
-                if (h <= 0) {
-                    val widthSpec = View.MeasureSpec.makeMeasureSpec(
-                        (card.width.takeIf { it > 0 } ?: parent.width).coerceAtLeast(1),
-                        View.MeasureSpec.AT_MOST
-                    )
-                    val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-                    binding.bottomEngineCard.measure(widthSpec, heightSpec)
-                    h = binding.bottomEngineCard.measuredHeight
-                }
-                if (h <= 0) {
-                    h = 72.dp2px.toInt()
-                }
-                h
-            } else {
-                0
-            }
-            val staticHeight = staticTopCardHeight + engineHeight
-            val cardBottom = parent.height - parent.paddingBottom - bottomMargin
-            val topLimit = parent.paddingTop + topMargin
-            val maxCardHeight = (cardBottom - topLimit).coerceAtLeast(0)
-            return (maxCardHeight - staticHeight).coerceAtLeast(0)
+        val topMargin = margins?.topMargin ?: 0
+        val bottomMargin = margins?.bottomMargin ?: 0
+        val engineCard = binding.bottomEngineCard
+        val engineMargins = engineCard.layoutParams as? ViewGroup.MarginLayoutParams
+        val engineSpace = if (engineCard.isVisible) {
+            // Read the layout's measured height, including a partially collapsed
+            // engine card, without measuring the child a second time.
+            val engineHeight = engineCard.measuredHeight
+            engineHeight + if (bottomInputLayoutEnabled) 0 else engineMargins?.bottomMargin ?: 0
         } else {
-            val topLimit = card.top.takeIf { it > 0 }
-                ?: (parent.paddingTop + topMargin)
-            val bottomLimit = if (binding.bottomEngineCard.isVisible) {
-                val engineTop = binding.bottomEngineCard.top
-                if (engineTop > 0) {
-                    engineTop - cardGap
-                } else {
-                    val engineHeight = binding.bottomEngineCard.height.takeIf { it > 0 } ?: 72.dp2px.toInt()
-                    val engineBottomMargin = (binding.bottomEngineCard.layoutParams as? ViewGroup.MarginLayoutParams)?.bottomMargin ?: bottomMargin
-                    parent.height - parent.paddingBottom - engineBottomMargin - engineHeight - cardGap
-                }
-            } else {
-                parent.height - parent.paddingBottom - bottomMargin
-            }
-            (bottomLimit - topLimit).coerceAtLeast(0)
+            0
         }
-        return (available - staticTopCardHeight).coerceAtLeast(0)
+        val viewportHeight = parent.height - parent.paddingTop - parent.paddingBottom
+        return (viewportHeight - topMargin - bottomMargin - staticTopCardHeight - engineSpace)
+            .coerceAtLeast(0)
     }
 
     private fun applyPanelHeight(panel: View, height: Int) {

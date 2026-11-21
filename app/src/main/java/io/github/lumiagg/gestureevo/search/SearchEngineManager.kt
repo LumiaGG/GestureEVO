@@ -49,6 +49,8 @@ class SearchEngineManager(
     private var bottomInputLayoutEnabled = false
     private val iconBindings = WeakHashMap<RoundImageTextView, Any>()
     private var engineDataLoaded = false
+    internal val reservesEngineSpace: Boolean
+        get() = !engineDataLoaded || searchEngines.isNotEmpty()
     private var pendingSearch: Pair<String, Boolean>? = null
 
     private val lifecycleScope: LifecycleCoroutineScope
@@ -347,7 +349,6 @@ class SearchEngineManager(
 
     fun getCurrentSearchEngine(): SearchEngine? = currentSearchEngine
 
-    fun getSearchEngines(): List<SearchEngine> = searchEngines.toList()
 }
 
 /**

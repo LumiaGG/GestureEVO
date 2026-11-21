@@ -6,6 +6,7 @@
   android:layout_width="match_parent"
   android:layout_height="match_parent"
   android:background="@android:color/transparent"
+  android:clipToPadding="false"
   tools:context=".search.QuickSearchActivity">
   <com.google.android.material.card.MaterialCardView
     android:id="@+id/top_search_card"
