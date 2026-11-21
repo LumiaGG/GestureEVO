@@ -48,6 +48,8 @@ class ActionTextMenuCard(context: Context) : MaterialCardView(context) {
     private var menuActions = emptyList<ActionTextMenuItem>()
     var cardBlurEnabled = false
     var backgroundBlurEnabled = false
+    internal var emphasizeGlassSurface = false
+    internal var showGlassShadow = true
 
     private val menuContainer = EqualWidthMenuContainer(context).apply {
         orientation = LinearLayout.VERTICAL
@@ -89,11 +91,17 @@ class ActionTextMenuCard(context: Context) : MaterialCardView(context) {
     fun refreshTheme(config: Configuration? = null) {
         val source = config?.let { context.createConfigurationContext(it) } ?: context
         themedContext = DynamicColorUtils.dynamicThemedContext(source)
-        val surface = DynamicColorUtils.surfaceContainerHighColor.takeIf { it != 0 }
-            ?: resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHigh)
+        val isGlass = cardBlurEnabled || backgroundBlurEnabled
+        val prominentGlass = isGlass && emphasizeGlassSurface
+        val surface = if (prominentGlass) {
+            DynamicColorUtils.surfaceContainerHighestColor.takeIf { it != 0 }
+                ?: resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHighest)
+        } else {
+            DynamicColorUtils.surfaceContainerHighColor.takeIf { it != 0 }
+                ?: resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHigh)
+        }
         val onSurface = DynamicColorUtils.onSurfaceColor.takeIf { it != 0 }
             ?: resolveThemeColor(com.google.android.material.R.attr.colorOnSurface)
-        val isGlass = cardBlurEnabled || backgroundBlurEnabled
         GlassEffectUtils.applyCardStyle(
             card = this,
             color = surface,
@@ -102,8 +110,14 @@ class ActionTextMenuCard(context: Context) : MaterialCardView(context) {
             blurRegion = isGlass,
             backgroundBlurEnabled = false,
             overlayOnContent = true,
+            glassAlpha = if (prominentGlass) 0.82f else null,
         )
-        GlassEffectUtils.applyFixedGlassChrome(this)
+        if (prominentGlass) {
+            GlassEffectUtils.applyGlassEdge(this, alpha = 64)
+        } else {
+            GlassEffectUtils.applyGlassEdge(this)
+        }
+        GlassEffectUtils.setCardShadowEnabled(this, showGlassShadow)
         menuActions.forEachIndexed { index, action ->
             val row = menuContainer.getChildAt(index) ?: return@forEachIndexed
             rowLabel(row)?.setTextColor(
