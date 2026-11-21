@@ -50,7 +50,6 @@ import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity.Compan
 import io.github.lumiagg.gestureevo.settings.SearchEngineSettingsActivity.Companion.KEY_SHOW_CLIPBOARD_CONTENT
 import io.github.lumiagg.gestureevo.settings.SettingsActivity
 import io.github.lumiagg.gestureevo.ui.ActionTextMenuItem
-import io.github.lumiagg.gestureevo.ui.ActionTextMenuPopup
 import io.github.lumiagg.gestureevo.utils.ActionProxy
 import io.github.lumiagg.gestureevo.utils.ClipboardUtils
 import io.github.lumiagg.gestureevo.utils.PhoneDetector
@@ -99,6 +98,7 @@ class SearchResultManager(
     private var bottomInputLayoutEnabled = false
     private var resultDoubleColumnEnabled = false
     private var resultGridLayout: SearchResultGridLayout? = null
+    private var resultMenu: SearchResultMenu? = null
     private var showClipboardContentEnabled = true
     private val lifecycleScope: LifecycleCoroutineScope
         get() = activity.lifecycleScope
@@ -178,6 +178,7 @@ class SearchResultManager(
                 initResultRecycler()
                 activity.lifecycle.addObserver(object : DefaultLifecycleObserver {
                     override fun onStop(owner: LifecycleOwner) {
+                        resultMenu?.dismiss()
                         dynamicShortcutSearch = DynamicShortcutSearch(activity)
                     }
 
@@ -596,6 +597,7 @@ class SearchResultManager(
     }
 
     private fun applyResults(results: List<SearchResult>) {
+        resultMenu?.dismiss()
         resultGridLayout?.updateResults(results)
         // Commit on the UI thread at the timeline's swap point. An asynchronous diff
         // could otherwise replace the contents after they have already faded in.
@@ -1095,12 +1097,13 @@ class SearchResultManager(
                 hideResult(result)
             })
         }
-        ActionTextMenuPopup(
+        val menu = resultMenu ?: SearchResultMenu(
             activity,
             binding.root,
             cardBlurEnabled = activity.searchCardBlurEnabled,
             backgroundBlurEnabled = activity.searchWindowBlurEnabled,
-        ).show(anchorView, actions)
+        ).also { resultMenu = it }
+        menu.show(anchorView, actions)
     }
 
     private fun hideResult(result: SearchResult) {
