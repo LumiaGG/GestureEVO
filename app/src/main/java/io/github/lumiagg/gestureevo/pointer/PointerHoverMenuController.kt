@@ -60,10 +60,12 @@ internal class PointerHoverMenuController(
     private var vibrate = false
     private val selection = PointerMenuSelection()
     private var lastInputY = 0f
-    private val baseActions = listOf(PointerHoverAction.LONG_PRESS, PointerHoverAction.DOUBLE_TAP,
-        PointerHoverAction.SELECT)
-    private val linkActions = listOf(PointerHoverAction.LONG_PRESS, PointerHoverAction.DOUBLE_TAP,
-        PointerHoverAction.SELECT, PointerHoverAction.OPEN_LINK)
+    private val baseActions = listOf(
+        PointerHoverAction.SELECT,
+        PointerHoverAction.LONG_PRESS,
+        PointerHoverAction.DOUBLE_TAP,
+    )
+    private val linkActions = baseActions + PointerHoverAction.OPEN_LINK
     private var actions = baseActions
 
     val ownsInteraction: Boolean get() = state.hasOpened || state.phase == PointerHoverState.Phase.FINISHED
@@ -88,7 +90,7 @@ internal class PointerHoverMenuController(
         val origin = IntArray(2)
         parent.getLocationOnScreen(origin)
         screenPoint = Point(point.x + origin[0], point.y + origin[1])
-        menu.show(point.x, point.y)
+        menu.show(point.x, point.y, baseActions)
         val owner = CoroutineScope(service.coroutineContext + SupervisorJob(service.coroutineContext[Job]) + Dispatchers.Main.immediate)
         scope = owner
         owner.launch {

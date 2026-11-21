@@ -40,7 +40,7 @@ internal class PointerHoverMenuView(context: Context) : FrameLayout(context) {
         visibility = GONE
     }
 
-    fun show(x: Float, y: Float) {
+    fun show(x: Float, y: Float, actions: List<PointerHoverAction>) {
         anchorX = x
         anchorY = y
         menuY = null
@@ -48,9 +48,15 @@ internal class PointerHoverMenuView(context: Context) : FrameLayout(context) {
         rows.clear()
         menu.actions.removeAllViews()
         menu.root.scrollTo(0, 0)
-        addRow(PointerHoverAction.LONG_PRESS, context.getString(R.string.pointer_hover_long_press))
-        addRow(PointerHoverAction.DOUBLE_TAP, context.getString(R.string.pointer_hover_double_tap))
-        addRow(PointerHoverAction.SELECT, context.getString(R.string.pointer_hover_select))
+        actions.forEach { action ->
+            val label = when (action) {
+                PointerHoverAction.SELECT -> R.string.pointer_hover_select
+                PointerHoverAction.LONG_PRESS -> R.string.pointer_hover_long_press
+                PointerHoverAction.DOUBLE_TAP -> R.string.pointer_hover_double_tap
+                PointerHoverAction.OPEN_LINK -> R.string.link_radar_open_link
+            }
+            addRow(action, context.getString(label))
+        }
         visibility = VISIBLE
         refreshTheme()
     }
