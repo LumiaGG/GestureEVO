@@ -66,7 +66,7 @@ def main() -> int:
             if path.stat().st_size != entry["sizeBytes"] or sha256_file(path) != entry["sha256"]:
                 failures.append(f"Binary differs from its manifest: {relative}")
         for relative in paths:
-            if Path(relative).suffix in {".so", ".jar", ".tflite"} and relative not in declared:
+            if Path(relative).suffix in {".so", ".jar", ".tflite", ".onnx"} and relative not in declared:
                 failures.append(f"Binary input lacks a manifest entry: {relative}")
     for relative in ("build_release.ps1", "build_release.sh", "tools/build_release.py", "tools/publish_test_build.py"):
         if (ROOT / relative).exists():

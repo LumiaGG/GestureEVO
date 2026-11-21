@@ -71,7 +71,7 @@ jobs:
           dependency-graph-continue-on-failure: false
           artifact-retention-days: 1
       - name: Install fixed Android toolchain
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.0.12077973' 'cmake;3.22.1'
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Lint, test and package
         run: sh gradlew :app:lintDebug :app:testDebugUnitTest :app:assembleDebug --no-daemon
       - name: Upload Debug APK

@@ -21,7 +21,12 @@ class RepositoryPathTest(unittest.TestCase):
         self.assertFalse(forbidden_path("app/schemas/database/1.json"))
 
     def test_required_binary_inputs_are_allowed(self):
-        for path in ("gradle/wrapper/gradle-wrapper.jar", "third_party/litert/lib/arm64-v8a/libLiteRt.so", "app/src/main/modelAssets/models/ocr.tflite", ".env.example"):
+        for path in (
+            "gradle/wrapper/gradle-wrapper.jar",
+            "app/libs/tinypinyin-2.0.3.jar",
+            "app/src/main/assets/ocr/ch_PP-OCRv5_det_mobile.onnx",
+            ".env.example",
+        ):
             with self.subTest(path=path):
                 self.assertFalse(forbidden_path(path))
 
