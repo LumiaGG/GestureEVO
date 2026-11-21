@@ -1,0 +1,1270 @@
+{
+  "version": 2,
+  "locale": "zh-CN",
+  "index_path": "aoci.txt",
+  "exclude_dirs": [
+    "node_modules",
+    ".next",
+    ".output",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".tox",
+    ".nox",
+    "htmlcov"
+  ],
+  "exclude_root_dirs": [
+    "backup",
+    "backups",
+    "build",
+    "cache",
+    "coverage",
+    "dist",
+    "target",
+    "tmp",
+    "uploads",
+    "artifacts",
+    "vendor"
+  ],
+  "exclude_files": [
+    "*.backup.*",
+    "*.bak",
+    ".coverage"
+  ],
+  "exclude_exts": [],
+  "curation_exclude": [],
+  "hook_strict": false,
+  "ledger_enabled": true,
+  "line_ending_tolerance": true,
+  "cognition_refresh_threshold": 30,
+  "overview_delivery": {
+    "chunk_tokens": 7000
+  },
+  "managed_scope": {
+    "version": "managed-scope-policy/v2",
+    "profile": "production",
+    "observe_change_policy": "review_required",
+    "approval_mode": "inherit",
+    "approval_thresholds": {
+      "entry_removal_count": 25,
+      "entry_removal_percent": 25
+    },
+    "rules": [
+      {
+        "rule_id": "starter-vendored-static-libs",
+        "action": "observe",
+        "pattern": "**/static/**/libs/**",
+        "pattern_kind": "glob",
+        "reason": "vendored static assets and generated bundles are observed, not indexed; delete this rule before the first scan if the path holds your own code",
+        "source": "builtin",
+        "created_by": "aoci-init",
+        "order": 100,
+        "enabled": true
+      },
+      {
+        "rule_id": "starter-vendored-static-lib",
+        "action": "observe",
+        "pattern": "**/static/**/lib/**",
+        "pattern_kind": "glob",
+        "reason": "vendored static assets and generated bundles are observed, not indexed; delete this rule before the first scan if the path holds your own code",
+        "source": "builtin",
+        "created_by": "aoci-init",
+        "order": 101,
+        "enabled": true
+      },
+      {
+        "rule_id": "starter-vendored-static-plugins",
+        "action": "observe",
+        "pattern": "**/static/**/plugins/**",
+        "pattern_kind": "glob",
+        "reason": "vendored static assets and generated bundles are observed, not indexed; delete this rule before the first scan if the path holds your own code",
+        "source": "builtin",
+        "created_by": "aoci-init",
+        "order": 102,
+        "enabled": true
+      },
+      {
+        "rule_id": "starter-vendored-min-js",
+        "action": "observe",
+        "pattern": "**/*.min.js",
+        "pattern_kind": "glob",
+        "reason": "vendored static assets and generated bundles are observed, not indexed; delete this rule before the first scan if the path holds your own code",
+        "source": "builtin",
+        "created_by": "aoci-init",
+        "order": 103,
+        "enabled": true
+      },
+      {
+        "rule_id": "starter-vendored-min-css",
+        "action": "observe",
+        "pattern": "**/*.min.css",
+        "pattern_kind": "glob",
+        "reason": "vendored static assets and generated bundles are observed, not indexed; delete this rule before the first scan if the path holds your own code",
+        "source": "builtin",
+        "created_by": "aoci-init",
+        "order": 104,
+        "enabled": true
+      },
+      {
+        "rule_id": "starter-vendored-source-map",
+        "action": "observe",
+        "pattern": "**/*.map",
+        "pattern_kind": "glob",
+        "reason": "vendored static assets and generated bundles are observed, not indexed; delete this rule before the first scan if the path holds your own code",
+        "source": "builtin",
+        "created_by": "aoci-init",
+        "order": 105,
+        "enabled": true
+      },
+      {
+        "rule_id": "starter-vendored-fonts",
+        "action": "observe",
+        "pattern": "**/fonts/**",
+        "pattern_kind": "glob",
+        "reason": "vendored static assets and generated bundles are observed, not indexed; delete this rule before the first scan if the path holds your own code",
+        "source": "builtin",
+        "created_by": "aoci-init",
+        "order": 106,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-001",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/litert_shared_library_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-002",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/litert_source_location.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-003",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/litert_source_location_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-004",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/litert_tensor_buffer_utils.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-005",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/litert_tensor_buffer_utils.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-006",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/litert_tflite_error_status_builder.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-007",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/scoped_file.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-008",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/scoped_file.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-009",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/scoped_file_posix.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-010",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/scoped_file_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-011",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/scoped_file_win.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-012",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/scoped_weight_source.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-013",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/internal/test_shared_library.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-014",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_any.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-015",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_any_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-016",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_buffer_ref.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-017",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_buffer_ref_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-018",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_common.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-019",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_compiled_model.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-020",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_compiled_model.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-021",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_compiled_model_google_tensor_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-022",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_compiled_model_gpu_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-023",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_compiled_model_jetgpu_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-024",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_compiled_model_metal_test.mm",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-025",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_compiled_model_qualcomm_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-026",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_compiled_model_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-027",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_compiled_model_vulkan_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-028",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_compiled_model_webgpu_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-029",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_custom_op_kernel.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-030",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_custom_op_kernel.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-031",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_custom_op_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-032",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_element_type.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-033",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_element_type_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-034",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_environment.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-035",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_environment_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-036",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_environment_options_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-037",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_environment_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-038",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_event.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-039",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_event_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-040",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_expected.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-041",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_expected_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-042",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_layout.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-043",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_layout_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-044",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_macros.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-045",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_macros.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-046",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_macros_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-047",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_model.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-048",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_model.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-049",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_model_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-050",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_opaque_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-051",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_opaque_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-052",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_opaque_options_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-053",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-054",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-055",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_options_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-056",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_profiler.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-057",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_ranked_tensor_type.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-058",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_tensor_buffer.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-059",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_tensor_buffer.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-060",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_tensor_buffer_requirements.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-061",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_tensor_buffer_requirements_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-062",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_tensor_buffer_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-063",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_tensor_buffer_test.mm",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-064",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_tensor_buffer_types.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-065",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/litert_tensor_buffer_types.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-066",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/BUILD",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-067",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/CMakeLists.txt",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-068",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_compiler_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-069",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_compiler_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-070",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_compiler_options_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-071",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_cpu_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-072",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_cpu_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-073",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_cpu_options_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-074",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_darwinn_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-075",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_darwinn_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-076",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_darwinn_options_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-077",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_google_tensor_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-078",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_google_tensor_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-079",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_gpu_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-080",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_gpu_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-081",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_gpu_options_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-082",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_intel_openvino_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-083",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_intel_openvino_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-084",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_intel_openvino_options_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-085",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_magic_number_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-086",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_magic_number_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-087",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_mediatek_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-088",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_mediatek_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-089",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_qualcomm_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-090",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_qualcomm_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-091",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_runtime_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-092",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_runtime_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-093",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_runtime_options_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-094",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_webnn_options.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-095",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_webnn_options.h",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      },
+      {
+        "rule_id": "defer-existing-litert-cpp-096",
+        "action": "exclude",
+        "pattern": "third_party/litert/include/litert/cc/options/litert_webnn_options_test.cc",
+        "pattern_kind": "file",
+        "reason": "用户要求暂缓补齐尚未索引的 LiteRT C++ 内容，保留现有条目。",
+        "source": "user",
+        "created_by": "codex",
+        "order": 0,
+        "enabled": true
+      }
+    ]
+  },
+  "cognition_budget": {
+    "version": "cognition-budget-policy/v1",
+    "mode": "enforce",
+    "whole_index": {
+      "target_tokens": 200000,
+      "warning_tokens": 300000,
+      "max_tokens": 400000
+    },
+    "r": [
+      {
+        "min_c": 1,
+        "max_c": 4,
+        "target_tokens": 25,
+        "max_tokens": 50
+      },
+      {
+        "min_c": 5,
+        "max_c": 7,
+        "target_tokens": 45,
+        "max_tokens": 90
+      },
+      {
+        "min_c": 8,
+        "max_c": 8,
+        "target_tokens": 70,
+        "max_tokens": 140
+      },
+      {
+        "min_c": 9,
+        "max_c": 9,
+        "target_tokens": 90,
+        "max_tokens": 180
+      }
+    ],
+    "s": [
+      {
+        "min_c": 1,
+        "max_c": 4,
+        "target_tokens": 20,
+        "max_tokens": 40
+      },
+      {
+        "min_c": 5,
+        "max_c": 7,
+        "target_tokens": 40,
+        "max_tokens": 80
+      },
+      {
+        "min_c": 8,
+        "max_c": 8,
+        "target_tokens": 70,
+        "max_tokens": 140
+      },
+      {
+        "min_c": 9,
+        "max_c": 9,
+        "target_tokens": 100,
+        "max_tokens": 200
+      }
+    ]
+  },
+  "installed_agents": [
+    "codex"
+  ],
+  "automation": {
+    "mode": "auto"
+  },
+  "ai": {
+    "enabled": false,
+    "provider": "openai-compatible",
+    "base_url": "",
+    "model": "",
+    "api_key_env": "",
+    "timeout_seconds": 0,
+    "max_concurrency": 0,
+    "max_input_tokens": 0,
+    "token_accounting": "auto",
+    "prompt_snapshot": "redacted"
+  }
+}

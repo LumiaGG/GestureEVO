@@ -1,0 +1,1162 @@
+#AOCI-CODE-VOLUME: 1
+
+===D:/Project/my/GestureEVO/GestureEVO/===
+.editorconfig[FC3T]: F:统一源码编辑默认值：UTF-8、LF、4 空格缩进和文件末尾换行 | R:code:.gitattributes | A:- | S:Markdown 保留行尾空格，批处理用 CRLF，JSON、YAML、XML 用 2 空格
+.gitattributes[FC4T]: F:规范 Git 文本换行并标记库、模型及部分图片为二进制 | R:code:.editorconfig | A:- | S:批处理检出用 CRLF，Gradle Unix 启动脚本用 LF
+.gitignore[FS5T]: F:排除本地工具状态、构建产物、签名材料和环境文件 | R:code:SECURITY.md,code:app/.gitignore | A:- | S:允许提交 .env.example；忽略规则不影响已经跟踪的文件
+AGENTS.md[SG6S]: F:规定开发审查、签名发行和 AOCI 建立与维护的项目协作约束 | R:code:CONTRIBUTING.md,code:docs/development-guidelines.md,code:.github/workflows/release.yml | A:- | S:发行说明由用户审核后发布；AOCI 语义写入依据当前 Guide 和绑定源码
+CONTRIBUTING.md[SG5T]: F:说明小范围贡献、第三方归属、PR 说明和检查触发方式 | R:code:docs/development-guidelines.md,code:.github/workflows/android.yml,code:README.md | A:- | S:保留 Room 历史 schema 作为迁移依据
+LICENSE[SS4M]: F:提供 GNU GPL v3 许可全文，涵盖修改与分发、对应源码及专利条款 | R:code:NOTICE | A:- | S:项目仅采用第 3 版的声明见 NOTICE
+NOTICE[SS4T]: F:声明项目 GPL-3.0-only 并列出保留各自许可的第三方组件 | R:code:LICENSE,code:third_party/README.md,code:app/src/main/assets/licenses/open_source_notices.txt | A:- | S:本地 LiteRT 适配层包含项目修改
+PRIVACY_POLICY.md[SS5T]: F:说明功能触发的数据处理、权限、日志留存、备份和用户权利 | R:code:USER_AGREEMENT.md,code:app/src/main/AndroidManifest.xml | A:- | S:导出 ZIP 未加密，可能包含 WebDAV 凭据；本地 OCR 在设备端运行
+README.md[SG4T]: F:概述手势、搜索、屏幕内容、便签与备份功能以及 Android 本地构建方式 | R:code:app/build.gradle.kts,code:CONTRIBUTING.md,code:NOTICE | A:- | S:Debug 通过应用 ID 后缀与正式版共存
+SECURITY.md[SS5T]: F:规定私密漏洞报告及公开证书、发布密钥和历史凭据的处理 | R:code:.gitignore,code:.github/workflows/release.yml,code:signing/release-certificate.sha256 | A:- | S:公开渠道只请求开通私密报告；当前工作树清理不等于清除历史
+USER_AGREEMENT.md[SS4T]: F:说明 GestureEVO 使用约定、权限条件、备份责任、知识产权和第三方服务 | R:code:PRIVACY_POLICY.md,code:LICENSE | A:- | S:协议保留开源许可证授予的权利
+build.gradle.kts[FV4T]: F:在根项目集中声明模块可用的 Android、Kotlin、KSP 与 Room 插件 | R:code:gradle/libs.versions.toml | A:- | S:-
+gradle.properties[FV4T]: F:设置 Gradle 堆和编码、AndroidX、Kotlin 官方风格与非传递 R 类 | R:- | A:- | S:-
+gradlew[OV4M]: F:为 POSIX 环境配置 Java 并启动仓库内 Gradle Wrapper | R:code:gradle/wrapper/gradle-wrapper.properties | A:- | S:-
+gradlew.bat[OV4T]: F:为 Windows 命令行解析 Java 环境并启动仓库内 Gradle Wrapper | R:code:gradle/wrapper/gradle-wrapper.properties | A:- | S:-
+settings.gradle.kts[FV5T]: F:配置 Gradle 插件和依赖仓库并纳入唯一的 app 模块 | R:code:app/build.gradle.kts | A:- | S:启用 FAIL_ON_PROJECT_REPOS，依赖仓库集中声明
+
+===D:/Project/my/GestureEVO/GestureEVO/.github/ISSUE_TEMPLATE/===
+bug_report.md[SQ2T]: F:提供 Bug 报告表单，收集版本、设备、复现步骤和预期与实际行为 | R:code:SECURITY.md | A:- | S:附日志前清除个人信息
+
+===D:/Project/my/GestureEVO/GestureEVO/.github/===
+dependabot.yml[OV4T]: F:每月分别分组更新 GitHub Actions 和 Gradle 依赖，各限制一个打开的 PR | R:code:.github/workflows/android.yml,code:gradle/libs.versions.toml | A:- | S:Gradle 组接收小版本和补丁；Wrapper、Kotlin、KSP、AGP 留作协同升级
+pull_request_template.md[SQ3T]: F:要求 PR 交代问题与行为、设计与兼容、实际验证及第三方来源 | R:code:docs/development-guidelines.md | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/.github/workflows/===
+android.yml[OQ7S]: F:执行双平台仓库检查并按手动输入运行 Android lint、单测和 Debug 打包 | R:code:tools/check_repository.py,code:app/build.gradle.kts,code:CONTRIBUTING.md | A:Repository checks | S:PR 不自动触发；push 仅 main 和 checks/**；依赖图仅从主线的已验证手动 Android 构建提交
+release.yml[OV8S]: F:由版本标签构建签名 APK、校验公开签名指纹并准备发行附件和草稿 | R:code:app/build.gradle.kts,code:signing/release-certificate.sha256,code:tools/check_repository.py | A:Signed release | S:标签必须匹配检出提交及 versionName；拒绝覆盖已正式发布的 Release
+
+===D:/Project/my/GestureEVO/GestureEVO/app/===
+.gitignore[FV1T]: F:忽略 Android 应用模块下的构建输出目录 | R:code:.gitignore | A:- | S:-
+build.gradle.kts[FV8S]: F:配置 Android 变体、签名、原生编译、Room schema 与生成资产打包链 | R:code:app/src/main/cpp/CMakeLists.txt,code:tools/compress_ocr_models.py,code:.github/workflows/release.yml | A:compressOcrModels,prepareProjectDocuments | S:四个环境值齐备才设置 Release 签名；模型 XZ 资产按原样存入 APK，历史 schema 作为 androidTest 资产
+proguard-rules.pro[FV3T]: F:声明 XML Pull 解析器保留规则，并压制特定 XML 与 SLF4J 警告 | R:code:app/build.gradle.kts | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/schemas/io.github.lumiagg.gestureevo.db.DataBase/===
+1.json[PD5L]: F:保存 Room v1 八张表的 DDL、索引和身份哈希，用于迁移测试的旧库重建 | R:code:app/schemas/io.github.lumiagg.gestureevo.db.DataBase/2.json | A:- | S:保留旧版表结构，迁移测试直接据此建库
+2.json[PD5L]: F:保存 Room v2 表结构和身份哈希，包含按包、快捷方式及用户序号标识的动态快捷方式表 | R:code:app/schemas/io.github.lumiagg.gestureevo.db.DataBase/1.json | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/androidTest/java/io/github/lumiagg/gestureevo/utils/===
+CardRegionBlurTest.kt[TU5M]: F:验证卡片模糊在重新挂载、停用、反射失败、窗口重建时清理宿主和 Drawable | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/CardRegionBlur.kt | A:CardRegionBlurTest | S:-
+DynamicShortcutStorageTest.kt[TD5S]: F:在 Room 上验证动态快捷方式导入过滤、拼音检索、多用户身份及 v1 到 v2 数据保留 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/DynamicShortcutMigration.kt,code:app/schemas/io.github.lumiagg.gestureevo.db.DataBase/1.json | A:DynamicShortcutStorageTest | S:-
+IconPresentationTest.kt[TU4T]: F:验证列表图标沿用全局圆角、轮盘维持自身形状以及快捷方式续跑凭据仅可消费一次 | R:- | A:IconPresentationTest | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/debug/res/values/===
+strings.xml[FL2T]: F:为 Debug 变体覆盖应用显示名为 GestureEVO Debug | R:code:app/build.gradle.kts | A:app_name | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/===
+AndroidManifest.xml[FG8M]: F:声明 Android 应用入口、权限、分享和链接路由、系统服务以及文件提供者 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/EVOApplication.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/ExternalActionProxyActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureService.kt | A:MAIN/LAUNCHER, ACTION_SEND, ACTION_VIEW | S:无障碍及通知监听服务由各自系统绑定权限保护；临时快捷方式续跑 Activity 不对外导出
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/aidl/io/github/lumiagg/gestureevo/===
+ITouchInterruptionGuard.aidl[IM5T]: F:向触摸中断服务返回当前请求是否仍有效 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shizuku/UserService.kt | A:isCurrent | S:注入 DOWN 前立即查验，撤销无需等待 UI 线程
+IUserService.aidl[IG7T]: F:定义 Shizuku 用户服务的命令执行、诊断读取及触摸流 Binder 接口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shizuku/UserService.kt,code:app/src/main/aidl/io/github/lumiagg/gestureevo/ITouchInterruptionGuard.aidl | A:IUserService | S:destroy 固定为 Shizuku 保留事务号 16777114，普通调用保留原事务号
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/aidl/io/github/lumiagg/gestureevo/utils/===
+ExecuteResult.aidl[IG3T]: F:声明用户服务执行结果为 AIDL parcelable | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ExecuteResult.kt | A:ExecuteResult | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/assets/licenses/===
+MMGG-GPL-3.0.txt[SS3L]: F:随应用打包 MMGG 导入代码所需的 GPL v3 许可全文 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/MMGG-NOTICE | A:- | S:-
+open_source_notices.txt[SS4M]: F:列出 APK 使用的运行库、模型和数据的许可及版权声明 | R:code:NOTICE,code:app/build.gradle.kts | A:- | S:主项目许可全文打包为 licenses/project_license.txt
+segmenter_licenses.txt[SS3T]: F:保留智能分词词典上游 jieba 与 THUOCL 的 MIT 许可和来源 | R:code:app/src/main/assets/segmenter/zh_core_dict.txt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/assets/===
+linkgo_builtin_rules.json[FB5T]: F:提供从 LinkGo 转换导入的内置域名匹配、提取与打开规则数据 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkGoRuleConverter.kt | A:- | S:部分规则通过正则捕获组构造目标模板
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/assets/segmenter/===
+zh_core_dict.txt[FA5L]: F:提供 60000 项中文分词词频，合并 jieba、THUOCL 和项目词条 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/SmartSegmenter.kt,code:tools/generate_segmenter_dict.py | A:词项与词频，以制表符分隔 | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/assets/shortcuts/===
+other_user_shortcuts.json[FU4L]: F:提供可供快捷方式选择器导入的用户分享条目，含包名、说明与导入链接 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/ShortcutSelectBottomSheet.kt | A:name,pkg,uploadedBy,scheme,introduction | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/cpp/===
+CMakeLists.txt[FV7S]: F:配置 PaddleOCR JNI 库与 LiteRT、Abseil、Android 原生库的编译链接 | R:code:third_party/litert/CMakeLists.txt,code:app/src/main/cpp/ppocrv5_jni.cpp,code:app/build.gradle.kts | A:ppocrv5_jni | S:关闭可选硬件支持；Release 加入 ARMv8 优化和 ThinLTO
+async_inference.h[IA5S]: F:封装 LiteRT 同步及异步推理、张量事件与流水线管理 | R:code:app/src/main/cpp/litert_cc_wrapper.h | A:AsyncPipeline | S:-
+image_utils.cpp[KA6M]: F:实现 OCR 图像双线性缩放、透视裁剪及模型输入归一化 | R:code:app/src/main/cpp/image_utils.h,code:app/src/main/cpp/text_recognizer.cpp | A:PerspectiveTransform,ResizeBilinear,NormalizeImageNet,NormalizeRecognition | S:近似平行四边形走仿射路径，其他四边形由单应变换采样
+image_utils.h[KA4T]: F:声明检测和识别共享的图像采样、归一化及透视变换接口 | R:code:app/src/main/cpp/image_utils.cpp | A:ResizeBilinear,NormalizeImageNet,NormalizeRecognition,PerspectiveTransform,PerspectiveTransformFloat32Raw,PerspectiveTransformUint8 | S:-
+litert_cc_wrapper.h[IA5M]: F:适配 LiteRT 编译模型的创建、张量缓冲分配和运行接口 | R:code:app/src/main/cpp/async_inference.h,code:app/src/main/cpp/litert_options_lite.cc | A:CompiledModelWrapper,HwAccelerator | S:-
+litert_config.h[FP4S]: F:集中定义 LiteRT 缓存、零拷贝、异步推理和原生模型缓冲参数 | R:code:app/src/main/cpp/ocr_engine.cpp | A:litert_config | S:配置常量不等于运行时实际启用的后端
+litert_env_manager.h[RA6S]: F:持有共享 LiteRT 环境并为编译选项及缓存目录提供初始化入口 | R:code:app/src/main/cpp/litert_cc_wrapper.h | A:LiteRtEnvManager | S:带配置的环境创建失败时回退到无选项环境
+litert_options_lite.cc[IA5S]: F:提供本地 LiteRT Options 实现，初始化并拼装 CPU、GPU、运行时和编译器选项 | R:code:app/src/main/cpp/CMakeLists.txt | A:Options | S:不支持的可选硬件选项返回 Unsupported；Opaque 选项装配消耗暂存内容
+litert_tensor_buffer_types_lite.cc[IA3T]: F:为本地 LiteRT 实现张量缓冲种类到诊断文本的映射 | R:code:app/src/main/cpp/CMakeLists.txt | A:BufferTypeToString | S:未知值保留数字以便诊断
+logging.h[CO3T]: F:给原生 OCR 提供统一 Android 日志宏 | R:code:app/src/main/cpp/ocr_engine.cpp | A:LOGD,LOGW,LOGE | S:NDEBUG 同时禁用 Debug 和 Warning，Error 仍输出
+ocr_engine.cpp[AA7M]: F:编排文本框检测、面积过滤、识别模型选择和 OCR 计时 | R:code:app/src/main/cpp/ocr_engine.h,code:app/src/main/cpp/text_recognizer.cpp,code:app/src/main/cpp/text_detector.cpp | A:OcrEngine,Process,RecognizeTextBox,DetectAndFilterTextBoxes | S:后端初始化链当前仅 CPU；估算特征宽度超过 320 改用 640 识别器
+ocr_engine.h[AA5T]: F:定义 OCR 检测、识别、组合处理及性能统计的 C++ 接口 | R:code:app/src/main/cpp/ocr_engine.cpp,code:app/src/main/cpp/text_detector.h,code:app/src/main/cpp/text_recognizer.h | A:OcrEngine,OcrResult,Benchmark,AcceleratorType | S:-
+postprocess.cpp[KA6M]: F:把 OCR 检测二值图上的连通域转成轮廓和旋转包围框 | R:code:app/src/main/cpp/postprocess.h,code:app/src/main/cpp/text_detector.cpp | A:FindContours,MinAreaRect | S:在下采样图找连通域，回映原坐标后拟合；密集轮廓有数量上限
+postprocess.h[KA4T]: F:定义 OCR 轮廓及旋转框角点计算接口 | R:code:app/src/main/cpp/postprocess.cpp | A:FindContours,MinAreaRect | S:-
+ppocrv5_jni.cpp[IA7M]: F:把 Java/Kotlin OCR 调用适配为原生引擎句柄、Bitmap 输入及 JVM 结果对象 | R:code:app/src/main/cpp/ocr_engine.cpp,code:app/src/main/cpp/ppocrv5_jni.h | A:NativeBridge JNI | S:初始化失败返回零句柄；JNI 当前将请求的加速器映射到 CPU
+ppocrv5_jni.h[IA5T]: F:声明原生 OCR 对 JVM 暴露的创建、识别、销毁及统计入口 | R:code:app/src/main/cpp/ppocrv5_jni.cpp | A:JNI declarations | S:-
+stb_image_write.h[LP3L]: F:提供上游 stb 图像写入的单头库，支持文件和回调输出 | R:code:app/src/main/cpp/text_recognizer.cpp,code:NOTICE | A:stbi_write_jpg,stbi_write_png,stbi_write_bmp,stbi_write_tga,stbi_write_hdr | S:实现宏应在一个编译单元定义
+text_detector.cpp[KA7L]: F:用 LiteRT 模型检测 OCR 文本区域并把概率图还原为源图坐标中的旋转框 | R:code:app/src/main/cpp/text_detector.h,code:app/src/main/cpp/postprocess.cpp,code:app/src/main/cpp/ocr_engine.cpp | A:TextDetector,Create,Detect | S:预处理保存缩放与填充参数供坐标回映；按实际张量类型处理量化输入输出
+text_detector.h[AA5T]: F:声明检测器生命周期、图像输入和包含角度及置信度的文本框结果 | R:code:app/src/main/cpp/text_detector.cpp | A:TextDetector,RotatedRect | S:-
+text_recognizer.cpp[KA7L]: F:执行 OCR 文本框矫正和识别推理，按字符字典解码时序输出并计算置信度 | R:code:app/src/main/cpp/text_recognizer.h,code:app/src/main/cpp/image_utils.cpp,code:app/src/main/cpp/stb_image_write.h | A:TextRecognizer,Create,Recognize | S:识别模型与初始化时分配的输入宽度绑定；图像块的调试转储由单独开关控制
+text_recognizer.h[AA5T]: F:定义单个文本框识别器和文本、置信度结果契约 | R:code:app/src/main/cpp/text_recognizer.cpp | A:TextRecognizer,RecResult | S:-
+zero_copy_buffer.h[IP5S]: F:封装 LiteRT 张量的宿主内存及硬件缓冲绑定、互操作支持查询 | R:code:app/src/main/cpp/litert_cc_wrapper.h | A:CreateFromHostMemory,CreateFromAhwb,CreateManagedAhwb,CreateFromGlBuffer | S:硬件专用入口受编译开关控制
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/===
+EVOApplication.kt[EG7S]: F:初始化进程诊断、外观和语言，协调应用与快捷方式目录刷新及 OCR 预加载回收 | R:code:app/src/main/AndroidManifest.xml,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/DynamicColorUtils.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/AppLogger.kt | A:EvoApplication,refreshSearchCatalogs | S:设置视图可能早于手势服务创建，启动时须先填充全局配色；包替换跳过卸载事件
+ExternalActionProxyActivity.kt[EI7M]: F:接收外部动作链接，检查授权或征求用户选择后交给公共动作执行器 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionProxy.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ExternalActionPermissionStore.kt | A:ExternalActionProxyActivity | S:未知调用方只能单次授权，持久授权按动作或具体链接区分
+MainActivity.kt[EU5T]: F:将启动器入口转发到首次引导、搜索或设置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsGuideActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsActivity.kt | A:MainActivity | S:根据设置决定转发窗口是否进入新任务
+ShareOpenAppProxyActivity.kt[EU6S]: F:处理系统分享、剪贴板入口及内部目标应用打开结果 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ClipboardToInspireActivityUtils.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionProxy.kt | A:ShareOpenAppProxyActivity | S:分享载荷可立即处理；剪贴板动作等待窗口获得焦点，并有短延时兜底
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/db/===
+APPDao.kt[PD6S]: F:提供应用目录查询、状态位更新和按拼音、名称、使用时间检索 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/APPModel.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/DataBase.kt | A:APPDao | S:只有部分状态过滤检索排除软删除记录；按包更新可覆盖多个用户条目
+APPModel.kt[PD5T]: F:保存应用包及用户、使用统计、状态位和继承的搜索字段 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/BaseModel.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/APPDao.kt | A:APPModel | S:比较采用名称、包名、用户与状态，不含使用统计
+BaseModel.kt[PD6T]: F:提供 Room 搜索实体的自增主键、状态位、软删除与派生拼音字段 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/APPModel.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/ContactModel.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/PinyinUtils.kt | A:BaseModel,getState,setState,reverseState | S:写入 name 时同步重算全键、双键与 T9 的拼音和首字母字段
+ContactDao.kt[PD5S]: F:定义联系人 Room 查询及写入，支持拼音、首字母和状态位筛选 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/ContactModel.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/DataBase.kt | A:ContactDao | S:-
+ContactModel.kt[PD4T]: F:以 Room 实体保存联系人 ID、电话号码、头像 URI 和通用搜索字段 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/BaseModel.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/ContactDao.kt | A:ContactModel | S:-
+Dao.kt[PD5T]: F:在 IO 调度器对应用目录执行新增、更新、软删除和整表清除 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/APPDao.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/DatabaseManager.kt | A:insertDB,updateDB,deleteDB,clearDBAPP | S:新增与更新清除软删除标记；清表后另行重置序列
+DataBase.kt[PD7T]: F:定义 Room v2 的九类实体、DAO 工厂及常用 DAO 访问属性 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/DatabaseManager.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/DynamicShortcutModel.kt,code:app/schemas/io.github.lumiagg.gestureevo.db.DataBase/2.json | A:DataBase,dynamicShortcutDao | S:历史 schema 须保留用于迁移验证；数据库实例创建由 DatabaseManager 注册迁移
+DatabaseManager.kt[PD7T]: F:惰性创建共享 Room 数据库并暴露应用各功能的 DAO | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/DataBase.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/DynamicShortcutMigration.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/EVOApplication.kt | A:DatabaseManager.db,getAPPDao,getContactDao,getShortcutDao | S:使用进程 Application 上下文和固定库名 GestureEvoRoom.db，注册 1→2 迁移
+DynamicShortcutMigration.kt[PD6T]: F:在 Room 1→2 迁移中加入可持久化的动态快捷方式表 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/DynamicShortcutModel.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/DatabaseManager.kt | A:MIGRATION_1_2 | S:沿用已有表和记录，新增表使用包名、快捷方式 ID 与用户序号复合键
+DynamicShortcutModel.kt[PD6T]: F:持久化动态快捷方式的导入状态及标签，提供预登记和确认 DAO | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/DynamicShortcutMigration.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/DataBase.kt | A:DynamicShortcutModel,DynamicShortcutDao | S:预登记采用 IGNORE 保留已确认状态；查询仅返回已确认记录
+ExternalActionPermissionDao.kt[PI5T]: F:按调用包和授权作用域查询、替换或删除外部动作授权 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/ExternalActionPermissionModel.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ExternalActionPermissionStore.kt | A:ExternalActionPermissionDao | S:-
+ExternalActionPermissionModel.kt[PI5T]: F:定义外部动作的持久授权记录和 ACTION、LINK 作用域 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/ExternalActionPermissionDao.kt | A:ExternalActionPermissionModel,ScopeType | S:调用包、域类型和域值共同唯一
+HiddenSearchResultDao.kt[PD4T]: F:提供隐藏搜索结果的键订阅、按隐藏时间排列的明细和撤销操作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/HiddenSearchResultModel.kt | A:HiddenSearchResultDao | S:-
+HiddenSearchResultModel.kt[PD3T]: F:保存被隐藏搜索结果的稳定键、展示名和隐藏时间 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/HiddenSearchResultDao.kt | A:HiddenSearchResultModel | S:-
+PinPoolDao.kt[PD5T]: F:提供便签的分类排序、内容哈希查找和过期未固定项清理 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/PinPoolModel.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinPoolStore.kt | A:PinPoolDao | S:按分类匹配哈希时排除空哈希；固定时间不大于零视为未固定
+PinPoolModel.kt[PD5T]: F:定义便签文本或图片路径、分类、时间和内容哈希的 Room 表 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/PinPoolDao.kt | A:PinPoolModel | S:Kotlin 类名与实际表名 PinPoolItem 不同
+SearchHistoryDao.kt[PD5T]: F:管理搜索历史增删与包含匹配，优先返回前缀命中 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/SearchHistoryModel.kt | A:SearchHistoryDao | S:相同优先级按更新时间降序，插入同文覆盖旧项
+SearchHistoryModel.kt[PD3T]: F:以查询文本为主键保存搜索历史的更新时间 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/SearchHistoryDao.kt | A:SearchHistoryModel | S:-
+SearchResultPinDao.kt[PD4T]: F:按原查询读取置顶搜索结果并持久化或撤销单项置顶 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/SearchResultPinModel.kt | A:SearchResultPinDao | S:-
+SearchResultPinModel.kt[PD4T]: F:用查询与结果键的复合主键保存置顶时间 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/SearchResultPinDao.kt | A:SearchResultPinModel | S:-
+ShortcutDao.kt[PD5S]: F:定义静态快捷方式目录的 Room CRUD、状态过滤和拼音与首字母查询 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/ShortcutModel.kt | A:ShortcutDao | S:-
+ShortcutModel.kt[PD4T]: F:以 Room 保存静态快捷方式 URI 和继承的状态与派生搜索键 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/BaseModel.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/ShortcutDao.kt | A:ShortcutModel | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/===
+AppLogger.kt[RO7S]: F:协调应用结构化日志写入、进程存储、详细日志开关及丢失计数 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/LogStore.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/ProblemSessions.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/EVOApplication.kt | A:AppLogger,event,crash,ordered,health | S:常规事件进入单线程有界队列；崩溃写入限时，详细模式按单调时钟在 30 分钟后失效
+DiagnosticProcess.kt[IO3T]: F:从诊断模块调用共享有界进程执行并返回退出码与输出 | R:- | A:DiagnosticProcess.run | S:-
+DiagnosticRelay.kt[IO5T]: F:把共享进程转发和逐行读取适配为诊断流，附带定时进程清理 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/process/ProcessStreamRelay.kt | A:DiagnosticRelay,DiagnosticLines | S:-
+LogArchive.kt[RO5T]: F:从各进程日志快照导出带筛选范围和环境说明的 ZIP | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/AppLogger.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/LogStore.kt | A:LogArchive.export | S:归档记录是否用了关键词筛选，但省略关键词；按 24 小时和最近三份清理临时归档
+LogErrors.kt[DS5T]: F:将已知异常类型映射为诊断分类并提取白名单 HTTP 状态及系统错误码 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/AppLogger.kt | A:LogErrors.fields | S:最多遍历五层去环的异常链，不解析可能包含私密内容的异常消息
+LogStore.kt[PO7M]: F:存储、轮转和筛选本地结构化日志，提供可并发导出的定长快照 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/AppLogger.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/LogArchive.kt | A:LogStore,LogRecord,LogFilter,LogPrivacy,LogSnapshot | S:快照在短锁内打开句柄并固定字节边界；隐私过滤采用字段白名单，堆栈排除异常消息
+ProblemSessions.kt[PO6T]: F:管理问题录制会话生命周期并原子持久化最近的记录 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/AppLogger.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/LogStore.kt | A:ProblemSessions,ProblemSession | S:最多保留 20 个会话；重启时将未结束会话补记为 interrupted
+RecentTargets.kt[DO3T]: F:以带容量限制的访问顺序集合保存最近的有效应用包名 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/SystemLogCapture.kt | A:RecentTargets | S:-
+SystemLogCapture.kt[AO6S]: F:通过用户指定的 Root 或 Shizuku 后端采集一段系统启动诊断并报告状态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/DiagnosticRelay.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/RecentTargets.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/AppLogger.kt | A:SystemLogCapture,CaptureStatus | S:按本次时间及目标包筛选并记录分类字段；原始系统日志不进入持久诊断
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/drop/===
+BackgroundTouchBlocker.kt[IU5T]: F:控制全局长按拖拽期间用于拦截后续触摸的浮窗 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/GlobalPressDragSource.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/floating/BaseFloatingWindow.kt | A:BackgroundTouchBlocker | S:按当前会话挂载，取消失败每次最多提示一次
+ContentDragSession.kt[DB5T]: F:用代次管理主动内容拖拽的就绪确认和作废 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ContentDragTarget.kt | A:ContentDragSession,EvoSourcePackages | S:就绪要求当前请求、来源仍有效且首个布局完成
+ContentDragTarget.kt[EB4T]: F:提供不依赖具体窗口的内容拖拽起点、坐标更新与取消接口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ContentDragSession.kt | A:ContentDragTarget | S:-
+DragActionPreview.kt[AU5S]: F:显示拖拽目标动作图标浮窗，按侧栏或底栏模式定位并避开系统边衬 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ExternalDropFloating.kt | A:DragActionPreview,dropSafeBounds | S:-
+DragContentConverter.kt[DB5T]: F:转换拖拽内容：图片经本地 OCR 生成文本，文本渲染并缓存成可分享图片 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DropImageDecoder.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DragTextImageRenderer.kt | A:DragContentConverter | S:-
+DragContentPreview.kt[AU6S]: F:显示随手指移动的拖拽内容或处理状态，管理挂载和缩略图生命周期 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DragContentPreviewPolicy.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DropImageDecoder.kt | A:DragContentPreview | S:只预览首项；挂载等待限时，代次变化后丢弃迟到结果
+DragContentPreviewPolicy.kt[KU4T]: F:计算预览框的固定手指偏移和屏幕内夹取，缩略显示文本 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DragContentPreview.kt | A:DragContentPreviewPolicy | S:截取前 160 字符后压缩连续空白，超长追加省略号
+DragConversionController.kt[AB5T]: F:协调悬停触发的拖拽互转、处理中预览和结果交付 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DragConversionState.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DragContentConverter.kt | A:DragConversionController | S:协程阶段检查代次与取消状态，旧会话转换结果不会被交付
+DragConversionState.kt[DB5T]: F:保存拖拽原内容、互转内容和活跃请求代次 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DragConversionController.kt | A:DragConversionState | S:每次进入悬停只允许触发一次；清除后作废在途请求
+DragTextImageRenderer.kt[KU4T]: F:按固定白底画布和排版生成拖拽文本图像 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DragContentConverter.kt | A:DragTextImageRenderer.render | S:拒绝空白或超过 50000 字符的文本，图像高度上限 8192
+DropContentDispatcher.kt[AB6S]: F:按拖拽目标将文本和图片发给搜索引擎、便签池、浮动便签或分词入口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DropImageDecoder.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinPoolStore.kt | A:DropContentDispatcher,Tool | S:混合模式引擎同时收集两类载荷，交由共同执行器选择实际模式
+DropDiagnostics.kt[CO4T]: F:写入拖拽代次、来源、窗口尺寸和失败分类等结构化诊断 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/AppLogger.kt | A:DropDiagnostics.event | S:持久日志禁止加入拖拽载荷、标签、URI 或正文
+DropImageDecoder.kt[IP5T]: F:在 IO 上以软件方式解码拖拽图片，并移交引用计数 Bitmap | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ManagedBitmap.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DragContentConverter.kt | A:DropImageDecoder.decode | S:限制最长边为 4096，取消或异常时释放已创建的图片
+DropOverlayAppearance.kt[AU6S]: F:为拖拽面板管理全屏模糊动画、卡片玻璃效果、样式和挂载状态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DropPreferences.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/CardRegionBlur.kt | A:DropOverlayAppearance | S:系统拖拽可抑制全屏模糊，卡片样式取有效状态；OriginOS 走专用处理
+DropPreferences.kt[PC5T]: F:集中管理全局长按、拖拽面板位置和模糊配置的稳定 DataStore 键 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DropOverlayAppearance.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/GlobalPressDragSource.kt | A:DropPreferences,ensureGlobalPressWhitelist | S:白名单只在缺失时初始化，保留已保存配置
+DropSearchActivity.kt[EB5T]: F:接收拖放目标指定的引擎标识、文本及图片，再走通用搜索执行入口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DropSearchState.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DropContentDispatcher.kt | A:DropSearchActivity.start | S:启动状态跨重建保留，避免重复执行
+DropSearchState.kt[DU4T]: F:以 SavedStateHandle 保存拖放搜索已触发状态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DropSearchActivity.kt | A:DropSearchState.tryStartSearch | S:-
+DropUriPermissions.kt[II5T]: F:为服务浮窗尝试取得系统拖拽数据的临时 URI 读取许可 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ExternalDropFloating.kt | A:DropUriPermissions.take | S:任一步失败返回空，取得对象但未激活时释放
+EvdevTouchParser.java[KH6M]: F:将 evdev 多点触摸帧转成主指触摸事件并维护插槽状态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchInputSource.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/MMGG-NOTICE | A:EvdevTouchParser | S:等待分帧写入的初始 X/Y；抬起沿用末帧坐标，后加入手指不替换主指
+ExternalDropFloating.kt[AB8L]: F:编排系统拖放和主动拖放的浮窗挂载、目标布局、搜索翻页、预览与释放分发 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DropContentDispatcher.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ContentDragSession.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ExternalDropSidebarPolicy.kt | A:ExternalDropFloating,ContentDragTarget | S:主动拖拽首次布局前保持窗口隐藏；异步挂载与预览均检查代次，侧栏位置以物理屏幕方向为准
+ExternalDropPolicy.kt[DB5T]: F:根据拖拽来源和 MIME 判断接收资格，以及相关搜索引擎的展示条件 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ExternalDropFloating.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DropContentDispatcher.kt | A:ExternalDropPolicy | S:URI 的实际类型延迟到释放；允许 MIME 数组中出现空项
+ExternalDropScrollView.kt[AU4T]: F:在拖拽靠近滚动区边缘时按方向自动滚动以保留目标可达性 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ExternalDropFloating.kt | A:ExternalDropScrollView | S:-
+ExternalDropSidebarPolicy.kt[KU5T]: F:计算受限高度下侧栏的列数、行数、分页和悬停区域 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ExternalDropFloating.kt | A:ExternalDropSidebarPolicy | S:高度无法容纳任一候选时使用最低面板；容量相同优先较少列
+GlobalPressDragSource.kt[AB7M]: F:根据前台来源、白名单及触摸时序准备全局长按拖放并管理会话终止 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/PressContentCapture.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchInputSource.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ContentDragTarget.kt | A:GlobalPressDragSource | S:新代次使旧捕获失效；主线程看门狗撤销在途中断许可，即使远程调用仍存活
+MMGG-LICENSE[SS3L]: F:保留拖放移植模块的 GNU GPL v3 许可全文 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/MMGG-NOTICE | A:- | S:-
+MMGG-NOTICE[SS4T]: F:记录 MMGG 和 HyperDragShare 的版权、许可、移植范围和项目改动 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/MMGG-LICENSE | A:- | S:同步列出包内对应许可资产
+PressContentCapture.kt[IB6S]: F:从活跃的无障碍应用窗口识别长按来源，获取可拖拽文本或图片区域 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/GlobalPressDragSource.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/AccessibilityNodeManager.kt | A:PressContentCapture | S:排除输入法、启动器、应用自身及 SystemUI；无障碍切换期由输入层再核查前台身份
+PressInputStatus.kt[DU3T]: F:发布长按触摸输入连接状态对应的字符串资源 ID | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchInputSource.kt | A:PressInputStatus.message | S:-
+PressTriggerDetector.java[KB5T]: F:通过按压时限、位移阈值与指针数检测全局长按拖动的状态转换 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/GlobalPressDragSource.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/MMGG-NOTICE | A:PressTriggerDetector | S:触发前越界取消，达到时限后按拖动阈值触发一次
+ShizukuTouchConnection.kt[IM6T]: F:管理每次拖拽的 Shizuku 触摸流、Binder 所有权与远程清理 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchInputSource.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shizuku/UserService.kt | A:ShizukuTouchConnection | S:Binder 死亡触发清理；关闭以同步状态切断后续请求
+ShizukuTouchInterrupter.kt[IH6T]: F:通过 Shizuku 中断本次拖拽来源中的触摸并验证前台应用和显示目标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchInterruptionSequence.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shizuku/UserService.kt | A:ShizukuTouchInterrupter | S:对无效坐标、失焦来源或已撤销请求拒绝执行
+TouchInputProtocol.kt[KH5T]: F:选出拥有有效坐标范围的直接触摸屏并映射旋转后的显示坐标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchInputSource.kt | A:TouchInputProtocol,Device | S:设备缺少输入属性区段时才以 /proc 的 direct 标记补足
+TouchInputSource.kt[AH7S]: F:组织推流连接、设备探测、evdev 解析、坐标回调和重连状态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ShizukuTouchConnection.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchInputProtocol.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/EvdevTouchParser.java | A:TouchInputSource | S:回调绑定活跃连接；超长帧拒绝解析，停止时关闭流并作废当前运行
+TouchInterruptionSequence.kt[DH5T]: F:将开始触摸、等待和取消组合为可撤销的触摸中断过程 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ShizukuTouchInterrupter.kt | A:TouchInterruptionSequence.run | S:开始尝试一旦发出，失败或撤销也必须在 finally 执行清理
+TouchStreamHost.kt[RH6T]: F:为 Shizuku 用户服务维护触摸流、设备发现、Binder 所有权及中断请求 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchStreamProcess.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ShizukuTouchInterrupter.kt | A:TouchStreamHost | S:仅当前令牌、存活的所有者及有效守卫可继续中断
+TouchStreamProcess.kt[RH5T]: F:以带心跳租约的 Shell 子进程维护 getevent 触摸流 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchStreamHost.kt | A:TouchStreamProcess | S:关闭标准输入或超时会结束闲置流；仅接受 event 设备路径
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/floating/===
+BaseFloatingWindow.kt[CG7S]: F:封装浮窗布局参数、挂载重试、移除与更新的通用生命周期 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/floating/WindowAttachmentRegistry.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/floating/OverlayTouchRegions.kt | A:BaseFloatingWindow | S:提交成功后到系统回调前已持有窗口；重试和挂载回调必须属于当前请求
+OverlayTouchRegions.kt[CU5T]: F:为屏幕坐标使用者登记本应用的可触浮窗区域和无障碍窗口 ID | R:code:app/src/main/java/io/github/lumiagg/gestureevo/floating/BaseFloatingWindow.kt | A:OverlayTouchRegions | S:坐标命中排除未挂载、不可见和不可触窗体
+WindowAttachmentRegistry.kt[CU6T]: F:按 View 对象身份区分浮窗挂载请求和 WindowManager 所有权 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/floating/BaseFloatingWindow.kt | A:WindowAttachmentRegistry | S:系统接受 addView 后立即记所有权，即使 View 仍未收到挂载回调
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/gesture/===
+FreeTriggerFloating.kt[AB8L]: F:维护自由触发器及镜像窗口、配置迁移与可见性，并管理每个触发器的暂停 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureService.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/PauseGestureNotification.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/TriggerView.kt | A:FreeTriggerFloating,TriggerViewGroup,reloadTriggers,pauseTriggerTemporarily | S:迁移读写同一最新配置；暂停以截止时间为准，重复暂停替换单个恢复任务
+GestureEvent.kt[MM6S]: F:定义轮盘、触发器、键盘、取词、指针、通知、搜索和便签的进程内事件通道 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureManager.kt | A:GestureEvent,ActionViewEvent,FreeTriggerEvent,InspireEvent | S:-
+GestureFeedbackFloating.kt[AU5S]: F:根据触点与手势阶段显示轮盘触发用的边缘反馈波纹 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/FluidRippleView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/GestureFluidAppearance.kt | A:GestureFeedbackFloating | S:-
+GestureMainFloating.kt[AB8L]: F:显示并管理主轮盘、配置及引导演示，绑定图标和布局并执行选中动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/MainActionView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureManager.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/ActionConfig.kt | A:GestureMainFloating,showActionView,showConfigActionView,relayoutActionViewQuadrant | S:有按压超时的动作只在按下阶段执行；无超时动作在释放时执行，搜索交接可保留背景模糊
+GestureManager.kt[AB8L]: F:调度手势触发及轮盘、取词、指针、链接雷达等浮窗间的交互模式 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureService.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureEvent.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureMainFloating.kt | A:GestureManager,InteractionMode | S:页面改变后清理旧坐标交互；指针拖选与悬停菜单优先于链接雷达
+GestureService.kt[EB9L]: F:实现无障碍服务入口，管理手势调度、拖拽面板与全局长按，并提供截图和手势操作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureManager.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ExternalDropFloating.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/GlobalPressDragSource.kt | A:GestureService,takeManagedScreenshot,performClickAsync,performSwipeAsync | S:动态配色初次加载不应在长按中途替换面板；双击使用同一次无障碍手势中互不重叠的笔画
+GuidePreviewFloating.kt[AU6M]: F:展示首次引导使用的临时触发器和轮盘，向当前练习回报匹配手势 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureMainFloating.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/TriggerView.kt | A:GuidePreviewFloating | S:只向当前请求回报，练习 ID 已报告时不重复发出
+PauseGestureNotification.kt[AU5M]: F:发布手势暂停倒计时，并接收按触发器恢复或延长的通知动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/FreeTriggerFloating.kt,code:app/src/main/AndroidManifest.xml | A:PauseGestureNotification,PauseGestureNotificationReceiver | S:关闭通知不阻碍暂停操作；正文显示整个暂停会话长度
+TriggerLocation.kt[DB4T]: F:包装触摸屏坐标、屏幕尺寸和归一化位置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/TriggerSide.kt | A:TriggerLocation | S:尺寸未知时归一化坐标为 0.5
+TriggerSide.kt[DB5T]: F:记录最近的触发侧和屏幕锚点并提供跨页面传递所用的侧标签 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/TriggerLocation.kt | A:TriggerSide,record,EXTRA_TRIGGER_SIDE | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/===
+ActionConfig.kt[DC5T]: F:序列化轮盘图标、间距、偏移、形状及网格布局的配置和默认值 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureMainFloating.kt | A:ActionConfig | S:-
+ActionItemsTag.kt[DC4T]: F:封装动作组标识和名称及其单项、列表的 JSON 转换 | R:- | A:ActionItemsTag | S:-
+ActionViewState.kt[KU5T]: F:把可用轮盘象限转换成扇形起始角和扫过角度 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureMainFloating.kt | A:ActionViewState.setAngleByQuadrant | S:-
+FreeTriggerConfig.kt[DC6S]: F:定义自由触发器的手势映射、方向、轮盘象限和应用名单配置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/FreeTriggerDataManager.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/FreeTriggerFloating.kt | A:FreeTriggerConfig | S:应用自身始终允许；镜像触发器变换保存的象限
+FreeTriggerDataManager.kt[PC7M]: F:读写自由触发器配置，维护默认条目、批处理及内存快照 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/FreeTriggerConfig.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/GestureConfigurationWrites.kt | A:FreeTriggerDataManager,readTriggers,saveTriggers,batchOperation,invalidateCache | S:锁内更新；存储成功后才发布缓存，删除最后一项时补默认触发器
+GestureActionDataManager.kt[PC6S]: F:按标签管理手势轮盘主副配置、动作组及组内动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/ActionConfig.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/GestureActionItem.kt | A:GestureActionDataManager | S:主副配置键前缀不同；移除组同时清理关联配置与列表
+GestureActionItem.kt[DB6M]: F:序列化轮盘动作图标及两阶段链接，并提供运行时已解析的动作信息 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/GestureActionDataManager.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/BaseActionView.kt | A:GestureActionItem,IconType,addParam | S:写入每阶段链接时重建缓存 URI 与元数据；缓存不参与序列化
+GestureConfigurationWrites.kt[CC5T]: F:为运行时旧配置迁移与设置引导提供跨偏好存储的共享互斥 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/FreeTriggerFloating.kt | A:gestureConfigurationWriteMutex | S:跨两个存储的提交必须共用此锁
+GestureTimingConfig.kt[DC5T]: F:定义长按、双击、停顿、滑动和回滑的配置边界及像素换算 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/TriggerView.kt | A:GestureTimingConfig | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/===
+ActionItemMenuOverlay.kt[AU5S]: F:在轮盘配置界面与动作项对齐并管理上下文菜单显隐 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/MainActionView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/SubActionView.kt | A:ActionItemMenuOverlay | S:-
+BaseActionView.kt[AU7L]: F:给主副轮盘提供环形槽位、命中缓存、视图复用、图标绑定及展开收起动画 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/MainActionView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/SubActionView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/GestureActionItem.kt | A:ActionView,Ring,RingItem,gestureActionIcon | S:移动或重布局后须使坐标命中缓存失效，过期命中会选错动作
+FluidRippleView.kt[AU6L]: F:渲染边缘流体指示和选中动作图标，按触点更新进度与归位动画 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/GestureFluidAppearance.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureFeedbackFloating.kt | A:FluidRippleView,EdgeSide | S:-
+GestureFluidAppearance.kt[DC5S]: F:将手势反馈外观配置解析为即时绘制参数和主题回退颜色 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/FluidRippleView.kt | A:GestureFluidConfig,GestureFluidAppearance | S:颜色为零时使用动态主题或当前主体色
+GuideWheelGeometry.kt[KU6M]: F:计算引导轮盘及自适应扇形的槽位、边界、缩放与视口内中心 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/MainActionView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/BaseActionView.kt | A:resolveWheelAdaptiveShape,calculateFittedWheelLayout,distributeConcentricSlots | S:拟合以图标实际包围范围计算，不能只按圆心或名义半径夹取
+MainActionView.kt[AU8L]: F:协调主轮盘槽位、次级动作、运行选择、配置拖动以及引导显示 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/BaseActionView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/SubActionView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/GuideWheelGeometry.kt | A:MainActionView,setModeList,show,hide | S:引导拟合只改变显示几何，不回写动作配置；取消显示需清理透明但仍可见的视图
+RoundImageTextView.kt[CU6L]: F:共享图文圆角视图并管理图标、背板、徽标、选中反馈和文字自动布局 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/WheelItemStyle.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/BaseActionView.kt | A:RoundImageTextView,setImageWithBackplate,copyImagePresentationFrom,setText | S:调用方可禁用全局图片圆角，轮盘显式保留自己的样式
+SubActionView.kt[AU6L]: F:实现轮盘子菜单布局、选择或编辑、附着展开与收起 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/MainActionView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/BaseActionView.kt | A:SubActionView,resetConfig,showSpread,hideShrink | S:依主轮盘配置决定子菜单使用继承样式或独立配置
+TriggerView.kt[EB8L]: F:跟踪触摸阶段并识别长按、单击、双击、划动与回划，向手势管理器分发 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/GestureTimingConfig.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureManager.kt | A:TriggerView,GestureType,GesturePhase,GestureTypeEvent | S:手指仍按下时重置识别也保留已越过滑动阈值的事实，防止最终抬起误成点击
+WheelGridGeometry.kt[KU5T]: F:计算网格轮盘的尺寸、行列槽位及边缘锚定与镜像顺序 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/MainActionView.kt | A:wheelGridSize,wheelGridPositions | S:运行轮盘与引导预览共用几何
+WheelItemStyle.kt[CU4T]: F:按轮盘配置与缩放应用图标背板、内距和圆角 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/RoundImageTextView.kt | A:applyWheelStyle | S:覆盖列表默认的全局图片圆角
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/inspire/===
+AccessibilityCharacterLocations.kt[IU5T]: F:查询指定无障碍文本的字符坐标并报告查询期间的文本变化 | R:- | A:readAccessibilityCharacterLocations | S:不改变焦点；仅对 Android 8+ 且长度 1 至 20000 的文本请求扩展数据
+AccessibilityNodeManager.kt[IA7M]: F:遍历无障碍树构建可见文本和图片区域快照，按选区提取内容并提供截图裁剪 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/AccessibilityTextHierarchy.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/AccessibilityTextPolicy.kt | A:withAccessibilityNodes,selectScreenContent,screenContentText,cropByRect | S:不以容器空边界或不可见性剪枝；整图裁剪仍遵守返回对象由调用方所有
+AccessibilityTextCorrection.kt[KA6S]: F:使用无障碍文本中的高相似 URL 修正选择文本或 OCR 输出中的链接 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/OcrImageTextProcessor.kt | A:AccessibilityTextCorrection | S:仅修正识别出的类 URL 片段，保留其余正文
+AccessibilityTextFormatter.kt[KA4T]: F:按无障碍树遍历顺序拼接文字片段并保留视觉行分隔 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/AccessibilityNodeManager.kt | A:joinAccessibilityTextInReadingOrder | S:-
+AccessibilityTextHierarchy.kt[KA5T]: F:计算可读无障碍文本的优先索引，消除能由子节点重现的父节点文字 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/AccessibilityNodeManager.kt | A:preferredAccessibilityTextIndices | S:在选区过滤前针对整个可见树去重
+AccessibilityTextPolicy.kt[KA5T]: F:判定无障碍节点文本、图片类型及候选片段与选区的有效重叠 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/AccessibilityNodeManager.kt | A:accessibilityNodeText,accessibilityImageClass,hasSubstantialAccessibilityOverlap | S:-
+ClipboardToInspireActivityUtils.kt[AB7M]: F:处理分享或剪贴板载荷，并路由到取词、便签池和搜索动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/ShareOpenAppProxyActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireDataHolder.kt | A:ClipboardToInspireActivityUtils,handleIntent,launcherInspire | S:系统分享和剪贴板采用不同取值路径；从 URI 解码的位图交给所有权明确的句柄
+InspireActionDispatcher.kt[AB6M]: F:为取词页分派文本及图片操作，包括链接、编辑、分享、便签和识码 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireContentActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireHelperUtils.kt | A:InspireActionDispatcher,createActionWrapper | S:打开、复制和分享使用当前图片的独立所有权，委托失败时释放
+InspireContentActivity.kt[EB8L]: F:管理取词页面、内容加载、分词与图片选择模式、编辑和窗口生命周期 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireContentLoader.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireActionDispatcher.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireDataHolder.kt | A:InspireContentActivity,start,acquireCurrentImageHandle | S:旋转后重做 OCR，替换和销毁都释放旧截图；编辑器通过无动画交接减少界面闪回
+InspireContentLoadModels.kt[DA4T]: F:描述取词初始展示计划、实际可请求的内容来源及 OCR 结果结构 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireContentLoader.kt | A:InspireContentLoadPlan,OcrProcessingResult | S:-
+InspireContentLoader.kt[AA5T]: F:按配置和有效截图或无障碍文字选择取词初态，并委托 OCR 或构建文字内容 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/OcrImageTextProcessor.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireDataHolder.kt | A:InspireContentLoader,buildLoadPlan,buildOcrResult,buildAccessibilityContents | S:-
+InspireContentModes.kt[DU3T]: F:定义取词来源模式与文本选择、图片文字选择的展示模式 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireContentActivity.kt | A:InspireTokenContentMode,InspireDisplayMode | S:-
+InspireDataHolder.kt[CB6T]: F:在取词流程组件之间传递截图、无障碍文字、选区和 OCR 允许框 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ManagedBitmap.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireContentActivity.kt | A:InspireDataHolder | S:读截图须取得独立句柄，清除会话数据时保留重选用的 dragRect
+InspireFloating.kt[AB8L]: F:控制屏幕取词浮窗、框选编辑和截图切换，并将会话内容交给取词 Activity | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireContentActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireDataHolder.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ManagedBitmap.kt | A:InspireFloating,show,showFullscreen,showByReselect | S:预览和过渡依赖本次截图与当前会话；重置或替换及时释放旧引用
+InspireHelperUtils.kt[CB6M]: F:共享取词的链接打开、图片存取和复制、便签、翻译、搜索与二维码识别 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireActionDispatcher.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ManagedBitmap.kt | A:InspireHelperUtils | S:复制成功后可同步加入便签池，但便签池入口不能再次回写已有剪贴板
+ManagedBitmap.kt[CP7T]: F:以引用计数和显式关闭管理共享 Bitmap，并在需要时创建临时软件副本 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireDataHolder.kt | A:ManagedBitmap,acquire,close,useSoftwareBitmap | S:句柄只释放自己持有的引用；最后一个引用关闭才回收原图
+NodePickerItemInfo.kt[DI3T]: F:从无障碍节点保存类别、文本、交互标志、屏幕边界与树关系 | R:- | A:NodePickerItemInfo | S:-
+OcrImageTextProcessor.kt[AA6S]: F:对带填充的软件截图运行 OCR，重映原图坐标并生成正文和分词 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/OcrTextFormatter.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ManagedBitmap.kt | A:OcrImageTextProcessor,process,segment | S:允许框为 null 表示不过滤，为空列表表示不返回任何识别框
+OcrTextFormatter.kt[KA5S]: F:从 OCR 框的视觉行、字符类型和间距合成有空格与换行的正文 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/OcrImageTextProcessor.kt | A:OcrTextFormatter.buildText | S:用相对行距区分段内折行和条目分隔，避免紧凑列表被拼成一行
+PictureFloating.kt[AU7L]: F:管理浮动图文便签的窗口与控制面板、停靠、拖送以及便签池和通知目标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ManagedBitmap.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinPoolStore.kt | A:PictureFloating | S:销毁及内容替换释放持有的图像引用；换主题需同步停靠时缓存的展开样式
+ScreenContentCapture.kt[IA6T]: F:把屏幕输入解析为无障碍节点或矩形选区，并封装捕获的文本及图片 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/AccessibilityNodeManager.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ManagedBitmap.kt | A:resolveScreenContentRect,captureScreenContent,CapturedScreenContent | S:短窄输入按节点定位，不等价于整块区域；捕获所有权随句柄移交
+ScreenContentLinkRadar.kt[AU6S]: F:管理取词浮窗内的链接雷达会话、提示及打开动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireFloating.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarView.kt | A:ScreenContentLinkRadar | S:异步扫描及提示仅更新当前会话；来源窗口变化使会话失效
+ScreenContentLinkTouch.kt[DU4T]: F:跟踪取词浮窗的链接按压与拖动移交 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ScreenContentLinkRadar.kt | A:ScreenContentLinkTouch | S:链接按压占有抬起事件；越过位移阈值后永久交给框选
+SearchEngineManagerInspire.kt[AU5T]: F:按取词设置初始化搜索引擎页并依据引擎能力交付文字或图片 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireContentActivity.kt | A:SearchEngineManagerInspire | S:-
+SmartSegmenter.kt[KA7L]: F:用内置词频、动态分词及未登录词模型切分中英文混排内容 | R:code:app/src/main/assets/segmenter/zh_core_dict.txt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/OcrImageTextProcessor.kt | A:SmartSegmenter | S:频率词典以首字索引候选，混合词匹配保留含中文的登记词
+TokenContentController.kt[AA6S]: F:管理 OCR 与无障碍分词内容的异步请求、切换及结果应用 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireContentLoader.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/AccessibilityTextCorrection.kt | A:TokenContentController | S:OCR 输出可由无障碍文本辅助更正链接；空 OCR 在 OCR 模式下采用独立处理
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/===
+InspireImageEditorActivity.kt[EU7L]: F:编排截图编辑器的工具栏、编辑会话、图像载入及保存分享便签动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/state/EditorSession.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/ui/InspireImageEditorView.kt | A:InspireImageEditorActivity | S:导出动作取得独立图像句柄；更换输入和销毁时关闭此前持有的源图句柄
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/model/===
+EditAction.kt[DU5T]: F:定义编辑器的笔画、形状、文本及马赛克动作和图像空间坐标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/state/EditorSession.kt | A:EditAction,EditorPoint,ShapeType | S:-
+EditorMode.kt[DU3T]: F:定义图片编辑器的导航、裁剪、画笔、橡皮、形状、文字和马赛克模式 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/state/EditorSession.kt | A:EditorMode | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/state/===
+EditorSession.kt[DU6M]: F:管理编辑模式、各工具笔宽、形状和动作历史，并通知状态监听者 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/model/EditAction.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/ui/InspireImageEditorView.kt | A:EditorSession,EditorUiState,undo,redo | S:工具笔宽分别存储，切换工具不覆盖其它模式的宽度
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/ui/===
+BrushSizePreviewView.kt[AU3T]: F:绘制编辑器当前画笔大小的圆点预览 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/InspireImageEditorActivity.kt | A:BrushSizePreviewView | S:-
+InspireImageEditorView.kt[AU8L]: F:实现图像编辑画布的缩放平移、裁剪、笔画、形状文字、马赛克和手势编辑 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/state/EditorSession.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/utils/EditorRenderUtils.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ManagedBitmap.kt | A:InspireImageEditorView | S:裁剪在图像空间转换已有动作；背景采样限制计算量并忽略透明像素的 RGB
+ShapeTypePreviewView.kt[AU3S]: F:以同主题颜色和几何外形预览选中的编辑工具形状 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/utils/EditorRenderUtils.kt | A:ShapeTypePreviewView | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/utils/===
+EditorExportEngine.kt[KA5T]: F:将源图和有序编辑操作绘制成指定比例的导出 Bitmap | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/EditorRenderUtils.kt | A:EditorExportEngine.exportBitmap | S:-
+EditorRenderUtils.kt[KU6M]: F:提供编辑画布与导出共用的路径、形状、马赛克及文本绘制和边界计算 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/utils/EditorExportEngine.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/ui/InspireImageEditorView.kt | A:EditorRenderUtils,createPath,drawAction,buildTextBounds | S:-
+FastBlurHelper.kt[KP5S]: F:缩小图片并对软件位图执行多次快速模糊，为编辑器生成背景 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ManagedBitmap.kt | A:FastBlurHelper,createBlurredBackground,blurInPlace | S:-
+InAppCardBlur.kt[AU5S]: F:将编辑画布取样的模糊效果绘制为工具卡片的背景 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/ui/InspireImageEditorView.kt | A:InAppCardBlur.apply | S:背景宿主不得贡献父卡片的 wrap_content 测量；主题遮罩维持文字对比
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/===
+BigBangActionWrapper.kt[CU4T]: F:把取词文字和图片操作包装为视图可调用的回调集合 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireActionDispatcher.kt | A:BigBangActionWrapper | S:-
+BigBangConfig.kt[FU3T]: F:保存分词布局的条目间距、行距、上下操作栏高度和分区开关 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/BigBangView.kt | A:BigBangConfig | S:-
+BigBangItem.kt[DU4S]: F:表示分词条目、行、选择状态和视图命中区域 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/BigBangView.kt | A:ItemState,Line,Item | S:条目状态比较按条目身份，选择标志不参与
+BigBangStatusListener.kt[CU3T]: F:定义分词视图选择、编辑和动作回调的默认接口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/BigBangView.kt | A:BigBangStatusListener | S:-
+BigBangView.kt[AU7L]: F:排版分词条目并处理点选、拖选、长按、选区背景及动作行 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/BigBangItem.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/BigBangStatusListener.kt | A:BigBangView,addTextItem,replaceTextItem,makeSelectedText | S:接触第二项后进入拖选并取消长按；脱离窗口清除待触发长按
+EdgeScroller.kt[CU5S]: F:拖动接近嵌套滚动区边缘时按距离自动滚动 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/InspireContentView.kt | A:EdgeScroller,Config | S:根据方向和区域决定速率，离开边缘停止
+ImagePreviewController.kt[AU6S]: F:为取词页持有截图，设置 OCR 覆盖框，计算预览高度与显示区坐标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/OcrImageTextOverlayView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ManagedBitmap.kt | A:ImagePreviewController | S:图片文字选择使用锁定的预览高度；读图的调用方获取独立引用
+ImageTextSelectionActionBarController.kt[AU5S]: F:按选中文本、交互状态与选区定位图片文字操作栏 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/InspireContentView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/BigBangActionWrapper.kt | A:ImageTextSelectionActionBarController | S:拖动互动中隐藏操作栏，链接按钮仅在选区文本含 URL 时显示
+ImageTextSelectionPreviewController.kt[AU5S]: F:把 OCR 选区文本呈现在选区附近可见范围内，更新停靠方向 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/InspireContentView.kt | A:ImageTextSelectionPreviewController | S:延迟测量与定位绑定更新代次
+InspireActionButtonsRow.kt[AU5S]: F:识别取词动作行的横向滑动并将位移转换为预览旋转反馈 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/InspireContentView.kt | A:InspireActionButtonsRow | S:先要求横向越过触摸阈值且位移大于纵向
+InspireContentLayoutMetrics.kt[FU3T]: F:集中定义取词预览、分词区、动作按钮及底部留白的布局尺寸 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/InspireContentView.kt | A:InspireContentLayoutMetrics | S:-
+InspireContentView.kt[AU7L]: F:协调取词卡片中的分词编辑、图片文字选区、来源切换和图片动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/ImagePreviewController.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/BigBangView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/InspireDisplayModeController.kt | A:InspireContentView,setDisplayMode,switchToMode,getSelectedText | S:图片文字选择从 OCR 选区读文本，分词模式从条目选择读；重置需同步清除临时界面状态
+InspireDisplayModeController.kt[AU4T]: F:将取词展示模式应用到截图、分词、按钮布局和预览高度 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/InspireContentView.kt | A:InspireDisplayModeController.apply | S:-
+InspireEditSheetView.kt[EU4S]: F:提供取词文字编辑底部弹窗，绑定输入和保存回调并处理键盘焦点 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireContentActivity.kt | A:showInspireEditBottomSheet,InspireEditSheetView | S:-
+InspireOverlayToast.kt[AU4S]: F:在取词浮窗内部显示支持主题更新和自动消失的提示 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/InspireView.kt | A:InspireOverlayToast | S:-
+InspireView.kt[AU8L]: F:绘制屏幕框选、OCR 框及链接标记，管理手势、选区调整和悬浮动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireFloating.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ScreenContentLinkTouch.kt | A:InspireView | S:已有选区手柄和文字框优先于链接；已占用的链接抬起不能再触发框选
+ModeSelectorController.kt[AU4T]: F:根据 OCR 与无障碍内容可用性刷新来源选择按钮和选中态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/InspireContentView.kt | A:ModeSelectorController.update | S:-
+OcrImageTextOverlayView.kt[AU7L]: F:把 OCR 坐标映射到显示图像，绘制分组、文字高亮与拖动选区手柄 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/ImagePreviewController.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/InspireContentView.kt | A:OcrImageTextOverlayView,setImageTextNodes,setDisplayedImageBounds,selectedText | S:图像绘制边界变化时重新投影；拖动反转时正规化字符选区顺序
+TokenContentState.kt[DU4T]: F:存放当前取词模式、各来源缓存内容以及可请求来源 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/InspireContentView.kt | A:TokenContentState | S:缓存为空仍可按请求能力启用该模式
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/link/===
+LinkConfigCodec.kt[PC6S]: F:编码版本化链接配置 JSON，并在导入时合并分发、豁免与提取列表 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleRepository.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleModels.kt | A:LinkConfigBackup,LinkConfigCodec,LinkImportResult | S:兼容旧备份缺失字段；导入按对象种类去重
+LinkConfigTransfer.kt[EC5T]: F:通过剪贴板导出或合并导入链接配置 JSON | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkConfigCodec.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleRepository.kt | A:LinkConfigTransfer | S:-
+LinkDispatcher.kt[DB8M]: F:按豁免、匹配规则及优先级决定链接路由，并处理短链接和模板替换 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleRepository.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkLauncher.kt | A:LinkDispatcher,LinkDispatchResult,route,applyTemplate | S:模板只做一轮替换，捕获值不再解释为模板；无目标规则只用于重新分发
+LinkExtractor.kt[KB6T]: F:从任意文本运行自定义提取模板，结合通用 URL 探测定位链接 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleRepository.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkDispatcher.kt | A:LinkExtractor,extract,findAll | S:若提取规则命中，单项选择最长结果；通用检测在单项模式作为回退
+LinkGoRuleConverter.kt[IC5T]: F:把 LinkGo JSON 转换为本地分发规则并提供捆绑数据入口 | R:code:app/src/main/assets/linkgo_builtin_rules.json,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleModels.kt | A:LinkGoRuleConverter | S:保留仅解析短链的空目标规则，交由本地重新分发
+LinkLauncher.kt[AB7M]: F:根据已路由链接构建和启动相应 Intent，处理失败回退及规则命中统计 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkDispatcher.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleRepository.kt | A:LinkLauncher,openFromText,openUrl,buildLaunchIntent | S:尝试保留组件、extras 和任务标志；组件失败后尝试普通链接，成功后更新命中次数
+LinkPersistence.kt[PC6T]: F:在 DataStore 一个事务中解码、转换并保存链接配置列表 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleRepository.kt | A:readLinkList,updateLinkList | S:编辑和统计写入必须使用事务内当前列表，避免覆盖并发更新
+LinkRuleModels.kt[DC5S]: F:声明链接匹配、解析、分发、域豁免和文本提取的数据模型 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkConfigCodec.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkDispatcher.kt | A:LinkDispatchRule,LinkExemptDomain,LinkExtractPattern,LinkResolveStrategy | S:-
+LinkRuleRepository.kt[PC7S]: F:保存三类链接配置，兼顾旧域名迁移、默认提取规则和整体导入 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkPersistence.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkConfigCodec.kt | A:LinkRuleRepository,snapshot,importConfig,updateRules | S:迁移和初始化由持久标志约束；整体导入在同一 DataStore 编辑中读取与合并
+LinkTargetPreview.kt[AB5T]: F:给链接悬停生成目标应用名称及图标预览 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkDispatcher.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkLauncher.kt | A:previewLinkTarget | S:复用路由和 Intent 构建，但悬停不联网解析短链
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/notification/===
+NotificationFloating.kt[AU6L]: F:显示最近通知应用图标并处理点击、长按、拖动、停靠和主题变化 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/notification/NotificationService.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/floating/BaseFloatingWindow.kt | A:NotificationFloating | S:缓存最多展示三个通知应用的对应图标，更新时剔除过时视图
+NotificationService.kt[EM6S]: F:监听系统通知，按应用保留最近的可点击通知并提供打开入口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/notification/NotificationFloating.kt,code:app/src/main/AndroidManifest.xml | A:NotificationService,NotificationInfo,NotificationEvent | S:维护包级最新项，移除按通知键判断，避免移除旧通知时抹掉替代项
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/pin/===
+PinDragCancelOverlay.kt[AU5T]: F:在便签拖送中显示取消或重新固定目标，集中关闭浮窗和回调 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinDragTargets.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinDragSend.kt | A:PinDragCancelOverlay | S:浮窗最多保留 60 秒；有无无障碍服务决定上下文来源
+PinDragSend.kt[IB6M]: F:为便签文字和图片启动系统拖拽，准备影像阴影、URI 分享及临时媒体清理 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinDragTargets.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinDragCancelOverlay.kt | A:PinDragSend | S:源 View 必须已挂载；图像通过临时发布延长读取窗口，随后按时清理
+PinDragTargets.kt[AU5S]: F:挂载便签拖拽删除、取消、通知或重新固定等落点并显示预览 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinDragCancelOverlay.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DragActionPreview.kt | A:PinDragTargets | S:-
+PinImageFiles.kt[PS6T]: F:解析、归一化和安全清理便签池管理的图片文件路径 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinPoolStore.kt | A:resolvePinImageFile,normalizePinImagePath,deletePinImageFile | S:只接受绝对路径且规范化后直接位于专用目录内的文件
+PinImageNotificationTextExtractor.kt[KA6L]: F:从便签图像 OCR 结果按视觉行及场景词推断通知标题、摘要和提示文本 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/SmartSegmenter.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinPoolFloating.kt | A:PinImageNotificationTextExtractor,PinNotificationText | S:尺寸不足时跳过 OCR；支持使用或不使用应用上下文的两种推断入口
+PinPoolFloating.kt[EU7L]: F:显示便签池活动页及分组，协调预览、固定、取词、拖送和分享 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinPoolStore.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinDragSend.kt | A:PinPoolFloating | S:预览位图缓存按内存量计，应用显示模式确定圆角后再设置背景模糊
+PinPoolItem.kt[DD4T]: F:定义便签池条目的文本或图片形态、固定及提醒时间和类别 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinPoolStore.kt | A:PinPoolItem,PinPoolCategory,PinType | S:-
+PinPoolReminderManager.kt[AB7L]: F:为便签调度唯一的后台提醒并发布普通或静音图片通知 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinPoolStore.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinImageNotificationTextExtractor.kt | A:PinPoolReminderManager | S:调度时将条目和触发时间一起绑定，后台识图使用独立位图副本
+PinPoolReminderTimeParser.kt[KB5S]: F:从文案识别绝对日期、相对日、星期和时间，并挑选提醒候选项 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinPoolReminderManager.kt | A:PinPoolReminderTimeParser,PinPoolReminderTimeCandidate | S:-
+PinPoolStore.kt[PB8M]: F:维护 Room 便签、旧偏好迁移、图片文件、去重、固定顺序和自动保存过期清理 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinImageFiles.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/PinPoolDao.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinPoolReminderManager.kt | A:PinPoolStore | S:图片内容利用在途哈希防重复；复制到剪贴板先于池去重，重复图片也能成为当前剪贴板内容
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/pointer/===
+PointerCoordinateMapping.kt[KU4T]: F:把触控区内输入及偏移映射成屏幕指针位置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerFloating.kt | A:PointerCoordinateMapping | S:可比较尺寸与边界，触控区变化时可作废旧映射
+PointerDragSelection.kt[DU5T]: F:保存指针拖选两端并计算越过启动阈值与返回起点状态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerFloating.kt | A:PointerDragSelection | S:同步推进，释放不依赖 View 尚未执行的回调
+PointerFloating.kt[AU8L]: F:管理指针、触控面板、轨迹、悬停与拖选，分派屏幕手势和选择 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerHoverMenuController.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerDragSelection.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarOverlay.kt | A:PointerFloating,PointerSnapshot | S:进入拖选后雷达让出释放时机；悬停采样与窗口生命周期绑定
+PointerHoverMenuController.kt[AU7M]: F:为指针悬停建立菜单会话、选择预览、链接及屏幕动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerHoverState.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerMenuSelection.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerFloating.kt | A:PointerHoverMenuController | S:窗口或坐标基准变化使菜单释放作废；选择模式先进入，不能作为普通按钮在释放时触发
+PointerHoverState.kt[DU5T]: F:定义悬停菜单从空闲到菜单、选取及结束的状态转换 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerHoverMenuController.kt | A:PointerHoverState,PointerHoverAction | S:从 SELECT 进入的区选与菜单释放动作分开
+PointerMenuSelection.kt[KU4T]: F:把手指纵向移动累计成相邻菜单行选择，并在头尾约束余量 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerHoverMenuController.kt | A:PointerMenuSelection | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/===
+LinkRadarActionLayout.kt[KU5T]: F:给链接提示分配视口内的矩形，尽量避开已有链接框和其它提示 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarView.kt | A:placeRadarActions,enclosingRadarBox | S:-
+LinkRadarOverlay.kt[AU6S]: F:为指针模式创建链接雷达会话，扫描、命中、预览并在指针抬起时打开目标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarScanner.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarView.kt | A:LinkRadarOverlay | S:打开前再次按当前指针查验；确认的打开动作可在指针会话结束后继续
+LinkRadarPreferences.kt[FC2T]: F:提供指针链接雷达的持久设置键及默认关闭值 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarOverlay.kt | A:LinkRadarPreferences | S:-
+LinkRadarScanner.kt[IA6T]: F:从无障碍树扫描可见链接，结合原生链接跨度及字符位置建立可点击区域 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/AccessibilityCharacterLocations.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkExtractor.kt | A:LinkRadarScanner | S:节点文本变化时丢弃迟到字符位置；精确位置剪裁后无可见区域时排除
+LinkRadarTargeting.kt[KU5T]: F:按半径、精度、分组和滞后参数找出雷达附近目标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarOverlay.kt | A:findRadarTargets,RadarBox,RadarHitArea | S:-
+LinkRadarView.kt[AU5S]: F:绘制雷达链接框及动作提示，提供屏幕坐标命中和目标外观刷新 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarActionLayout.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarOverlay.kt | A:LinkRadarView,showActionPrompts,actionLinksAt | S:-
+LinkRegion.kt[DB4T]: F:以值快照保存链接文字、来源、分组与屏幕矩形 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarScanner.kt | A:LinkRegion,frameBounds | S:保持无障碍节点在读取器的生命周期内
+LinkSelectionActivity.kt[EU6M]: F:展示重叠链接的选择列表和目标预览，将确认的链接交给通用启动器 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarOverlay.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkLauncher.kt | A:LinkSelectionActivity | S:未选子集时确认打开全部；预览与正式打开走既有链接路径
+PointerLinkActions.kt[AB5T]: F:将指针选中的单个链接交给路由，多个链接转交选择界面 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkSelectionActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkLauncher.kt | A:openPointerLinks | S:保留原始应用、来源文字和触发侧，供规则继续使用
+PointerLinkCapture.kt[AA5T]: F:按需启动一次当前指针会话的有界链接扫描并供多个消费者共享 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarScanner.kt | A:PointerLinkCapture | S:会话终止时取消扫描，避免跨会话复用
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/pointer/ui/===
+HighlightRectView.kt[AU5S]: F:绘制指针拖选矩形及潜在选区，并维护返回起点反馈 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerDragSelection.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerFloating.kt | A:HighlightRectView | S:-
+PointerHoverMenuView.kt[AU5S]: F:绘制指针悬停菜单和即时选中态，按需插入链接目标图标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerHoverMenuController.kt | A:PointerHoverMenuView | S:-
+PointerView.kt[AU4S]: F:绘制指针反馈圆环及悬停倒计时，管理视图跟随动画 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerFloating.kt | A:PointerView | S:脱离窗口时停止在途进度
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/quick/===
+QuickStartActivity.kt[EU7L]: F:协调快捷启动键盘的布局、外观、应用目录同步、过滤与打开 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/quick/ui/KeyboardView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/APPDao.kt | A:QuickStartActivity | S:横竖屏保存独立尺寸与位置；应用同步后以最新输入查询，存储按键串不直接当查询
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/quick/ui/===
+KeyboardFuncView.kt[AU3T]: F:渲染内置键盘的功能键、上部文字和图标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/quick/ui/KeyboardView.kt | A:KeyboardFuncView,FuncEnum | S:-
+KeyboardLetterView.kt[AU3T]: F:渲染内置键盘字母键并暴露主副标签给输入分派 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/quick/ui/KeyboardView.kt | A:KeyboardLetterView | S:-
+KeyboardView.kt[AU6M]: F:构建各模式快捷键盘并将按键、长按与拼音输入组合交给回调 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/quick/ui/KeyboardFuncView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/quick/ui/KeyboardLetterView.kt | A:KeyboardView,KeyboardType,fullKeyToDoubleKey,fullKeyToT9 | S:切换布局重建子视图；全键到双键和 T9 的转换也供数据库模型使用
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/screen_search/===
+ScreenSearchFloating.kt[AB7L]: F:控制屏幕关键词查找的浮窗、滚动、无障碍与截图匹配及命中高亮 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/screen_search/ScreenSearchHighlightView.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureService.kt | A:ScreenSearchFloating | S:查找时隐藏控制面板以免干扰，失败和滚动尝试均有上限
+ScreenSearchHighlightView.kt[AU4T]: F:为屏幕查找绘制可更新的多个主题高亮矩形 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/screen_search/ScreenSearchFloating.kt | A:ScreenSearchHighlightView | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/search/===
+AutomatePerformer.kt[AB7L]: F:在指定应用的目标页面就绪时向可编辑无障碍节点提交用户查询 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureService.kt | A:AutomatePerformer,InjectionTask | S:任务有限时、有限次重试；更换任务会撤销旧任务
+ContactSearchHelper.kt[IB6M]: F:同步系统联系人到本地目录并按姓名、全拼、首字母和号码评分 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/ContactDao.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/ContactModel.kt | A:ContactSearchHelper,callContact,copyContactNumber,sendSmsToContact | S:联系人与号码共同标识记录，搜索不能只按联系人 ID 去重
+DynamicShortcutSearch.kt[DB6T]: F:为快速搜索索引已导入的动态快捷方式，按标签和拼音等候选匹配 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/DynamicShortcutModel.kt | A:DynamicShortcutSearch | S:API 25 以下或空查询无结果；工作资料使用独立身份
+ExternalEngineHover.kt[DU4T]: F:记录外部拖拽当前悬停引擎和长按消耗状态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/QuickSearchEnginePager.kt | A:ExternalEngineHover | S:每个连续命中位置只触发一次长按
+QuickSearchActivity.kt[EU8L]: F:协调快速搜索页面的输入、引擎、查询结果、图片和窗口键盘动画 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/QuickSearchEnginePager.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/search/QuickSearchMotionController.kt | A:QuickSearchActivity,start,markKeepBackgroundBlurOnNextEnter | S:输入和键盘先就绪，数据和图标可延后；没有实际改变查询的 IME 通知不能取消已有提交
+QuickSearchEnginePager.kt[AU7L]: F:实现搜索引擎网格的布局、翻页、排序、长按及拖拽目标交互 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/QuickSearchActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/search/ExternalEngineHover.kt | A:QuickSearchEnginePager,Config,configureExternalDrop | S:数据前后用同样的单元测量；用于测量的占位单元不装载图标
+QuickSearchMotionController.kt[AU7L]: F:管理快速搜索入退场、键盘跟随、系统边衬及窗口卡片的模糊进度 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/QuickSearchActivity.kt | A:QuickSearchMotionController | S:禁用键盘跟随时保留原生 adjustResize，启用时才自行消费 IME 边衬
+QuickSearchPositionManager.kt[AU6M]: F:在搜索页面按触发侧恢复面板偏移并管理拖动和位置保存 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/QuickSearchActivity.kt | A:QuickSearchPositionManager,getSavedOrResolvedBias | S:按左、右或无触发来源取对应配置，跟随触发侧使用特殊偏移值
+SearchEngineExecutor.kt[AB7M]: F:为取词、快速搜索和拖放执行引擎动作，协调输入类型选择、应用打开及完成回调 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/config/SeachEngine.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/search/SearchHistoryManager.kt | A:SearchEngineExecutor.execute | S:双内容可要求用户选择，纯图片引擎直接走分享路径；实际执行前询问调用方是否仍可开始
+SearchEngineManager.kt[AU6L]: F:加载快速搜索引擎和默认项，构建网格、绑定图标并转发引擎操作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/QuickSearchEnginePager.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/search/config/SearchEngineDataManager.kt | A:SearchEngineManager | S:图标异步绑定以视图对应令牌检查过期结果
+SearchHistoryManager.kt[PD6T]: F:管理 Room 搜索历史和偏好存储中的上次输入草稿 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/SearchHistoryDao.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/search/QuickSearchActivity.kt | A:SearchHistoryManager,SearchDraft | S:草稿可同时保存文本和图片 URI，历史词查询使用规范后的输入
+SearchResultGridLayout.kt[KU5S]: F:测量两列搜索结果所需跨列宽度，并绑定条目排版 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/SearchResultGridSpans.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/search/SearchResultRecyclerView.kt | A:SearchResultGridLayout | S:有限宽度时评估文字能否按约定行数展示，布局顺序保持适配器顺序
+SearchResultGridSpans.kt[KU4T]: F:调整两列结果跨度以补满孤立半行 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/SearchResultGridLayout.kt | A:compactResultSpans | S:全宽项前及列表末尾的未配对半宽项扩展成全宽
+SearchResultManager.kt[AB8L]: F:合并快速搜索各类结果、管理搜索任务、排行、隐藏与置顶，并绑定界面和动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/SearchResultPins.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/search/SearchResultVisibility.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/search/QuickSearchActivity.kt | A:SearchResultManager,updateSearchResults,awaitCurrentSearch | S:等待搜索结果时承接被替换的任务；图片读取失败保留占位，复用行只应用当前绑定
+SearchResultPins.kt[DB5T]: F:为可置顶搜索结果生成带类型和来源身份的稳定键 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/SearchResultVisibility.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/SearchResultPinModel.kt | A:pinKey | S:应用含用户 ID，联系人含号码；避免不同来源的相同显示文案冲突
+SearchResultRecyclerView.kt[AU4T]: F:估算结果行与网格高度，维持快速搜索列表的稳定测量 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/SearchResultGridLayout.kt | A:SearchResultRecyclerView.heightForCount | S:-
+SearchResultVisibility.kt[DB5T]: F:将可隐藏搜索结果映射到持久记录并按隐藏键过滤 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/SearchResultPins.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/HiddenSearchResultModel.kt | A:hiddenRecord,filterHiddenResults,typeLabelRes | S:-
+SettingsShortcutSearchHelper.kt[ID6T]: F:发现系统设置快捷方式并同步到本地快捷方式目录 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/ShortcutDao.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/EVOApplication.kt | A:SettingsShortcutSearchHelper | S:先解析新目录再替换缓存；读取失败保留旧快捷方式
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/search/config/===
+SeachEngine.kt[DB6S]: F:定义搜索引擎、图文内容模式和各类快速搜索结果 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/SearchEngineExecutor.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/search/config/SearchEngineDataManager.kt | A:SearchEngine,EngineType,SearchContentMode,SearchResult | S:纯图片和混合引擎使用不同的图片目标字段
+SearchEngineDataManager.kt[PC7M]: F:维护引擎列表、初始化默认引擎、默认项选择及 JSON 导入导出 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/config/SeachEngine.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/search/SearchEngineManager.kt | A:SearchEngineDataManager | S:删除默认引擎同时清除选择；导入只加入尚未存在的项
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/settings/===
+ActionViewSettingsActivity.kt[EU6L]: F:配置动作轮盘组、交互样式、预览触发器及外部调用链接 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/GestureActionDataManager.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureMainFloating.kt | A:ActionViewSettingsActivity | S:预览触发器与外部调用的选择和镜像设置独立保存
+AppearanceSettingsActivity.kt[EU6L]: F:管理应用语言、动态配色、图标包与覆盖、圆角、模糊和手势反馈外观 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/EVOApplication.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/DynamicColorUtils.kt | A:AppearanceSettingsActivity | S:设置键供启动流程和多个浮层共享，外观变更通过共用主题入口应用
+BackgroundStabilityActivity.kt[EU5S]: F:提供电池限制、自启动、任务锁定说明和后台稳定性相关系统入口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/MainActivity.kt | A:BackgroundStabilityActivity,backgroundAutoStartIntent | S:自启动入口按设备厂商选择
+DataBackActivity.kt[EP8L]: F:管理本地及 WebDAV 的配置、图标、便签和数据库状态备份恢复 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinPoolStore.kt,code:PRIVACY_POLICY.md | A:DataBackActivity | S:归档按数据种类分目录；本地和远程入口共用备份与恢复流程，导出的 ZIP 不加密
+DataStatsActivity.kt[EU4S]: F:展示应用使用总次数、平均值、最近活动及打开次数排行 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/APPDao.kt | A:DataStatsActivity | S:-
+DynamicShortcutSettingsActivity.kt[EU6S]: F:展示已导入动态快捷方式及查询选择界面，并管理桌面角色授权入口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DynamicShortcutViewModel.kt | A:DynamicShortcutSettingsActivity | S:动态快捷方式从 API 25 起可用，较新版本使用系统 HOME 角色入口
+DynamicShortcutViewModel.kt[AB6T]: F:查询、筛选和导入动态快捷方式，发布已导入项和操作状态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DynamicShortcutSettingsActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/DynamicShortcutModel.kt | A:DynamicShortcutViewModel,State | S:导入使用选择快照；查询、确认和读取走同一个数据库入口
+ExternalActionSettingsActivity.kt[EI5S]: F:创建外部动作链接并展示、撤销各调用应用的持久授权记录 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/GestureAddActionActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ExternalActionPermissionStore.kt | A:ExternalActionSettingsActivity | S:-
+FreeFormSettingsActivity.kt[EU6M]: F:配置小窗启动模式、触发侧、横竖屏大小与位置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsActivity.kt | A:FreeFormSettingsActivity | S:共享小窗及部分厂商协议不支持尺寸参数，切换后停用尺寸配置
+FreeTriggerConfigActivity.kt[EU6L]: F:编辑单个自由触发器的布局、尺寸、交互时序、动作和应用名单 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/FreeTriggerSettingsActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/FreeTriggerDataManager.kt | A:FreeTriggerConfigActivity | S:危险尺寸先校验，手势动作选择支持批量应用
+FreeTriggerSettingsActivity.kt[EU5S]: F:展示、启用、添加或删除自由触发器并进入单项编辑 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/FreeTriggerConfigActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/FreeTriggerDataManager.kt | A:FreeTriggerSettingsActivity | S:-
+GestureAddActionActivity.kt[EU7L]: F:编辑轮盘或触发器动作的两阶段链接、图标、参数及外部动作导出 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/GestureActionItem.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/IconEditorActivity.kt | A:GestureAddActionActivity | S:外部动作和触发动作选择限制子轮盘入口；提交前验证草稿
+IconEditorActivity.kt[EU6M]: F:加载文字或图片图标并提供裁剪、预览和 PNG 输出 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/IconEditorContract.kt | A:IconEditorActivity | S:图片从 URI 解码后暂存；显式应用才返回输出路径
+IconEditorContract.kt[EU4T]: F:为图片图标编辑提供 Activity Result 请求与应用结果契约 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/IconEditorActivity.kt | A:IconEditorContract,IconEditorRequest | S:-
+InspireSettingsActivity.kt[EU6L]: F:集中配置屏幕取词、通知、键盘、指针、便签池及相关分享行为 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireFloating.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinPoolFloating.kt | A:InspireSettingsActivity | S:部分选项可用性随当前主开关决定，选项键供运行端直接读取
+LinkRuleSettingsActivity.kt[EU6L]: F:管理链接分发规则的查找、选择、排序、导入导出和相关雷达配置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleRepository.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkConfigTransfer.kt | A:LinkRuleSettingsActivity | S:搜索或多选时禁止拖动排序；单条开关更新保留当前行，避免取消动画
+LogManagerActivity.kt[EO6L]: F:展示及筛选诊断日志和问题会话，控制录制、系统采集与 ZIP 保存分享 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/AppLogger.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/LogArchive.kt | A:LogManagerActivity | S:未开启日志时不采集；导出可按问题或当前过滤条件选定范围
+SearchEngineAddActivity.kt[EU6L]: F:添加编辑或分享搜索引擎，并检查目标应用、图文模式和自定义图标配置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/config/SearchEngineDataManager.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/search/config/SeachEngine.kt | A:SearchEngineAddActivity | S:双模式引擎必须独立指定图片分享目标
+SearchEngineSettingsActivity.kt[EU6L]: F:设置快速搜索界面和来源，管理引擎显示、排序、默认项及隐藏结果 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/config/SearchEngineDataManager.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/search/QuickSearchActivity.kt | A:SearchEngineSettingsActivity | S:恢复隐藏结果使用持久结果键；引擎排序和显示标志一起保存
+SettingsActivity.kt[EU6M]: F:提供设置首页、子页导航、搜索过渡和无障碍状态相关入口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsSearchActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsGuideActivity.kt | A:SettingsActivity,evoAccessibilityServiceIsEnable,autoOpenAccessibilityService | S:-
+SettingsGuideActivity.kt[EU7M]: F:引导无障碍与可选权限设置，连接快速配置和练习预览生命周期 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GuidePreviewFloating.kt | A:SettingsGuideActivity | S:活动停止时退出对应预览状态，返回且未离开时才恢复
+SettingsSearchActivity.kt[EU5S]: F:显示设置搜索命中，管理输入焦点并跳转到对应设置项 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsSearchEntry.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsSearchRegistry.kt | A:SettingsSearchActivity | S:-
+SettingsSearchEntry.kt[DU3T]: F:描述设置搜索项的标题、目标页面、控件或偏好键及摘要 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsSearchActivity.kt | A:SettingsSearchEntry | S:-
+SettingsSearchNavigator.kt[AU5T]: F:构建设置搜索跳转并把目标控件或偏好滚动定位到可见位置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsSearchEntry.kt | A:SettingsSearchNavigator | S:-
+SettingsSearchRegistry.kt[DU6L]: F:登记跨设置页面的可搜索资源和定位锚点，按本地化文本计算匹配顺序 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsSearchNavigator.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsSearchEntry.kt | A:SettingsSearchRegistry.search | S:-
+ShortcutImportHomeActivity.kt[EI4T]: F:接收 HOME 入口后回到动态快捷方式导入页 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DynamicShortcutSettingsActivity.kt | A:ShortcutImportHomeActivity | S:入口不自行修改默认桌面应用
+WebDAVSettings.kt[PS5T]: F:保存和读取备份使用的 WebDAV 服务器地址与凭据 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DataBackActivity.kt,code:PRIVACY_POLICY.md | A:WebDAVSettings | S:凭据走应用私有设置存储
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/===
+GuideGestureDemoView.kt[AU4S]: F:为快速配置练习绘制预览触点和不同手势的演示图形 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/GuidePracticeDialog.kt | A:GuideGestureDemoView,startPoint | S:-
+GuideHintGeometry.kt[KU3T]: F:以触发器中心定位提示，并限制提示位于对话框内容边界内 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/GuidePracticeDialog.kt | A:guideHintTop | S:-
+GuidePracticeDialog.kt[AU6L]: F:展示设置引导的单个或连续手势练习、轮盘反馈及完成操作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/GuidePreviewSession.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/GuideGestureDemoView.kt | A:showGuidePractice,showGuidePracticeSequence | S:练习期间使用自己的请求，退出恢复此前预览
+GuidePreviewSession.kt[DM6T]: F:用请求所有者及练习身份组织预览请求、手势和轮盘选择回报 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GuidePreviewFloating.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/QuickSetupController.kt | A:GuidePreviewSession,GuidePreviewRequest | S:普通状态刷新不能覆盖实践中的轮盘目标、外观或选择状态
+GuideWheelSampleView.kt[AU6L]: F:在引导页绘制实际轮盘槽位，提供点击、长按编辑和拖动重排 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/GuideWheelGeometry.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/QuickSetupController.kt | A:GuideWheelSampleView | S:父级拥有触摸手势，保留子项的键盘和 TalkBack 点击动作
+QuickSetupConfig.kt[DC6T]: F:持有快速设置草稿、触发侧、编辑标记及真实运行端动作模型 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/QuickSetupRepository.kt | A:QuickSetupConfig,QuickSetupSide,QuickGesture | S:用于比较的内容 JSON 排除基线及编辑过程状态
+QuickSetupController.kt[AU7L]: F:协调快速配置步骤、动作编辑器结果、预览练习和草稿保存 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/QuickSetupRepository.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/GuidePreviewSession.kt | A:QuickSetupController | S:提交使用草稿快照；关闭预览时按本页所有者撤回
+QuickSetupPresentation.kt[AU4T]: F:解析引导动作类型和参数，生成显示标题及相关提示 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/QuickSetupConfig.kt | A:guideActionType,isUnassigned,label | S:-
+QuickSetupRepository.kt[PC8M]: F:把引导草稿与现有触发器及轮盘合并，在运行端存储提交并发布配置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/QuickSetupConfig.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/GestureConfigurationWrites.kt | A:QuickSetupRepository,buildQuickSetupTriggers,commitQuickSetup | S:未改的控制项保留运行端精确值；与旧配置迁移共用写入锁
+SettingsGuideState.kt[PC5T]: F:判定新旧安装是否进入引导并持久记录完成或跳过状态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsGuideActivity.kt | A:SettingsGuideState,shouldShowSettingsGuide | S:必须在创建默认触发器或引擎前检查已有配置
+SettingsGuideStatus.kt[DC5S]: F:读取服务连接、启用及已配置触发器和电池豁免，提供引导状态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/QuickSetupRepository.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsGuideActivity.kt | A:SettingsGuideStatus,SettingsGuideStatusReader | S:判定动作配置时沿用旧配置迁移优先顺序
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/===
+AboutView.kt[EU4S]: F:显示版本、发行和反馈入口、使用政策及随包许可声明 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsActivity.kt,code:app/build.gradle.kts | A:showAboutBottomSheet | S:-
+ActionConfigBottomSheet.kt[AU6L]: F:编辑轮盘配置、网格和图标样式参数，提供安全的滑块赋值 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ActionViewSettingsActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/ActionConfig.kt | A:showActionConfigBottomSheet,setSliderValueSafely | S:子轮盘继承只覆盖指定的五个样式字段
+ActionSelectBottomSheet.kt[AU5S]: F:展示按系统版本和入口能力筛选的动作分类与查询选择界面 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/GestureAddActionActivity.kt | A:showActionSelectBottomSheet,actionCategories,ActionChoice | S:-
+ActivitySelectBottomSheet.kt[AU6L]: F:选择指定应用的 Activity，按导出状态、Intent 能力或名称组合筛选 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/BaseSelectAPPBottomSheet.kt | A:ActivitySelectBottomSheet,ActivityFilter,ActivityModel | S:-
+BaseSelectAPPBottomSheet.kt[CU5M]: F:提供设置页通用应用列表选择器，支持系统与用户分类及搜索 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/APPModel.kt | A:BaseSelectAPPBottomSheet | S:-
+ColorPickerDialog.kt[CU5M]: F:提供颜色预设、透明度、十六进制输入和实时预览与确认 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/AppearanceSettingsActivity.kt | A:showColorPickerDialog | S:禁用透明度时始终使用不透明色
+DynamicShortcutAdapter.kt[AU4T]: F:显示动态快捷方式记录及应用图标、标签和所属用户资料 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DynamicShortcutSettingsActivity.kt | A:DynamicShortcutAdapter | S:-
+DynamicShortcutSelectBottomSheet.kt[AU5T]: F:提供动态快捷方式选择和查询，并随设置活动生命周期关闭 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/DynamicShortcutAdapter.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DynamicShortcutSettingsActivity.kt | A:showDynamicShortcutSelectBottomSheet | S:-
+GestureAngleConfigBottomSheet.kt[AU6L]: F:显示触发器方向角环，处理边界拖动和角度配置持久化 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/FreeTriggerConfigActivity.kt | A:GestureAngleConfigBottomSheet,GestureAngleConfig,GestureAngleStorge | S:跨越完整一圈的边界按相邻角度解绕
+GestureTimingConfigBottomSheet.kt[AU5S]: F:编辑自由触发器长按、双击、停顿及滑动距离参数 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/GestureTimingConfig.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/FreeTriggerConfigActivity.kt | A:GestureTimingConfigBottomSheet | S:-
+GestureTypeSelectBottomSheet.kt[AU5L]: F:显示手势及其可配置阶段，支持选一项或批量返回手势事件 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/FreeTriggerConfigActivity.kt | A:GestureTypeSelectBottomSheet,GestureTypeModel | S:-
+ImportSelection.kt[DU4T]: F:维护通用导入条目元数据、初始选择和批量选中状态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/ImportSelectionBottomSheet.kt | A:ImportOption,ImportSelection | S:-
+ImportSelectionBottomSheet.kt[AU5S]: F:呈现可复用导入多选底部弹窗及当前选择统计 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/ImportSelection.kt | A:showImportSelectionBottomSheet | S:仅交付确认的选择，导入操作由调用方负责
+LinkExemptsBottomSheet.kt[AU5S]: F:编辑按域名及来源应用生效的链接豁免列表 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleRepository.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleModels.kt | A:LinkExemptsBottomSheet | S:空来源包表示对所有应用生效
+LinkExtractsBottomSheet.kt[AU5S]: F:配置应用从文本提取链接的模式和模板，并展示内置规则 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleRepository.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkExtractor.kt | A:LinkExtractsBottomSheet | S:内置项不展示删除操作
+LinkHandlerSelectAPPBottomSheet.kt[AU3T]: F:给链接规则编辑器适配共享应用目标选择器 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/BaseSelectAPPBottomSheet.kt | A:LinkHandlerSelectAPPBottomSheet | S:-
+LinkRadarSwitchBinding.kt[AU4T]: F:将指针链接雷达开关绑定持久设置并在活动生命周期内同步 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarPreferences.kt | A:bindLinkRadarSwitch | S:-
+LinkRuleEditBottomSheet.kt[AU6M]: F:增删或编辑链接规则的匹配、短链接策略、模板和应用目标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleRepository.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/LinkHandlerSelectAPPBottomSheet.kt | A:LinkRuleEditBottomSheet | S:新增规则接在已有顺序末尾，编辑须保留其它规则的排列
+LinkSettingsUi.kt[CU3T]: F:为链接配置弹窗构建统一的文本表单字段和样式 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/LinkExemptsBottomSheet.kt | A:LinkSettingsForm | S:-
+LinkTemplateImportBottomSheet.kt[AB5T]: F:筛选捆绑链接模板，引导导入已装应用对应且尚无的规则 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkGoRuleConverter.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/ImportSelectionBottomSheet.kt | A:LinkTemplateImportBottomSheet | S:-
+NotificationDisplayTimeBottomSheet.kt[AU4T]: F:编辑通知浮层持续时间并显示持续显示选项 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/InspireSettingsActivity.kt | A:NotificationDisplayTimeBottomSheet | S:-
+PointerTouchAreaOffsetBottomSheet.kt[AU4T]: F:通过带单位值标签的滑块调整指针触控区域偏移 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/InspireSettingsActivity.kt | A:PointerTouchAreaOffsetBottomSheet | S:-
+QuadrantCircleView.kt[AU5M]: F:绘制轮盘四象限并处理触摸切换和选区状态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ActionViewSettingsActivity.kt | A:QuadrantCircleView | S:-
+ResizableRectangleView.kt[AU5M]: F:通过拖动边角或移动矩形设置小窗尺寸和位置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/FreeFormSettingsActivity.kt | A:ResizableRectangleView | S:-
+SelectAPPView.kt[AU5S]: F:为应用、快捷方式、Activity 和多应用名单提供专用选择器 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/BaseSelectAPPBottomSheet.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/ActivitySelectBottomSheet.kt | A:DefaultSelectAPPBottomSheet,ShortcutSelectAPPBottomSheet,SelectActivityBottomSheet | S:-
+SettingsBottomSheet.kt[CU4T]: F:为设置底部弹窗统一展开、主题背景和导航栏间距 | R:- | A:prepareSettingsSheet | S:-
+SettingsRows.kt[CU5M]: F:构建统一设置导航行、值槽、色板和开关配套布局 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/SettingsSectionCard.kt | A:SettingsNavRow | S:-
+SettingsSectionCard.kt[CU5M]: F:承载设置分组内容并管理可折叠卡片的头部、摘要和动画 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/SettingsRows.kt | A:SettingsSectionCard | S:-
+ShortcutSelectBottomSheet.kt[AU5M]: F:从本地分享清单读取、丰富并搜索用户快捷方式 | R:code:app/src/main/assets/shortcuts/other_user_shortcuts.json | A:ShortcutSelectBottomSheet,ShortcutResponse | S:分享 scheme 先解析成实际动作再交给选择回调
+ShowActionItemsTagSelectBottomSheet.kt[AU4S]: F:从持久轮盘动作组中显示并选择一组 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/GestureActionDataManager.kt | A:showPieGroupSelectBottomSheet | S:-
+ShowEditTextBottomSheet.kt[CU4S]: F:提供带确认、可选删除及单行或多行输入的编辑弹窗 | R:- | A:showEditTextBottomSheet | S:-
+ShowFreeTriggerSelectBottomSheet.kt[AU4S]: F:展示自由触发器的原始与镜像候选供设置页选择 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/FreeTriggerDataManager.kt | A:showFreeTriggerSelectBottomSheet | S:-
+WebDAVConfigDialog.kt[EU5S]: F:显示 WebDAV 配置对话框并处理连接测试和凭据保存 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/WebDAVSettings.kt | A:showWebDAVConfigDialog | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/share/===
+ImageShareLauncher.kt[IB7M]: F:统一构建图片分享载荷，处理 URI 许可、选择器、目标 Activity 和小窗发送 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/SearchEngineExecutor.kt | A:ImageShareLauncher,Payload,LaunchResult | S:冻结应用须先处理解冻再解析分享组件及授权；缓存位图通过内容 URI 传递
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/tile/===
+GestureTileService.kt[EB5T]: F:从系统快捷设置更新无障碍手势开关及运行指示 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureService.kt | A:GestureTileService | S:-
+ScreenContentService.kt[EB5T]: F:通过快捷设置折叠面板并触发屏幕内容动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionProxy.kt | A:ScreenContentService | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/ui/===
+ActionTextMenu.kt[CU6L]: F:实现可复用的文本动作菜单卡片、等宽行及浮层关闭机制 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/ActionItemMenuOverlay.kt | A:ActionTextMenuItem,ActionTextMenuCard | S:菜单可随配置变化刷新主题，关闭时移除事件拦截器
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/utils/===
+AccessibilityBlacklist.kt[CI6T]: F:订阅应用库无障碍禁用标志并给运行端提供同步包判断 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/APPDao.kt | A:AccessibilityBlacklist | S:空快照与已加载的空集合语义不同
+ActionProxy.kt[AB9L]: F:执行已授权的手势动作和链接，协调应用与快捷方式启动、小窗、输入和系统动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/GestureActionLink.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionWindowRoute.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureService.kt | A:ActionProxy,execute,executeLink | S:动态快捷方式解冻只适用于当前用户；小窗路由独立于目标类型，异步交接须保留触发位置
+ActionWindowRoute.kt[DB5T]: F:决定普通、系统小窗、vivo 分享或 Nubia Intent 路径 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionProxy.kt | A:ActionWindowRoute,actionWindowRoute | S:按小窗请求和 ROM 决定，与目标应用类型无关
+AppCrashHandler.kt[RO5T]: F:把未捕获异常写入诊断，执行应用异常界面或既有处理器的退出流程 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/CrashShowActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/AppLogger.kt | A:AppCrashHandler | S:-
+BackupAppStates.kt[PD5T]: F:把应用状态位导出为各功能独立的包名集合 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/APPModel.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DataBackActivity.kt | A:BackupAppStates | S:同一应用可以同时属于多个状态列表
+BackupPathMigration.kt[PR5T]: F:将备份中的旧应用自有文件路径重绑定到本次恢复的 files 目录 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DataBackActivity.kt | A:rebaseBackupFilePaths | S:识别旧包名及当前正式和调试包的存储路径，保留其他应用路径
+BackupZip.kt[PS6T]: F:将 ZIP 数据解包到指定备份恢复临时目录 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DataBackActivity.kt | A:extractBackupZip | S:每项均受规范路径边界约束，旧备份同样适用
+CardRegionBlur.kt[CU7M]: F:为卡片管理区域模糊宿主、系统 Drawable、挂载及故障清理 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/GlassEffectUtils.kt | A:CardRegionBlur | S:宿主归卡片，弱索引用于全局停用；反射失败延到下一主线程轮次清理，覆盖已脱离视图
+ClipboardUtils.kt[CG6S]: F:统一读取文本及图像剪贴板并写入文本或具备 URI 类型的图片 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireHelperUtils.kt | A:ClipboardUtils,copyImageToClipboard | S:图片操作共享单一低层写入入口；上层负责便签等额外行为
+ConvexHull.kt[KG4T]: F:计算二维点集凸包并按指定边距扩展边界 | R:- | A:Point,computeConvexHull,expandConvexHull | S:-
+CrashShowActivity.kt[EO3T]: F:显示异常处理程序传入的崩溃提示信息 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/AppCrashHandler.kt | A:CrashShowActivity | S:-
+CurrentPackageProvider.kt[CI7S]: F:绑定当前无障碍服务，融合窗口事件及窗口树解析并发布前台包名 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ForegroundPackageTracker.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureService.kt | A:CurrentPackageProvider,getTrustedWindowContext,resolveCurrentPackageName | S:只接受可信应用窗口上下文；服务断开时清理前台追踪
+DynamicColorUtils.kt[CU7L]: F:维护全局动态配色、主题覆盖和变更发布，供 Activity 和浮窗使用 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/EVOApplication.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/AppearanceSettingsActivity.kt | A:DynamicColorUtils,loadSavedScheme,applyAppWideColors,dynamicThemedContext | S:先更新共享调色板再通知；覆盖配色时保留 manifest 指定的窗口主题属性
+ExecuteResult.kt[IG3T]: F:在 AIDL 调用中传递执行退出码、标准输出及错误 | R:code:app/src/main/aidl/io/github/lumiagg/gestureevo/utils/ExecuteResult.aidl | A:ExecuteResult | S:-
+ExternalActionPermissionStore.kt[PI6S]: F:规范化外部动作授权数据并持久化按包名和链接或动作的授权 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/ExternalActionPermissionDao.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/ExternalActionProxyActivity.kt | A:ExternalActionPermissionStore | S:查询分别检查具体链接和动作作用域，空包名或空链接无授权
+ForegroundPackageTracker.kt[CM6T]: F:以协程复核窗口变更并维护前台包名流 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/CurrentPackageProvider.kt | A:ForegroundPackageTracker | S:Activity 事件可能早于窗口树；缺包名的窗口列表事件也触发确认
+FreeFormUtils.kt[IU6M]: F:计算小窗矩形及 Activity 启动参数，处理横竖屏与跟随触发侧 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/FreeFormSettingsActivity.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionProxy.kt | A:FreeFormUtils | S:按系统可用区域与底边间距夹取窗口尺寸
+GalleryImageManager.kt[IP6S]: F:将图片写入相册并可安排 Worker 延迟删除 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireHelperUtils.kt | A:GalleryImageManager | S:带过期时间时只有成功安排清理才报告保存完成
+GestureActionLink.kt[DB5T]: F:生成或解析手势动作 URI，封装动作类型和参数 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionProxy.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/config/GestureActionItem.kt | A:GestureActionLink,toGestureActionType | S:-
+GlassEffectUtils.kt[CU6M]: F:为 Activity 与浮窗提供系统模糊、玻璃卡片着色、边缘和阴影 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/CardRegionBlur.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/DynamicColorUtils.kt | A:GlassEffectUtils | S:相同卡片颜色不重复设置 ColorStateList，避免结果重绑定触发额外失效
+IoResult.kt[CG4T]: F:在 IO 调度器把操作成功或普通异常封装成 Result | R:- | A:ioResult | S:协程取消须原样传播
+MlKitOcr.kt[AA7M]: F:管理本地 PaddleOCR 引擎预加载、串行使用及屏幕文字和范围识别 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/OcrImageTextProcessor.kt | A:MlKitOcr,preload,detect,detectTextBoxes,recognizeTextBox | S:未使用的预加载可到期释放；用引擎与释放必须受同一同步约束
+MoshiUtils.kt[CD4T]: F:提供共享 Moshi 实例及对象和参数化集合的 JSON 读写 | R:- | A:MoshiUtils | S:-
+MultiUserAPP.kt[II4T]: F:通过 UserManager 和 LauncherApps 查询不同用户资料的可用应用 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionProxy.kt | A:MultiUserAPP | S:-
+NotificationPermissionPromptActivity.kt[EI5T]: F:显示通知受限提示并按系统版本申请运行时权限或打开通知设置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/NotificationPermissionUtils.kt | A:NotificationPermissionPromptActivity | S:-
+NotificationPermissionUtils.kt[CI5T]: F:判断应用能否发通知，并按需展示通知关闭提示 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/NotificationPermissionPromptActivity.kt | A:NotificationPermissionUtils | S:-
+OverlaySurfaceBlur.kt[IU6S]: F:为兼容 ROM 的浮窗 Surface 反射设置背景模糊 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/GlassEffectUtils.kt | A:OverlaySurfaceBlur | S:仅挂载的有效 Surface 可用；调用失败后按阻断状态降级
+PhoneDetector.kt[KB4T]: F:找出候选电话号码并保留在原文本中的起止位置 | R:- | A:PhoneDetector,PhoneMatch | S:少于七位数字的候选排除
+PinyinUtils.java[KL5S]: F:用 TinyPinyin 转写中文全拼及缩写，兼顾混合文字和大小写边界 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/BaseModel.kt | A:PinyinUtils | S:-
+PreferenceDataStoreAdapter.kt[IP5T]: F:将 AndroidX Preference 的类型读写桥接到协程 DataStore | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/PreferencesManager.kt | A:PreferenceDataStoreAdapter | S:同步 getter 读取持久值，调用方不能假设首帧快照已加载
+PreferencesManager.kt[PC8M]: F:提供四个偏好存储、类型化读取观察及备份恢复序列化 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/SettingsSnapshotCache.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DataBackActivity.kt | A:settingsStore,actionStore,gestureStore,searchStore,exportAllDataStores,restoreAllDataStores | S:批量读取可复用同一快照；恢复可以重写跨包文件路径
+ProcessRunner.kt[RG6T]: F:用独立流读取执行命令并返回退出码、stdout 和 stderr | R:- | A:runProcess,ProcessOutput | S:流读取与进程同步分开，失败仍清理进程和执行器
+RecentAppsRecorder.kt[PD5T]: F:更新应用打开时间与次数并从 Room 查询最近应用 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/db/APPDao.kt | A:RecentAppsRecorder | S:排除不应进入最近列表的应用状态
+ResourceWrite.kt[CG5T]: F:在资源创建后依次写入、发布并在失败时执行回滚 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/GalleryImageManager.kt | A:writeCreatedResource | S:写入完成后才发布资源
+Rom.kt[IH6M]: F:从设备属性和厂商标识识别系统，选择小窗模式并计算厂商补偿 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/FreeFormUtils.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionWindowRoute.kt | A:Rom,checkRom,getFreeFormCode | S:-
+ScreenUtil.kt[CH5S]: F:统一查询屏幕宽高、方向、状态栏及窗口相关显示尺寸 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/FreeFormUtils.kt | A:ScreenUtil,ScreenDimensions | S:-
+SettingsSnapshotCache.kt[PC7T]: F:包装设置 DataStore，发布提交后的同步偏好快照 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/PreferencesManager.kt | A:SnapshotPreferencesDataStore | S:取消可能发生在磁盘提交后，遇到不确定写入则禁用本进程缓存并读持久存储
+SoftGlassShadowView.kt[CU4T]: F:绘制仅在代码中构建的玻璃卡片柔和阴影，避免影响父布局测量 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/GlassEffectUtils.kt | A:SoftGlassShadowView | S:-
+TempDndPermissionRequester.kt[II5T]: F:协调临时免打扰的策略访问及通知权限流程并在完成时回调 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/NotificationPermissionUtils.kt | A:TempDndPermissionRequester | S:-
+TempDndRestoreWorker.kt[AB7L]: F:开启、延长或终止临时免打扰，安排恢复工作和通知控制 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/TempDndPermissionRequester.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionProxy.kt | A:TempDndManager,TempDndRestoreWorker | S:恢复需保存原过滤状态和自建规则身份；部分 ROM 的访问 API 结果须结合实际权限状态
+TextUtil.kt[KG4T]: F:按词项向量计算两段文本的余弦相似度 | R:- | A:TextUtil.calculateSimilarity | S:-
+ToastHelper.java[CU3T]: F:把资源或字符串 Toast 派发到 Android 主线程 | R:- | A:ToastHelper.showInUIThread | S:-
+TopFunction.kt[CG4T]: F:提供密度单位转换、位操作和少量通用扩展 | R:- | A:dp2px,px2dp,sp2px,getBit,setBit | S:-
+TransparentActivityLauncher.kt[EU3T]: F:以新任务且无窗口动画的标志启动透明代理页 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionProxy.kt | A:TransparentActivityLauncher.start | S:-
+UiDispatchUtils.kt[CG4T]: F:将协程工作安排在立即执行的主调度器 | R:- | A:postOnMain | S:-
+UrlDetector.kt[KB6M]: F:识别连续或含 OCR 间隔的网页地址并归一化供打开 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkExtractor.kt | A:UrlDetector | S:显式协议或 www 与裸域名采用不同的有效性门槛，裸文件名避免误认为域名
+VibratorUtils.kt[IH4T]: F:提供手势普通或双重震动以及无障碍触觉反馈 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureMainFloating.kt | A:VibratorUtils | S:-
+WebDAVManager.kt[IN6T]: F:以已认证的 WebDAV 会话执行测试、目录创建、上传下载和文件查询 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/WebDavPath.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DataBackActivity.kt | A:WebDAVManager | S:凭据只用于会话，诊断按操作种类记录而不加入服务器地址或密码
+WebDavPath.kt[KN3T]: F:归一化 WebDAV 基地址和远端路径连接处的斜线 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/WebDAVManager.kt | A:webDavResourceUrl | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/utils/app/===
+AShell.kt[IH5T]: F:将调用者提供的设备操作路由给 Shizuku 或 Root 执行入口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/app/AShizuku.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ProcessRunner.kt | A:AShell | S:-
+AShizuku.kt[II6S]: F:处理 Shizuku 授权后执行用户服务命令及冻结应用恢复 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/app/PackageStateCommand.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/app/AppEnabledState.kt | A:AShizuku | S:权限请求序列化，监听器清理由主线程调度以避开库的结果派发
+AppCatalog.kt[PD7S]: F:同步 PackageManager 与 Room 应用目录，处理增量事件、元数据及显示名 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/app/AppCatalogPlan.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/APPDao.kt | A:syncAppCatalog,syncAppCatalogPackage,syncAppCatalogIfNeeded | S:保留冻结应用和用户配置标志，成功存储后才更新同步时间
+AppCatalogPlan.kt[KD4T]: F:比较当前已安装包与目录快照，生成新增、恢复和移除集合 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/app/AppCatalog.kt | A:planAppCatalogSync,AppCatalogPlan | S:-
+AppEnabledState.kt[II4T]: F:读取系统包信息，区分不可用与确实已启用的应用 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/app/AShizuku.kt | A:applicationInfoOrNull | S:-
+PackageStateCommand.kt[II5T]: F:构造按用户操作应用启用状态的包管理命令和参数引用 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/app/AShizuku.kt | A:packageStateCommand,shellArgument | S:用户身份换算采用 Android 的每用户 UID 范围
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/===
+AppFilterIndex.kt[IU5T]: F:解析图标包 appfilter 组件映射并按活动或包选择 drawable 名 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/IconHelper.kt | A:AppFilterIndex | S:给定 Activity 时按组件比较，只有省略 Activity 才回退到包级匹配
+AppIconBinding.kt[CU4T]: F:为共用圆角视图设置占位、尺寸与应用图标，并在协程中载入 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/RoundImageTextView.kt | A:setAppIcon,bindAppIcon | S:-
+EditableIconDrawable.kt[AU5T]: F:渲染可平移缩放的位图图标裁剪预览，并生成方形输出 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/IconEditorActivity.kt | A:EditableIconDrawable | S:独立绘制导出，避免修改预览边界
+IconEditGeometry.kt[KU4T]: F:计算方形图标中源图缩放、平移和圆角的绘制边界 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/EditableIconDrawable.kt | A:iconEditGeometry,IconEditGeometry | S:平移以半个输出宽高为单位，比例一容纳完整的源图
+IconFileUtils.kt[PU5T]: F:管理应用私有图标文件路径以及从 Drawable、Bitmap 或 URI 生成图标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/IconImageIO.kt | A:IconFileUtils | S:-
+IconHelper.kt[CU7S]: F:维护图标覆盖、当前图标包和共享圆角配置，并按优先级加载图标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/IconPackRepository.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/IconResolution.kt | A:IconHelper | S:异步加载只写回捕获配置的缓存，防止旧图标包覆盖新配置
+IconImageIO.kt[IP5T]: F:按目标大小采样解码图标文件或内容 URI，并编码 PNG | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/IconFileUtils.kt | A:IconImageIO,imageSampleSize | S:-
+IconPackRepository.kt[IU5T]: F:发现图标包并按资源或资产形式读取 appfilter 映射 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/AppFilterIndex.kt | A:IconPackRepository | S:-
+IconResolution.kt[DU4T]: F:按文件覆盖、图标包、原应用图标的次序取首个有效图标 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/IconHelper.kt | A:resolveIcon | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/utils/process/===
+ProcessCommandRunner.kt[RG5T]: F:以超时、合并输出与有限保留缓冲执行设备命令 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/process/ProcessOutputLines.kt | A:ProcessCommandRunner.run | S:到保留上限后仍排空管道，避免子进程阻塞
+ProcessOutputLines.kt[CG5T]: F:逐块读取 UTF-8 进程输出并以长度上限交付完整行 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/process/ProcessStreamRelay.kt | A:ProcessOutputLines.read | S:超长行丢弃但继续读流，消费者可主动终止
+ProcessStreamRelay.kt[RG6S]: F:将进程输出转发给调用方，处理时限、流量、接收端失效和心跳租约 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchStreamHost.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/DiagnosticRelay.kt | A:ProcessStreamRelay | S:关闭先释放输出管道以通知接收方，再清理子进程
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/utils/shizuku/===
+PermissionDecision.kt[CI5T]: F:把授权回调桥接到可取消协程并清理订阅 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shizuku/ShizukuServiceHelper.kt | A:awaitPermissionDecision | S:允许、拒绝、失败或取消均须移除监听器
+ShizukuServiceHelper.kt[II7S]: F:协调 Shizuku 用户服务绑定、超时、存活校验和连接事件 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shizuku/UserService.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/app/AShizuku.kt | A:ShizukuServiceHelper,awaitService | S:绑定在主线程串行协商，过期或失活的连接会清理后重建
+UserService.kt[EI6T]: F:实现 Shizuku 用户服务的 AIDL 命令及诊断、触摸流委托 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchStreamHost.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ProcessRunner.kt | A:UserService | S:销毁时统一关闭已有流和执行资源
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/io/github/lumiagg/gestureevo/utils/shortcuts/===
+DynamicShortcutImport.kt[AB6T]: F:协调按包及用户导入动态快捷方式的登记、系统固定和确认 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shortcuts/DynamicShortcuts.kt | A:ShortcutIdentity,ShortcutImportBackend,importShortcutGroup | S:系统固定 API 会替换该调用者原有集合，导入必须合并保留原固定项
+DynamicShortcuts.kt[IB7S]: F:查询各用户可见的动态快捷方式，维护导入、恢复和 URI 身份 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shortcuts/DynamicShortcutImport.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/db/DynamicShortcutModel.kt | A:DynamicShortcuts,uri,requireImported | S:可访问的资料全部查询完才能发布新快照；可恢复系统已固定但库未确认的导入
+SettingsManifestReader.kt[IB5T]: F:从系统设置的清单 XML 提取可用 Activity、标签和动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shortcuts/SettingsShortcutLoader.kt | A:SettingsActivityEntry,readSettingsActivities | S:启动动作沿用清单中最后匹配的动作
+SettingsShortcutLoader.kt[IB5T]: F:读取系统设置 APK 的 Activity 清单，并转换成快捷方式模型 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shortcuts/SettingsManifestReader.kt | A:loadSettingsShortcuts | S:-
+ShortcutLaunchActivity.kt[EI6T]: F:通过内部 Activity 完成多用户快捷方式续跑并回报结果 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionProxy.kt,code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shortcuts/DynamicShortcuts.kt | A:ShortcutLaunchActivity,ShortcutLaunchRequests | S:请求只能消费一次；恢复的桥接界面不得重复提交动作
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/java/me/fleey/ppocrv5/ocr/===
+AcceleratorType.kt[DA3T]: F:定义 Android OCR 库与原生加速器使用的枚举值 | R:- | A:AcceleratorType | S:未知值回退 CPU
+OcrEngine.kt[IA7S]: F:以可关闭的 Kotlin 包装器管理原生 OCR 引擎，提供检测、识别与基准调用 | R:code:app/src/main/java/me/fleey/ppocrv5/OcrModelAssets.kt,code:app/src/main/cpp/ppocrv5_jni.cpp | A:OcrEngine,process,detectTextBoxes,recognizeTextBox,close | S:模型须从已解包的本地文件读取；关闭后原生句柄不再可用
+OcrModelAssets.kt[PA7M]: F:从随包 XZ 归档按版本解压原生 OCR 模型、去重准备并维护缓存 | R:code:app/src/main/java/me/fleey/ppocrv5/OcrEngine.kt,code:tools/compress_ocr_models.py | A:OcrModelAssets,prewarm,modelPath | S:解档路径必须在目标目录内；完整提取后才建立就绪标记
+OcrResult.kt[DA5T]: F:定义 JNI 返回的 OCR 文本、置信度、旋转框、角点和时间统计 | R:code:app/src/main/cpp/ppocrv5_jni.cpp | A:OcrResult,RotatedBox,Benchmark | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/modelAssets/models/===
+keys_v5.txt[FA5L]: F:提供从原生 OCR 分类索引解码字符的 PP-OCRv5 有序词表 | R:code:app/src/main/modelAssets/models/manifest.json,code:app/src/main/cpp/text_recognizer.cpp | A:- | S:词条顺序与模型输出类别绑定
+manifest.json[FA5T]: F:记录三种 OCR 模型及字符表的档名、形状、来源、长度和哈希 | R:code:app/src/main/modelAssets/models/keys_v5.txt,code:tools/compress_ocr_models.py | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/anim/===
+no_anim.xml[FU2T]: F:提供保持完全不透明的零时长 Alpha 动画资源 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/color/===
+inspire_mode_selector_text.xml[FU3T]: F:取词来源按钮选中时用主题主色，默认用表面变体文字色 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/drawable/===
+alarm_24px.xml[FU2T]: F:提供白色 24dp 闹铃图标 | R:- | A:- | S:-
+baseline_add_24.xml[FU2T]: F:提供主题着色的 24dp 添加号 | R:- | A:- | S:-
+baseline_arrow_back_24.xml[FU2T]: F:提供跟随 RTL 自动镜像的主题色返回箭头 | R:- | A:- | S:-
+baseline_arrow_right_alt_24.xml[FU2T]: F:提供可随布局方向镜像的主题色右向箭头 | R:- | A:- | S:-
+baseline_auto_awesome_24.xml[FU2T]: F:以三个主题色星芒表示增强操作 | R:- | A:- | S:-
+baseline_backspace_24.xml[FU2T]: F:提供可镜像的主题色退格键轮廓 | R:- | A:- | S:-
+baseline_check_24.xml[FU2T]: F:提供默认黑色的对勾确认符号 | R:- | A:- | S:-
+baseline_circle_24.xml[FU2T]: F:提供默认黑色的实心圆标记 | R:- | A:- | S:-
+baseline_circle_notifications_24.xml[FU2T]: F:提供圆形底上的主题色通知铃符号 | R:- | A:- | S:-
+baseline_clear_24.xml[FU2T]: F:提供夜间卡片色着色的叉形清除图标 | R:- | A:- | S:-
+baseline_control_point_24.xml[FU2T]: F:以外圆与加号表示添加控制点，使用选择背景配色 | R:- | A:- | S:-
+baseline_edit_24.xml[FU2T]: F:提供黑色铅笔编辑图标 | R:- | A:- | S:-
+baseline_gesture_24.xml[FU2T]: F:以连续曲线表示手势动作，默认黑色 | R:- | A:- | S:-
+baseline_home_24.xml[FU2T]: F:提供主题着色的房屋主页图标 | R:- | A:- | S:-
+baseline_image_24.xml[FU2T]: F:提供主题着色的山形图片图标 | R:- | A:- | S:-
+baseline_image_text_24.xml[FU2T]: F:以外框、两行文字和山形表示图片文字模式，采用主题着色 | R:- | A:- | S:-
+baseline_info_24.xml[FU2T]: F:提供默认黑色的圆形信息提示图标 | R:- | A:- | S:-
+baseline_keyboard_24.xml[FU2T]: F:用主题着色的键盘轮廓表示键盘功能 | R:- | A:- | S:-
+baseline_menu_24.xml[FU2T]: F:提供主题色三条横线菜单图标 | R:- | A:- | S:-
+baseline_miscellaneous_services_24.xml[FU2T]: F:以分离齿轮表示杂项服务操作 | R:- | A:- | S:-
+baseline_pie_chart_24.xml[FU2T]: F:提供分段扇形的轮盘入口图标 | R:- | A:- | S:-
+baseline_push_pin_24.xml[FU2T]: F:提供采用 1024 视口的主题色图钉图标 | R:- | A:- | S:-
+baseline_qr_code_scanner_24.xml[FU2T]: F:提供由方形码点组成的二维码扫描图标 | R:- | A:- | S:-
+baseline_refresh_24.xml[FU2T]: F:提供默认黑色的环形刷新箭头 | R:- | A:- | S:-
+baseline_save_24.xml[FU2T]: F:提供主题色软盘形保存图标 | R:- | A:- | S:-
+baseline_screenshot_24.xml[FU2T]: F:用手机外框表示截屏动作 | R:- | A:- | S:-
+baseline_select_all_24.xml[FU2T]: F:提供黑色虚线式全选区域图标 | R:- | A:- | S:-
+baseline_settings_24.xml[FU2T]: F:提供可镜像的主题色设置齿轮 | R:- | A:- | S:-
+baseline_unfold_more_24.xml[FU2T]: F:以红棕色上下箭头表示展开更多 | R:- | A:- | S:-
+bg_action_copy_panel.xml[FU2T]: F:以主题表面色、描边与 16dp 圆角绘制动作复制面板 | R:- | A:- | S:-
+bg_link_selection_badge.xml[FU2T]: F:用次容器色和 6dp 圆角绘制链接选择徽标 | R:- | A:- | S:-
+bg_link_settings_item.xml[FU2T]: F:给链接项提供触摸波纹和带主色描边的激活状态 | R:- | A:- | S:-
+bg_link_sheet_handle.xml[FU2T]: F:用主题轮廓色显示链接弹窗的圆角把手 | R:- | A:- | S:-
+bg_settings_home_icon.xml[FU2T]: F:用次容器色和 12dp 圆角作为设置首页图标底 | R:- | A:- | S:-
+bg_settings_tile.xml[FU2T]: F:给设置磁贴提供高表面底色和裁剪到圆角的波纹 | R:- | A:- | S:-
+bg_settings_tile_quiet.xml[FU2T]: F:用 12dp 圆角高表面色绘制静态设置磁贴背景 | R:- | A:- | S:-
+bigbang_item_background_light.xml[FU2T]: F:用主题表面与次容器色区分分词条目的普通和选中背景 | R:- | A:- | S:-
+bigbang_item_text_color_light.xml[FU2T]: F:按分词选中态切换表面变体文字色和主容器文字色 | R:- | A:- | S:-
+call_20px.xml[FU2T]: F:提供默认黑色的 20dp 电话听筒图标 | R:- | A:- | S:-
+clear_all_24px.xml[FU2T]: F:提供三道错位横线的清空全部图标 | R:- | A:- | S:-
+content_paste_go_20px.xml[FU2T]: F:以剪贴板与箭头表示粘贴后执行 | R:- | A:- | S:-
+do_not_disturb_on_24px.xml[FU2T]: F:提供主题色圆形减号免打扰标记 | R:- | A:- | S:-
+drag_handle_24px.xml[FU2T]: F:以两条平行横线绘制拖动手柄 | R:- | A:- | S:-
+history_24px.xml[FU2T]: F:提供带时钟的环形历史图标 | R:- | A:- | S:-
+ic_baseline_cancel_24.xml[FU2T]: F:用灰色圆底的叉号表示取消 | R:- | A:- | S:-
+ic_baseline_content_copy_24.xml[FU2T]: F:以两张缩小错位文档表示复制 | R:- | A:- | S:-
+ic_baseline_g_translate_24.xml[FU2T]: F:提供主题色双文字卡片翻译图标 | R:- | A:- | S:-
+ic_baseline_insert_link_24.xml[FU2T]: F:以蓝色连环表示插入链接 | R:- | A:- | S:-
+ic_baseline_share_24.xml[FU2T]: F:用三点相连的灰色图标表示分享 | R:- | A:- | S:-
+ic_chevron_down_24.xml[FU2T]: F:提供白色圆头描边的下折角 | R:- | A:- | S:-
+ic_chevron_right.xml[FU2T]: F:提供随 RTL 镜像的默认黑色右折角 | R:- | A:- | S:-
+ic_chevron_up_24.xml[FU2T]: F:提供白色圆头描边的上折角 | R:- | A:- | S:-
+ic_delete.xml[FU2T]: F:以橙色减号和浅色圆底绘制大号删除目标 | R:- | A:- | S:-
+ic_image_text_collapse_24.xml[FU2T]: F:用两支相向箭头表示收起图片文字预览 | R:- | A:- | S:-
+ic_image_text_expand_24.xml[FU2T]: F:用上下分离箭头表示展开图片文字预览 | R:- | A:- | S:-
+ic_launcher_monochrome.xml[FU2T]: F:为 Android 主题启动图标提供白色单色矢量层 | R:- | A:- | S:-
+ic_link_delete_24.xml[FU2T]: F:提供链接列表的白色垃圾桶图标 | R:- | A:- | S:-
+ic_link_selection_close.xml[FU2T]: F:为链接选择界面提供白色叉形关闭图标 | R:- | A:- | S:-
+ic_little_window.xml[FU2T]: F:以 200dp 几何矢量表示小窗示意 | R:- | A:- | S:-
+ic_pointer_double_tap.xml[FU2T]: F:以圆角描边的手指图案表示指针双击 | R:- | A:- | S:-
+ic_pointer_long_press.xml[FU2T]: F:以圆角描边的手指图案表示指针长按 | R:- | A:- | S:-
+ic_rotate_right.xml[FU2T]: F:提供略透明的白色顺时针旋转箭头 | R:- | A:- | S:-
+ic_screen_content_fullscreen_text_24.xml[FU2T]: F:用取景框与文字表示全屏取词 | R:- | A:- | S:-
+ic_text_image_convert_24.xml[FU2T]: F:用相邻文字与图片图形表示拖放图文互转 | R:- | A:- | S:-
+icon_copy.xml[FU2T]: F:提供略透明的白色重叠文档复制图标 | R:- | A:- | S:-
+icon_lock.xml[FU2T]: F:提供使用主题着色的锁定图标 | R:- | A:- | S:-
+icon_service.xml[FU2T]: F:提供略透明白色的齿轮服务图标 | R:- | A:- | S:-
+inspire_editor_color_black.xml[FU2T]: F:给编辑器提供带浅边的黑色 36dp 圆形样本 | R:- | A:- | S:-
+inspire_editor_color_blue.xml[FU2T]: F:给编辑器提供蓝色 36dp 圆形样本 | R:- | A:- | S:-
+inspire_editor_color_green.xml[FU2T]: F:给编辑器提供绿色 36dp 圆形样本 | R:- | A:- | S:-
+inspire_editor_color_orange.xml[FU2T]: F:给编辑器提供橙色 36dp 圆形样本 | R:- | A:- | S:-
+inspire_editor_color_purple.xml[FU2T]: F:给编辑器提供紫色 36dp 圆形样本 | R:- | A:- | S:-
+inspire_editor_color_red.xml[FU2T]: F:给编辑器提供红色 36dp 圆形样本 | R:- | A:- | S:-
+inspire_editor_color_selected_ring.xml[FU2T]: F:用叠层圆形描边表示编辑器当前选中的颜色 | R:- | A:- | S:-
+inspire_editor_color_white.xml[FU2T]: F:给编辑器提供带暗边的白色 36dp 圆形样本 | R:- | A:- | S:-
+inspire_editor_color_yellow.xml[FU2T]: F:给编辑器提供带细暗边的黄色 36dp 圆形样本 | R:- | A:- | S:-
+inspire_mode_selector_left.xml[FU2T]: F:给取词来源选择器的左半段提供左侧圆角及选中底色 | R:- | A:- | S:-
+inspire_mode_selector_right.xml[FU2T]: F:给取词来源选择器的右半段提供右侧圆角及选中底色 | R:- | A:- | S:-
+link_20px.xml[FU2T]: F:提供可镜像的 20dp 链环链接图标 | R:- | A:- | S:-
+log_expand.xml[FU2T]: F:用表面变体文字色绘制日志展开三角 | R:- | A:- | S:-
+more_vert_24px.xml[FU2T]: F:提供三个竖排黑点的更多操作图标 | R:- | A:- | S:-
+outline_center_focus_weak_24.xml[FU2T]: F:用浅蓝四角取景线表示屏幕区域选择 | R:- | A:- | S:-
+person_24px.xml[FU2T]: F:以黑色人物剪影表示联系人 | R:- | A:- | S:-
+picture_floating_resize_border.xml[FU2T]: F:为浮动图片调整尺寸提供半透明蓝色圆角边框 | R:- | A:- | S:-
+pinboard_24px.xml[FU2T]: F:以带透明层的主题色便签板表示便签池 | R:- | A:- | S:-
+pointer_hover_item_gap.xml[FU2T]: F:为指针悬停操作行预留 2dp 透明分隔 | R:- | A:- | S:-
+pointer_shape_arrow.xml[FU2T]: F:提供白色箭头形指针 | R:- | A:- | S:-
+pointer_shape_cross.xml[FU2T]: F:提供白色十字形指针 | R:- | A:- | S:-
+pointer_shape_small_dot.xml[FU2T]: F:提供小白点形指针 | R:- | A:- | S:-
+quick_search_drag_bar.xml[FU2T]: F:以轮廓色圆角矩形做快速搜索拖动柄 | R:- | A:- | S:-
+quick_search_image_badge_bg.xml[FU2T]: F:以主容器色圆角矩形承托搜索图像标记 | R:- | A:- | S:-
+redo_24px.xml[FU2T]: F:提供绿色可镜像的重做箭头 | R:- | A:- | S:-
+remove_24px.xml[FU2T]: F:提供黑色横杠移除图标 | R:- | A:- | S:-
+search_24px.xml[FU2T]: F:提供主题色放大镜搜索图标 | R:- | A:- | S:-
+settings_search_icon.xml[FU2T]: F:把共享搜索图标约束在 20dp 作为设置搜索入口 | R:- | A:- | S:-
+undo_24px.xml[FU2T]: F:提供绿色可镜像的撤销箭头 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/layout-land/===
+activity_inspire_content.xml[FU4T]: F:在横屏中配置取词主卡片和底部搜索引擎分页容器 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireContentActivity.kt | A:- | S:-
+inspire_content_view.xml[FU4M]: F:横屏并排显示截图预览和分词、来源、文本和图像动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/InspireContentView.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/layout/===
+about_bottomsheet.xml[FU3S]: F:提供应用图标、版本、反馈、隐私、协议和许可信息的弹窗视图 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/AboutView.kt | A:- | S:-
+action_config_bottomsheet.xml[FU4L]: F:定义轮盘样式底部弹窗的继承、尺寸、偏移、网格、透明与重置控件 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/ActionConfigBottomSheet.kt | A:- | S:-
+action_items_tag_select_bottomsheet.xml[FU3T]: F:提供轮盘动作组选择弹窗的标题、说明和列表 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/ShowActionItemsTagSelectBottomSheet.kt | A:- | S:-
+action_items_tags_list_item.xml[FU3T]: F:提供轮盘动作组的单选圆钮和名称行 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/ShowActionItemsTagSelectBottomSheet.kt | A:- | S:-
+activity_action_view_settings.xml[FU4M]: F:定义轮盘设置的动作组、触发器预览、样式、震动和外部调用区域 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ActionViewSettingsActivity.kt | A:- | S:-
+activity_appearance_settings.xml[FU4L]: F:编排主题、语言、图标、指针、各悬浮窗模糊和手势反馈外观控件 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/AppearanceSettingsActivity.kt | A:- | S:-
+activity_background_stability.xml[FU4T]: F:设置后台稳定性的电池、任务、自启动及命令复制入口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/BackgroundStabilityActivity.kt | A:- | S:-
+activity_crash.xml[FU2T]: F:提供崩溃信息、版本与备份控件的异常页布局 | R:- | A:- | S:-
+activity_data_back.xml[FU4T]: F:提供本地和 WebDAV 备份恢复、统计、日志、别名和索引重建入口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DataBackActivity.kt | A:- | S:-
+activity_data_stats.xml[FU4M]: F:排布应用使用汇总、热门及最近列表和刷新加载界面 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DataStatsActivity.kt | A:- | S:-
+activity_dynamic_shortcut_settings.xml[FU4T]: F:定义动态快捷方式权限、查询、恢复桌面和导入后列表的视图 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/DynamicShortcutSettingsActivity.kt | A:- | S:-
+activity_external_action_settings.xml[FU4T]: F:布置外部动作编辑、轮盘入口及授权记录容器 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ExternalActionSettingsActivity.kt | A:- | S:-
+activity_free_form_settings.xml[FU4M]: F:排布小窗方向、模式、尺寸、跟随触发侧和矩形拖拽控件 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/FreeFormSettingsActivity.kt | A:- | S:-
+activity_free_trigger_settings.xml[FU3T]: F:提供自由触发器列表及悬浮新增按钮 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/FreeTriggerSettingsActivity.kt | A:- | S:-
+activity_gesture_add_action.xml[FU4T]: F:组合图标选择、短长按编辑共用片段、参数同步和保存按钮 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/GestureAddActionActivity.kt | A:- | S:-
+activity_gesture_add_action_config.xml[FU4T]: F:定义可复用的一阶段动作、执行选项及高级链接编辑控件 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/GestureAddActionActivity.kt | A:- | S:-
+activity_icon_editor.xml[FU4S]: F:布置图标画布与文字输入、缩放、圆角、偏移、应用控制 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/IconEditorActivity.kt | A:- | S:-
+activity_inspire_content.xml[FU4T]: F:竖屏排列主取词卡和底部搜索引擎页，根节点初始透明 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/InspireContentActivity.kt | A:- | S:-
+activity_inspire_image_editor.xml[FU4L]: F:定义图片编辑画布、紧凑工具卡、裁剪动作、撤销重做及导出操作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/imageeditor/InspireImageEditorActivity.kt | A:- | S:-
+activity_inspire_settings.xml[FU4M]: F:排布 OCR 优先、链接雷达、拖放侧栏、全局长按和分享应用等设置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/InspireSettingsActivity.kt | A:- | S:-
+activity_link_rule_settings.xml[FU4M]: F:提供链接规则检索、多选、模板、豁免、提取、导入导出和雷达设置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/LinkRuleSettingsActivity.kt | A:- | S:-
+activity_link_selection.xml[FU4T]: F:提供多链接选择的遮罩卡、数量徽标、全选和确认按钮 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkSelectionActivity.kt | A:- | S:-
+activity_log_manager.xml[FU3T]: F:提供日志管理页工具栏和可滚动记录容器 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/LogManagerActivity.kt | A:- | S:-
+activity_quick_search.xml[FU4S]: F:定义快速搜索上方输入卡、图像附件、结果列表和独立引擎卡 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/QuickSearchActivity.kt | A:- | S:-
+activity_quick_search_bottom_input.xml[FU4S]: F:将结果列表置于靠底输入行上方，并为引擎区域加入分隔线 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/QuickSearchMotionController.kt | A:- | S:-
+activity_search_engine_add.xml[FU4M]: F:定义引擎名称和图标、五种模式选择、子表单及保存分享 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SearchEngineAddActivity.kt | A:- | S:-
+activity_search_engine_settings.xml[FU4L]: F:排布搜索网格与键盘样式、来源开关、启动页和引擎管理配置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SearchEngineSettingsActivity.kt | A:- | S:-
+activity_settings.xml[FU3T]: F:放置设置首页搜索入口与偏好 Fragment 容器 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsActivity.kt | A:- | S:-
+activity_settings_guide.xml[FU4M]: F:组合快速配置引导进度、手势轮盘练习、后台设置与可选权限卡 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsGuideActivity.kt | A:- | S:-
+activity_settings_search.xml[FU4S]: F:提供设置搜索输入、清除、结果及空态布局 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsSearchActivity.kt | A:- | S:-
+app_activity_select_list_item.xml[FU2T]: F:提供可显示名称、类名和导出状态的 Activity 候选卡 | R:- | A:- | S:-
+app_select_bottomsheet.xml[FU4S]: F:定义共享应用选择器的搜索、数量、用户系统筛选及候选列表 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/BaseSelectAPPBottomSheet.kt | A:- | S:-
+app_select_list_item.xml[FU2T]: F:提供应用候选的图标、名称、包名和可选开关 | R:- | A:- | S:-
+bigbang_function_item.xml[FU3T]: F:排列分词文字编辑、分享、便签、翻译、复制和链接动作 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ui/BigBangView.kt | A:- | S:-
+bigbang_item.xml[FU2T]: F:用共享分词背景和文字选择色绘制 16sp 文字条目 | R:- | A:- | S:-
+bigbang_select_bg.xml[FU2T]: F:为分词选择区提供可动态测量和着色的圆角背景卡 | R:- | A:- | S:-
+bottom_sheet_acc_action_select.xml[FU2T]: F:提供无障碍返回、最近任务、通知、截图、锁屏和电源等候选按钮 | R:- | A:- | S:-
+bottom_sheet_action_select.xml[FU3T]: F:定义可搜索的通用动作分类弹窗与空态 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/ActionSelectBottomSheet.kt | A:- | S:-
+bottom_sheet_app_icon_override.xml[FU2T]: F:提供指定应用的相册选图、其他应用图标及清除覆盖入口 | R:- | A:- | S:-
+bottom_sheet_clipboard_action_select.xml[FU2T]: F:提供剪贴板的便签、搜索、翻译和保存图片动作选项 | R:- | A:- | S:-
+bottom_sheet_edit_link_rule.xml[FU4S]: F:定义链接规则名称、匹配、目标应用、模板、短链和高级动作表单 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/LinkRuleEditBottomSheet.kt | A:- | S:-
+bottom_sheet_gesture_angle_config.xml[FU3T]: F:承载手势角度转盘及保存重置按钮 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/GestureAngleConfigBottomSheet.kt | A:- | S:-
+bottom_sheet_gesture_timing_config.xml[FU4M]: F:布局手势长按、双击、停顿和两种滑动阈值的配置滑块 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/GestureTimingConfigBottomSheet.kt | A:- | S:-
+bottom_sheet_icon_select.xml[FU2T]: F:提供相册、应用图标和文字图标三种来源按钮 | R:- | A:- | S:-
+bottom_sheet_import_selection.xml[FU2T]: F:显示可导入条目、选择汇总、全选及确认按钮 | R:- | A:- | S:-
+bottom_sheet_link_exempts.xml[FU2T]: F:放置域名豁免列表、无结果提示和添加按钮 | R:- | A:- | S:-
+bottom_sheet_link_extracts.xml[FU2T]: F:放置链接提取规则、空列表提示和添加按钮 | R:- | A:- | S:-
+bottom_sheet_notification_display_time.xml[FU2T]: F:为通知展示时长选择提供底部弹窗和滑块 | R:- | A:- | S:-
+bottom_sheet_pointer_touch_area_offset.xml[FU2T]: F:为指针触控区偏移提供独立滑块弹窗 | R:- | A:- | S:-
+bottom_sheet_select_gesture_type.xml[FU4S]: F:布局手势批量选择、触发停顿释放回返筛选及确认列表 | R:- | A:- | S:-
+bottom_sheet_shortcut_source_select.xml[FU2T]: F:提供动态、内置和在线快捷方式来源选项 | R:- | A:- | S:-
+custom_preference_widget_layout.xml[FU2T]: F:用可按压的 Material 卡片装饰共享偏好控件 | R:- | A:- | S:-
+dialog_color_picker_md3.xml[FU3S]: F:定义 Material 颜色选择弹窗的样本、透明度、十六进制字段和预设 | R:- | A:- | S:-
+dialog_external_action_permission.xml[FU2T]: F:显示外部调用动作授权说明并区分按动作、按链接、允许一次和取消 | R:- | A:- | S:-
+dialog_webdav_config.xml[FU2T]: F:定义 WebDAV 端点、用户名密码、测试进度及确认取消 | R:- | A:- | S:-
+edit_bottomsheet.xml[FU2T]: F:提供带删除、取消和确认的文字编辑布局 | R:- | A:- | S:-
+external_drop_floating.xml[FU4S]: F:提供屏幕底部拖放目标布局、图文转换、引擎以及便签池、便签、分词；相邻目标共用阴影 | R:- | A:- | S:-
+external_drop_sidebar.xml[FU4S]: F:定义竖向侧栏拖放面板、引擎分页进度和内置操作按钮 | R:- | A:- | S:-
+free_trigger_config_bottomsheet.xml[FU4L]: F:布置触发器名称、轮盘象限、屏幕方向、名单、动作、区域位置和尺寸配置 | R:- | A:- | S:-
+free_trigger_list_item.xml[FU2T]: F:呈现自由触发器可展开列表项和启用编辑控件 | R:- | A:- | S:-
+gesture_action_config_prompt_view.xml[FU2T]: F:提供轮盘配置中心和确认提示图标容器 | R:- | A:- | S:-
+gesture_action_pointer_view.xml[FU2T]: F:提供 30dp 手势跟随指针占位布局 | R:- | A:- | S:-
+gesture_action_view.xml[FU2T]: F:以全屏主轮盘组件作为浮窗布局根 | R:- | A:- | S:-
+gesture_type_list_header.xml[FU2T]: F:提供手势分类列表的分组标题 | R:- | A:- | S:-
+gesture_type_list_item.xml[FU3S]: F:定义手势候选的复选框、名称、阶段锁定说明和各阶段动作按钮 | R:- | A:- | S:-
+guide_gesture_setup.xml[FU3S]: F:布置引导手势侧、位置高度滑块、动作行和应用练习入口 | R:- | A:- | S:-
+guide_wheel_setup.xml[FU2T]: F:提供引导轮盘交互预览及恢复默认按钮 | R:- | A:- | S:-
+hidden_search_result_item.xml[FU2T]: F:为隐藏结果提供图标、名称、来源类型和恢复按钮 | R:- | A:- | S:-
+inspire_content_view.xml[FU4M]: F:组织截图和 OCR 覆盖层、浮动选择预览与操作栏，并保留分词列表和图文动作 | R:- | A:- | S:-
+inspire_edit_sheet_view.xml[FU3S]: F:定义取词选中文本编辑弹窗的范围标签、输入和确认取消 | R:- | A:- | S:-
+inspire_function_item.xml[FU3S]: F:提供屏幕框选完成后的取消确认和图片编辑分享、固定与保存 | R:- | A:- | S:-
+inspire_overlay_toast.xml[FU2T]: F:定义默认隐藏且不可触的取词提示卡和文字 | R:- | A:- | S:-
+inspire_view.xml[FU2T]: F:将全屏框选组件挂为取词浮窗布局根 | R:- | A:- | S:-
+item_data_stats_rank.xml[FU2T]: F:显示应用使用排行序号、名称、次数和进度 | R:- | A:- | S:-
+item_data_stats_recent.xml[FU2T]: F:排布最近使用应用名与时间 | R:- | A:- | S:-
+item_dynamic_shortcut.xml[FU2T]: F:显示动态快捷方式所属应用图标及标签 | R:- | A:- | S:-
+item_external_permission_record.xml[FU2T]: F:提供外部授权记录的标题、标识、链接复制及删除行 | R:- | A:- | S:-
+item_import_selection.xml[FU2T]: F:为导入候选提供应用图标、描述、状态及多选控件 | R:- | A:- | S:-
+item_link_exempt.xml[FU2T]: F:显示豁免域名、来源、启停及删除 | R:- | A:- | S:-
+item_link_extract.xml[FU2T]: F:显示提取规则名、模式摘要、开关与删除 | R:- | A:- | S:-
+item_link_rule.xml[FU3S]: F:显示链接规则图标和目标、匹配摘要、开关、多选及排序手柄 | R:- | A:- | S:-
+item_link_selection.xml[FU2T]: F:显示可选链接的目标图标、URL、应用提示和单选控件 | R:- | A:- | S:-
+item_pointer_hover_action.xml[FU2T]: F:定义指针悬停动作的文字、固定符号及目标应用图标位 | R:- | A:- | S:-
+item_settings_search_result.xml[FU2T]: F:显示设置搜索命中的页面、标题与摘要 | R:- | A:- | S:-
+log_manager_footer.xml[FU2T]: F:提供日志记录空态和继续加载按钮 | R:- | A:- | S:-
+log_manager_header.xml[FU4M]: F:定义问题录制、系统采集、记录健康度、搜索和等级模块时间筛选面板 | R:- | A:- | S:-
+log_record_item.xml[FU2T]: F:定义日志摘要卡的元信息、等级徽标、事件名及上下文 | R:- | A:- | S:-
+log_settings_sheet.xml[FU2T]: F:定义日志总开关和详细模式开关以及确认按钮 | R:- | A:- | S:-
+notification_floating_view.xml[FU2T]: F:提供代码动态添加通知项的带内距浮层容器 | R:- | A:- | S:-
+notification_item_view.xml[FU2T]: F:以半透明圆角卡承载通知应用图标 | R:- | A:- | S:-
+open_source_licenses_bottomsheet.xml[FU2T]: F:提供可滚动的开源许可声明弹窗 | R:- | A:- | S:-
+pause_gesture_bottomsheet.xml[FU2T]: F:布置暂时停用手势的秒数及当前或所有触发器选择 | R:- | A:- | S:-
+pin_drag_targets.xml[FU2T]: F:提供拖送期间的取消和重新固定便签目标 | R:- | A:- | S:-
+pin_floating_control_panel.xml[FU2T]: F:提供浮动便签的透明度、旋转、复制和删除控制 | R:- | A:- | S:-
+pin_floating_view.xml[FU2T]: F:定义图文便签内容、图片、文字和调整大小边框 | R:- | A:- | S:-
+pin_pool_floating_view.xml[FU4S]: F:提供便签池分类切换、关闭、列表、空态和清除按钮 | R:- | A:- | S:-
+pin_pool_item.xml[FU2T]: F:定义便签池条目的图片或文字预览和提醒标记 | R:- | A:- | S:-
+pin_pool_reminder_candidate_card.xml[FU2T]: F:提供检测到的便签提醒日期和添加动作卡 | R:- | A:- | S:-
+pointer_floating_touch_view.xml[FU2T]: F:用透明主题圆角卡标记指针触控窗口 | R:- | A:- | S:-
+pointer_floating_view.xml[FU2T]: F:提供全屏约束容器以动态部署指针层 | R:- | A:- | S:-
+popup_inspire_image_editor_save_options.xml[FU2T]: F:提供图像编辑器的永久保存与自动删除保存选项 | R:- | A:- | S:-
+popup_inspire_image_editor_scrub.xml[FU2T]: F:提供横向扫动选择编辑器形状的弹窗行 | R:- | A:- | S:-
+quick_keyboard_double_key.xml[FU3M]: F:排列双拼快捷键盘的四行按键和输入提示 | R:- | A:- | S:-
+quick_keyboard_func.xml[FU2T]: F:提供快捷键盘功能键的上方标识和图标位置 | R:- | A:- | S:-
+quick_keyboard_letter.xml[FU2T]: F:提供快捷键盘字母键的顶部及左右字母位置 | R:- | A:- | S:-
+quick_keyboard_t9.xml[FU3S]: F:排列 T9 快捷键盘的按键行和输入提示 | R:- | A:- | S:-
+quick_start_floating_view.xml[FU2T]: F:定义快捷启动卡、应用结果、键盘和拖动条 | R:- | A:- | S:-
+quick_start_item.xml[FU2T]: F:定义快捷启动应用图标及名称条目 | R:- | A:- | S:-
+screen_search_floating_view.xml[FU3S]: F:提供屏幕查找关键词、无障碍模式、滚动方向和查找状态控制 | R:- | A:- | S:-
+screen_search_indicator_view.xml[FU2T]: F:显示屏幕查找进行中或命中的圆形浮动指示 | R:- | A:- | S:-
+se_add_config_direct_link.xml[FU3S]: F:显示直接链接搜索的 URL 模板、应用选择和自定义标签页开关 | R:- | A:- | S:-
+se_add_config_extern_jump.xml[FU3S]: F:显示外部跳转引擎的来源包、链接、目标 Activity 和自动提交选项 | R:- | A:- | S:-
+se_add_config_jump_activity.xml[FU3S]: F:显示 Activity 搜索目标包、目标类及输入回车选项 | R:- | A:- | S:-
+se_add_config_share.xml[FU2T]: F:为文字分享引擎提供选择与展示接收 Activity 的卡片 | R:- | A:- | S:-
+se_add_config_share_image.xml[FU2T]: F:为图片分享引擎提供选择与展示接收 Activity 的卡片 | R:- | A:- | S:-
+se_add_config_share_image_switch.xml[FU2T]: F:定义混合模式图片分享开关、独立图片目标及内容策略选项 | R:- | A:- | S:-
+search_engine_dialog_edit_text.xml[FU2T]: F:提供引擎编辑弹窗复用的带轮廓单一文本输入 | R:- | A:- | S:-
+search_engine_item.xml[FU2T]: F:在 42dp 列中排列引擎图标与名称 | R:- | A:- | S:-
+search_engine_manage_item.xml[FU3S]: F:显示引擎管理的种类、默认及隐藏标记和拖动手柄 | R:- | A:- | S:-
+search_result_grid_item.xml[FU2T]: F:排布双列结果项图标、标题、副标题和更多按钮 | R:- | A:- | S:-
+search_result_item.xml[FU2T]: F:排布普通搜索结果的图标、标题及动作入口 | R:- | A:- | S:-
+search_result_paste_image_item.xml[FU2T]: F:定义剪贴板图片搜索结果的专用预览卡 | R:- | A:- | S:-
+settings_home_category.xml[FU2T]: F:为设置类别标题提供标准内距和主题文字 | R:- | A:- | S:-
+shortcut_select_list_item.xml[FU3S]: F:展示共享快捷方式的应用、贡献者、名称、说明、URI 和预览安装动作 | R:- | A:- | S:-
+tirgger_config_relate_content_popup_item.xml[FU2T]: F:给触发器配置关联内容弹窗提供单行省略文字条目 | R:- | A:- | S:-
+view_link_radar_target.xml[FU2T]: F:在雷达目标提示中并排显示应用图标和标签 | R:- | A:- | S:-
+view_pointer_hover_menu.xml[FU2T]: F:提供可滚动的指针悬停动作列表容器 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/menu/===
+menu_link_rule_selection.xml[FU2T]: F:定义链接规则多选工具条的全选和删除操作 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/mipmap-anydpi-v26/===
+ic_launcher.xml[FU2T]: F:将背景、前景和单色图层组合为 Android 自适应启动图标 | R:- | A:- | S:-
+ic_launcher_round.xml[FU2T]: F:配置圆形启动图标所用的自适应背景、前景和单色图层 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/values-en/===
+dynamic_shortcuts.xml[FL3T]: F:提供动态快捷方式的英文来源、权限、导入和使用提示 | R:- | A:- | S:-
+import_selection.xml[FL3T]: F:提供通用导入多选操作和选中状态的英文文案 | R:- | A:- | S:-
+logging.xml[FL3T]: F:提供日志记录、详细模式、系统采集及导出的英文文案 | R:- | A:- | S:-
+logging_ui.xml[FL3T]: F:提供日志页面、问题会话、筛选与状态的英文文案 | R:- | A:- | S:-
+strings.xml[FL5L]: F:提供 GestureEVO 主界面的英文菜单、操作、设置和状态文案 | R:- | A:- | S:-
+ux_strings.xml[FL3T]: F:提供设置首页分组、导航和功能摘要的英文文案 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/values-land/===
+dimens.xml[FU2T]: F:将横屏快速搜索卡片上下边距设为 8dp | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/values-night/===
+colors_dynamic_schemes.xml[FU4S]: F:声明六套自定义夜间配色的 Material 色调角色 | R:- | A:- | S:-
+theme_overlays_dynamic.xml[FU4S]: F:将夜间系统及自定义配色映射到动态主题覆盖属性 | R:- | A:- | S:-
+themes.xml[FU2T]: F:为暗色配置指定取词条目及背景卡颜色与文字样式 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/values-w1240dp/===
+dimens.xml[FU2T]: F:保留 1240dp 宽度限定的空尺寸覆盖，沿用默认尺寸 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/values-w600dp/===
+dimens.xml[FU2T]: F:保留 600dp 宽度限定的空尺寸覆盖，沿用默认尺寸 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/values/===
+arrays.xml[FU2T]: F:保留偏好数组资源文件，当前没有声明数组 | R:- | A:- | S:-
+attrs.xml[FU2T]: F:声明键盘字母、功能键、图标和分词布局的自定义 XML 属性 | R:- | A:- | S:-
+colors.xml[FU2T]: F:声明基础、主题、部件及搜索所用颜色资源 | R:- | A:- | S:-
+colors_dynamic_schemes.xml[FU4S]: F:声明六套自定义浅色配色的 Material 色调角色 | R:- | A:- | S:-
+dimens.xml[FU2T]: F:定义默认 AppBar 高度、搜索移动距离和设置卡间距圆角 | R:- | A:- | S:-
+dynamic_shortcuts.xml[FL3T]: F:提供动态快捷方式选源、查询、桌面权限与导入的默认文案 | R:- | A:- | S:-
+ic_launcher_background.xml[FU2T]: F:把自适应启动图标背景设为白色 | R:- | A:- | S:-
+icon_binding_ids.xml[FU2T]: F:声明异步应用图标绑定任务的独立 View 标记 ID | R:- | A:- | S:-
+ids.xml[FU2T]: F:声明浮动按钮动画、引擎网格与区域模糊宿主使用的 View 标记 ID | R:- | A:- | S:-
+import_selection.xml[FL3T]: F:提供通用导入多选动作、空态与选中状态中文文案 | R:- | A:- | S:-
+logging.xml[FL4T]: F:提供默认日志管理、系统诊断、详细模式及归档导出的中文文案 | R:- | A:- | S:-
+logging_ui.xml[FL4T]: F:提供默认日志筛选、问题会话和页面状态的中文文案 | R:- | A:- | S:-
+pointer_hover_menu.xml[FU2T]: F:设定指针悬停菜单最小最大宽度、边缘间隙及选择步长 | R:- | A:- | S:-
+search_result_dimens.xml[FU2T]: F:为单列与网格搜索结果定义行高、卡片间距、图片及图标尺寸 | R:- | A:- | S:-
+strings.xml[FL5L]: F:提供 GestureEVO 主界面的默认中文文案及资源键 | R:- | A:- | S:-
+styles_link_settings.xml[FU2T]: F:提供链接设置的 Material 分节标题文字及外边距 | R:- | A:- | S:-
+theme_overlays_dynamic.xml[FU4S]: F:为浅色自定义配色映射主题属性；系统主题覆盖保留壁纸配色 | R:- | A:- | S:-
+themes.xml[FU5T]: F:声明应用、透明窗口、底部弹窗及取词样式基础主题 | R:- | A:- | S:-
+ux_strings.xml[FL3T]: F:提供设置首页分组和导航功能摘要的中文文案 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/main/res/xml/===
+accessibility_service.xml[FI6T]: F:声明无障碍服务订阅的事件、窗口内容、手势和截图能力 | R:code:app/src/main/AndroidManifest.xml,code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/GestureService.kt | A:- | S:窗口变化和长按等事件驱动服务；通知超时设为 50 毫秒
+backup_rules.xml[FS4T]: F:定义传统系统备份规则，当前没有启用自定义包含或排除项 | R:- | A:- | S:-
+data_extraction_rules.xml[FS4T]: F:声明默认云备份提取规则，当前未添加包含或排除项 | R:- | A:- | S:-
+file_paths.xml[FS5T]: F:限定 FileProvider 共享至诊断归档、缓存图片和便签池目录 | R:code:app/src/main/AndroidManifest.xml | A:- | S:-
+network_security_config.xml[FS5T]: F:设定网络安全基础配置为禁止明文流量 | R:code:app/src/main/AndroidManifest.xml | A:- | S:-
+root_preferences.xml[FU4T]: F:定义设置主页面的引导、服务、手势、外观、搜索等偏好入口 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/SettingsActivity.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/diagnostics/===
+DiagnosticProcessTest.kt[TO4T]: F:验证诊断进程输出有界及挂起采集进程在时限内结束 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/DiagnosticProcess.kt | A:- | S:-
+DiagnosticRelayTest.kt[TO4T]: F:验证诊断流丢弃超长行后仍能交付后续事件 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/DiagnosticRelay.kt | A:- | S:-
+LogIndexTest.kt[TO5T]: F:验证日志索引增量、旋转清除、筛选分页、快照、隐私错误字段与 LRU | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/LogStore.kt | A:- | S:-
+LogStoreTest.kt[TO5S]: F:验证日志存储限额、轮转、保留、并发、隐私和系统采集分类 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/LogStore.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/drop/===
+DragConversionStateTest.kt[TB4T]: F:验证拖拽互转保留两种内容、去重并拒绝过时结果 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DragConversionState.kt | A:- | S:-
+DropSearchStateTest.kt[TU4T]: F:验证拖拽搜索在状态恢复后只按选择触发一次 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/DropSearchState.kt | A:- | S:-
+EvdevTouchParserTest.java[TH5M]: F:验证 evdev 同帧及分帧坐标、主指跟踪、重复接触隔离和最终抬起位置 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/EvdevTouchParser.java | A:- | S:-
+ExternalDropPolicyTest.kt[TB4T]: F:验证系统拖放接受规则、图文 MIME 分类和双模式引擎筛选边界 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ExternalDropPolicy.kt | A:- | S:-
+ExternalDropSidebarPolicyTest.kt[TU4T]: F:验证拖放侧栏高度回退、居中和翻页悬停夹取 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/ExternalDropSidebarPolicy.kt | A:- | S:-
+PressTriggerDetectorTest.java[TB5S]: F:验证按压武装、方向位移、单次触发及取消与多指边界 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/PressTriggerDetector.java | A:- | S:-
+TouchInputProtocolTest.kt[TH4T]: F:验证直接触屏发现、多点轴和触摸帧时间戳解析 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchInputProtocol.kt | A:- | S:-
+TouchInterruptionSequenceTest.kt[TH5T]: F:验证撤销时阻止启动，并在触摸开始失败或过期后仍执行清理 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchInterruptionSequence.kt | A:- | S:-
+TouchStreamProcessTest.kt[TR4T]: F:验证触摸流租约续期保留同一进程，缺少心跳可回收进程 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/drop/TouchStreamProcess.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/floating/===
+WindowAttachmentRegistryTest.kt[TU5T]: F:验证接受添加和实际挂载不同步时的所有权、重试、迟到回调与移除 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/floating/WindowAttachmentRegistry.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/gesture/ui/===
+GuideWheelGeometryTest.kt[TU5M]: F:验证轮盘自适应象限、极小与横屏区域、实际图标边界及同心槽分配 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/GuideWheelGeometry.kt | A:- | S:-
+WheelGridGeometryTest.kt[TU4T]: F:验证轮盘网格横竖屏拟合及镜像顺序和底部锚点 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/gesture/ui/WheelGridGeometry.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/inspire/===
+AccessibilityTextFormatterTest.kt[TA4T]: F:验证按遍历顺序合并同视觉行、保留换行并忽略空片段 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/AccessibilityTextFormatter.kt | A:- | S:-
+AccessibilityTextHierarchyTest.kt[TA5S]: F:验证无障碍父子文本去重、空容器穿透及局部选区的独立内容保留 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/AccessibilityTextHierarchy.kt | A:- | S:-
+AccessibilityTextPolicyTest.kt[TA5S]: F:验证 Flutter 描述、朗读按钮、图片和极少边缘重叠的取词判定 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/AccessibilityTextPolicy.kt | A:- | S:-
+ScreenContentLinkTouchTest.kt[TU4T]: F:验证链接点击、移动交给选区、长按持有释放以及取消行为 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/inspire/ScreenContentLinkTouch.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/link/===
+LinkConfigCodecTest.kt[TC5S]: F:验证链接备份往返、版本检查、保序导入、去重及重复合并幂等 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkConfigCodec.kt | A:- | S:-
+LinkDispatcherTest.kt[TB5S]: F:验证链接域与子域、正则、精确匹配、捕获模板及解析回退 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkDispatcher.kt | A:- | S:-
+LinkExtractorTest.kt[TB5S]: F:验证自定义优先提取、匹配长度和位置、重叠处理与 URL 探测兜底 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkExtractor.kt | A:- | S:-
+LinkPersistenceTest.kt[TD5T]: F:验证链接配置并发统计与编辑的保留，以及转换失败回滚 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkPersistence.kt | A:- | S:-
+LinkRoutingRegressionTest.kt[TB5S]: F:验证短链重定向边界、重新路由时的豁免和捕获、并防止模板值重复展开 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkDispatcher.kt | A:- | S:-
+LinkRuleSerializationTest.kt[TC4T]: F:验证单条及列表链接规则在 Moshi JSON 往返后保留策略 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/link/LinkRuleModels.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/pin/===
+PinImageFilesTest.kt[TS5S]: F:验证还原路径、符号链接、目录穿越、旧路径和图片删除的边界 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pin/PinImageFiles.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/pointer/===
+PointerHoverStateTest.kt[TU5S]: F:验证指针悬停菜单、停留确认、释放所有权及布局边界 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerHoverState.kt | A:- | S:-
+PointerMenuSelectionTest.kt[TU4T]: F:验证悬停菜单步进累计、边界夹取、反向移动与动态链接插入 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerMenuSelection.kt | A:- | S:-
+PointerSelectionContinuityTest.kt[TU5S]: F:验证指针菜单交接保持锚点、双轴、比例、回原点与坐标失效行为 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/PointerCoordinateMapping.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/pointer/radar/===
+LinkRadarActionLayoutTest.kt[TU4T]: F:验证链接雷达动作保持在视口内并避免遮挡邻近链接和按钮 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarActionLayout.kt | A:- | S:-
+LinkRadarTargetingTest.kt[TU4T]: F:验证链接雷达的精确目标、回退分组、滞后及释放命中 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/pointer/radar/LinkRadarTargeting.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/search/===
+ExternalEngineHoverTest.kt[TB4T]: F:验证拖放引擎长按在换项、翻页或离开后清除 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/ExternalEngineHover.kt | A:- | S:-
+SearchContentModeTest.kt[TB4T]: F:验证图文双模式、纯文本、纯图片的输入选择 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/config/SeachEngine.kt | A:- | S:-
+SearchEngineCompatibilityTest.kt[TC5T]: F:验证旧版引擎 JSON 默认值，以及混合图文偏好和独立目标的配置兼容 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/search/config/SeachEngine.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/settings/guide/===
+GuideHintGeometryTest.kt[TU3T]: F:验证练习提示在屏幕边缘及小窗口内不越界 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/GuideHintGeometry.kt | A:- | S:-
+GuidePreviewSessionTest.kt[TM5T]: F:验证练习请求所有权、过期结果丢弃及轮盘预览的显示和回报 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/GuidePreviewSession.kt | A:- | S:-
+QuickSetupCommitTest.kt[TR5S]: F:验证快速设置的补偿写入、发布顺序、取消和重建时的运行态刷新 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/QuickSetupRepository.kt | A:- | S:-
+QuickSetupConfigTest.kt[TC5S]: F:验证快速设置默认值、全宽位移、动作字段保留和版本校验 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/QuickSetupConfig.kt | A:- | S:-
+QuickSetupRepositoryTest.kt[TC5M]: F:验证引导保存保留其它触发器、精确参数、旧版动作、未编辑阶段与轮盘组 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/QuickSetupRepository.kt | A:- | S:-
+SettingsGuideStateTest.kt[TC4T]: F:验证新装、更新、有旧配置、未完成、完成或跳过时的引导入口决策 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/guide/SettingsGuideState.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/settings/ui/===
+ActionCatalogTest.kt[TB4T]: F:验证通用动作目录完整性、版本及入口过滤、参数动作确认和系统动作 ID | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/ActionSelectBottomSheet.kt | A:- | S:-
+ImportSelectionTest.kt[TU4T]: F:验证导入多选的默认状态、同名条目区分和接受快照 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/settings/ui/ImportSelection.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/utils/===
+ActionWindowRouteTest.kt[TB4T]: F:验证普通、小窗及厂商路径的选择优先顺序 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ActionWindowRoute.kt | A:- | S:-
+BackupAppStatesTest.kt[TD4T]: F:验证备份的重叠状态位、按包合并及恢复不改目录其他标志 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/BackupAppStates.kt | A:- | S:-
+BackupPathMigrationTest.kt[TR4T]: F:验证旧包、多用户路径和 JSON 还原，保护第三方及已迁移路径 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/BackupPathMigration.kt | A:- | S:-
+BackupZipTest.kt[TS4T]: F:验证备份 ZIP 嵌套恢复和目录边界对特殊路径的保护 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/BackupZip.kt | A:- | S:-
+ForegroundPackageTrackerTest.kt[TM5S]: F:验证窗口事件对前台包的即时及延迟确认，断开时取消复核 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ForegroundPackageTracker.kt | A:- | S:-
+IoResultTest.kt[TR4T]: F:验证 IO Result 保留异常和取消，并检查 WebDAV 路径连接 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/IoResult.kt | A:- | S:-
+ProcessFixture.java[TQ4T]: F:提供真实 JVM 子进程样例，覆盖大输出、编码、环境、退出、标准输入与等待 | R:code:app/src/test/java/io/github/lumiagg/gestureevo/utils/ProcessRunnerTest.kt | A:- | S:-
+ProcessRunnerTest.kt[TR5T]: F:验证进程并行排空输出、UTF-8、退出码、标准输入和中断 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ProcessRunner.kt | A:- | S:-
+ResourceWriteTest.kt[TR4T]: F:验证资源写入先于发布，部分失败回滚并保留原错误 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/ResourceWrite.kt | A:- | S:-
+SettingsSnapshotCacheTest.kt[TD5T]: F:验证已提交设置即时可见、读写排序以及不确定取消时停用缓存 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/SettingsSnapshotCache.kt | A:- | S:-
+TextUtilTest.kt[TG4T]: F:验证余弦相似度保留既有分词行为，空输入及大计数安全 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/TextUtil.kt | A:- | S:-
+UrlDetectorTest.kt[TB4T]: F:验证 URL 识别能区分裸域名、显式地址、文件名和包名 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/UrlDetector.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/utils/app/===
+AppCatalogPlanTest.kt[TD4T]: F:验证目录差分能识别新增、已移除、重新安装和集合哈希冲突 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/app/AppCatalogPlan.kt | A:- | S:-
+PackageStateCommandTest.kt[TI4T]: F:验证包状态命令目标用户、单参数引用及无效输入拒绝 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/app/PackageStateCommand.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/utils/icon/===
+AppFilterIndexTest.kt[TU4T]: F:验证图标包组件名称归一化、精确包匹配及忽略无效记录 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/AppFilterIndex.kt | A:- | S:-
+IconEditGeometryTest.kt[TU4T]: F:验证图标裁剪比例、平移、圆角与预览导出几何一致性 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/IconEditGeometry.kt | A:- | S:-
+IconImageSamplingTest.kt[TU4T]: F:验证图标采样计算与此前的容差一致并拒绝无效尺寸 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/IconImageIO.kt | A:- | S:-
+IconResolutionTest.kt[TU4T]: F:验证图标覆盖优先及图标包、应用原图的失败回退 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/icon/IconResolution.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/utils/process/===
+ProcessStreamRelayTest.kt[TR4T]: F:验证进程转发透明输出及主动关闭或接收端断开后的租约回收 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/process/ProcessStreamRelay.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/utils/shizuku/===
+PermissionDecisionTest.kt[TI4T]: F:验证授权回调清理、首个决策和协程取消的传播 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shizuku/PermissionDecision.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/app/src/test/java/io/github/lumiagg/gestureevo/utils/shortcuts/===
+DynamicShortcutImportTest.kt[TB5T]: F:验证快捷方式导入保留既有固定项、按资料分组、系统确认和取消 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shortcuts/DynamicShortcutImport.kt | A:- | S:-
+SettingsManifestReaderTest.kt[TB5S]: F:验证系统设置清单解析的包身份、标签、过滤器、截断和别名处理 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shortcuts/SettingsManifestReader.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/docs/===
+development-guidelines-evidence.md[SQ4T]: F:记录开发规范形成时用到的历史 PR 与维护改动，说明代表案例 | R:code:docs/development-guidelines.md | A:- | S:-
+development-guidelines.md[SQ7S]: F:定义项目架构、持久化、生命周期、系统边界、语义与 PR 审查标准 | R:code:CONTRIBUTING.md,code:docs/development-guidelines-evidence.md | A:- | S:运行时写入、重试和异步结果须定义提交点、所有权和成功语义；旧实现不自动豁免本规范
+diagnostics.md[SO5T]: F:说明日志和诊断记录的范围、导出与故障反馈渠道 | R:code:PRIVACY_POLICY.md,code:app/src/main/java/io/github/lumiagg/gestureevo/diagnostics/AppLogger.kt | A:- | S:-
+dynamic-shortcuts.md[SB5T]: F:说明动态快捷方式临时桌面授权、导入恢复、图标与小窗行为 | R:code:app/src/main/java/io/github/lumiagg/gestureevo/utils/shortcuts/DynamicShortcuts.kt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/docs/release-notes/===
+2.2-1017001.md[SV3T]: F:记录 1017001 本地日志管理、问题记录、系统诊断及卡片入口修复 | R:- | A:- | S:-
+2.2-1024001.md[SV3T]: F:记录 1024001 图标编辑、便签剪贴板开关及误触发修复 | R:- | A:- | S:-
+2.2-1030001.md[SV3T]: F:记录 1030001 外部拖放、临时禁用手势及指针样式和区域框选 | R:- | A:- | S:-
+2.2-1105001.md[SV3T]: F:记录 1105001 轮盘暂停范围、指针轨迹、编辑器布局及快捷键盘与服务修复 | R:- | A:- | S:-
+2.2-1109001.md[SV3T]: F:记录 1109001 图文双模式引擎、拖放目标提示、设置分组及动作同步 | R:- | A:- | S:-
+2.2-1110001.md[SV3T]: F:记录 1110001 拖放侧栏、悬停小窗、双模式内容偏好和主题修复 | R:- | A:- | S:-
+2.2-1116001.md[SV3T]: F:记录 1116001 链接分发、指针雷达、长按拖放提取及首开修复 | R:- | A:- | S:-
+2.2-1116002.md[SV3T]: F:保存 1116002 本地发行说明，记录链接设置与模糊资源管理更新 | R:- | A:- | S:-
+2.2-1118001.md[SV3T]: F:记录 1118001 指针悬停菜单、取词雷达及误识别和交互修复 | R:- | A:- | S:-
+2.2-1119001.md[SV3T]: F:记录 1119001 动态快捷方式导入及指针框选交接改进 | R:- | A:- | S:-
+2.2-1119002.md[SV3T]: F:记录 1119002 快速搜索动态快捷方式和便签拖送面板定位 | R:- | A:- | S:-
+2.2-1120001.md[SV3T]: F:记录 1120001 按应用启停无障碍动作、读取与长按拖放，同时保留截图识别 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/gradle/===
+libs.versions.toml[FV6T]: F:集中固定 Android、Kotlin、KSP、Room 和应用依赖及插件版本 | R:code:app/build.gradle.kts,code:build.gradle.kts | A:libs | S:编译器、KSP 和安卓插件由依赖更新策略保留协同升级
+
+===D:/Project/my/GestureEVO/GestureEVO/gradle/wrapper/===
+gradle-wrapper.properties[FV5T]: F:固定 Gradle 8.13 二进制分发及下载 SHA256、缓存位置和连接超时 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/signing/===
+release-certificate.sha256[FS6T]: F:提供正式签名证书的公开 SHA256 指纹供发行任务验证 | R:code:.github/workflows/release.yml | A:- | S:比对签名者证书身份而非 APK 文件散列
+
+===D:/Project/my/GestureEVO/GestureEVO/third_party/===
+README.md[SS4T]: F:列出第三方组件版本、输入位置和各自许可保留政策 | R:code:NOTICE | A:- | S:-
+binary-manifest.json[FS5T]: F:登记仓库中构建工具、运行库与 OCR 数据的预期大小及 SHA256 | R:code:tools/check_repository.py | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/third_party/litert/===
+CMakeLists.txt[IV6T]: F:为应用 CMake 声明 Android ABI 对应的预编译 LiteRT 及可选 OpenCL 目标 | R:code:app/src/main/cpp/CMakeLists.txt | A:litert_cc_api,litert_headers | S:使用 SDK lib 目录中对应 ABI 的二进制，不依赖上游同名源码构建
+README.md[SV4T]: F:说明 Android NDK LiteRT 2.1.0 的目录、AAR 取库和头文件复原过程 | R:code:third_party/litert/CMakeLists.txt | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/third_party/litert/include/litert/build_common/===
+build_config.h[LV2T]: F:为 Android NDK 编译提供上游 LiteRT 构建配置头的空实现 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/third_party/litert/include/litert/c/===
+BUILD[LV4L]: F:声明 LiteRT C 接口的 Bazel 库、测试、共享运行时与平台依赖 | R:- | A:- | S:-
+CMakeLists.txt[LV4M]: F:定义上游 LiteRT C API 静态库、共享入口、日志及平台链接组合 | R:- | A:- | S:-
+README.md[SA3T]: F:说明 LiteRT C ABI 的稳定目标、使用者与对象 API 命名约定 | R:- | A:- | S:-
+empty.cc[LV2T]: F:提供 CMake 共享库要求的空源编译单元 | R:- | A:- | S:-
+litert_any.h[LA4T]: F:用标签和联合体定义 C API 通用类型值及类型名称映射 | R:- | A:- | S:-
+litert_builder.cc[LA5S]: F:实现模型图改写时创建张量、权重及算子、添加选项和删除算子 | R:- | A:- | S:-
+litert_builder.h[LA5T]: F:声明实验性模型图 Builder 及改写模式回调 | R:- | A:- | S:Builder 接管传入的权重数据，张量在改写提交前持有构建完成的权重
+litert_builder_test.cc[TA4M]: F:验证构建图张量、权重、量化与算子选项，以及空参数拒绝 | R:- | A:- | S:-
+litert_c_api_common_test.c[TV3T]: F:以纯 C 文件编译、链接及运行 C API 公共头，保护 C 兼容性 | R:- | A:- | S:-
+litert_common.cc[LA4T]: F:实现 LiteRT 状态名称映射和 API 版本三元组比较 | R:- | A:- | S:-
+litert_common.h[LA5M]: F:定义 LiteRT C ABI 通用导出宏、句柄、状态、加速器及版本类型 | R:- | A:- | S:-
+litert_common_test.cc[TA4S]: F:验证 LiteRT 状态字符串、版本比较和公共结构行为 | R:- | A:- | S:-
+litert_compiled_model.cc[LA5L]: F:实现 C 编译模型创建、张量要求和布局、同步异步执行、取消、动态形状及指标 | R:- | A:- | S:-
+litert_compiled_model.h[LA5M]: F:声明编译模型 C ABI 的运行、张量缓冲及分析接口 | R:- | A:- | S:返回的编译模型由调用方销毁；分析器从属编译模型
+litert_compiled_model_test.cc[TA4M]: F:覆盖 C 编译模型缓冲执行、静态动态输入重设及输出布局 | R:- | A:- | S:-
+litert_custom_op_kernel.h[LA4T]: F:定义可注册自定义算子的初始化、输出形状、执行和销毁回调表 | R:- | A:- | S:-
+litert_custom_op_test.cc[TA4M]: F:验证自定义算子注册、布局回调和张量执行结果 | R:- | A:- | S:-
+litert_custom_tensor_buffer.h[LA4T]: F:声明自定义设备张量缓冲的内存句柄、映射信息和处理器契约 | R:- | A:- | S:-
+litert_environment.cc[LA5S]: F:实现 LiteRT C 环境、选项集合及 GPU 集成和互操作查询 | R:- | A:- | S:-
+litert_environment.h[LA5T]: F:声明环境创建销毁、选项和 GPU 环境的 C 接口 | R:- | A:- | S:OpenCL 专用选项在 GPU 环境步骤设置；环境返回给调用者拥有
+litert_environment_options.cc[LA4T]: F:实现 C 环境选项的类型值取用与设置 | R:- | A:- | S:-
+litert_environment_options.h[LA4S]: F:定义编译器及调度目录、GPU 句柄、运行配置等环境选项标签及结构 | R:- | A:- | S:-
+litert_environment_options_test.cc[TA4M]: F:验证环境选项读取、增量更新、覆盖策略和拒绝无效参数 | R:- | A:- | S:-
+litert_event.cc[LA5S]: F:实现同步栅栏、OpenCL、EGL 及客户端事件的创建、等待、信号与回收 | R:- | A:- | S:-
+litert_event.h[LA5S]: F:定义 C 推理事件创建、转换和生命周期契约 | R:- | A:- | S:同步栅栏可显式转移 fd 所有权；OpenCL 事件包装不接管外部句柄
+litert_event_type.h[LA4T]: F:定义 LiteRT 事件分类和客户端自定义事件回调结构 | R:- | A:- | S:-
+litert_gl_types.h[LH3T]: F:为有和无 OpenGL 支持的构建提供统一 GL 与 EGL 类型别名 | R:- | A:- | S:-
+litert_layout.cc[LA4T]: F:计算固定维度张量的标量数量并比较布局等价 | R:- | A:- | S:-
+litert_layout.h[LA4T]: F:定义固定秩张量布局及元素数、布局比较接口 | R:- | A:- | S:秩最大为八；动态尺寸无法返回固定元素数
+litert_metrics.cc[LO4T]: F:实现 C 度量集合的创建、项目计数、索引访问和释放 | R:- | A:- | S:-
+litert_metrics.h[LO4T]: F:声明度量列表 C 接口及返回项的寿命 | R:- | A:- | S:指标字段由度量集合拥有，集合销毁后不可使用
+litert_model.cc[LA5L]: F:实现 C 模型的文件和缓冲加载、签名、元数据、图查询及序列化 | R:- | A:- | S:-
+litert_model.h[LA5M]: F:声明 LiteRT C 模型的加载、图、权重、签名和序列化访问 | R:- | A:- | S:从张量取得的名称由父模型拥有，模型销毁后失效
+litert_model_test.cc[TA5L]: F:验证 LiteRT 图对象对权重、张量、算子、模型、子图与签名的访问 | R:- | A:- | S:-
+litert_model_types.h[LA4S]: F:定义张量元素、秩、布局和量化模型类型及相关 C 查询 | R:- | A:- | S:-
+litert_op_code.h[LA4M]: F:声明 LiteRT 模型图中各内建及自定义算子的数值编码 | R:- | A:- | S:-
+litert_op_options.cc[LA4L]: F:实现 C 算子选项读取和图改写 Builder 的特定算子选项设置 | R:- | A:- | S:-
+litert_op_options.h[LA4L]: F:声明支持的 C 算子选项获取和构建接口，覆盖激活、矩阵、卷积等参数 | R:- | A:- | S:-
+litert_op_options_test.cc[TA4L]: F:逐种验证 LiteRT 算子选项的 C 访问和构建结果 | R:- | A:- | S:-
+litert_opaque_options.cc[LA5S]: F:实现带类型标识、析构回调及载荷查询的编译不透明选项链 | R:- | A:- | S:-
+litert_opaque_options.h[LA5T]: F:声明创建、追加、查找及销毁不透明选项链的接口 | R:- | A:- | S:追加后该选项的释放随链头进行
+litert_opaque_options_test.cc[TA4S]: F:验证不透明选项的析构、标识、载荷哈希及非法参数处理 | R:- | A:- | S:-
+litert_options.cc[LA4S]: F:实现 C 编译选项的加速器集合、不透明载荷及对象生命周期 | R:- | A:- | S:-
+litert_options.h[LA5T]: F:声明 C 编译选项创建、硬件集合及加速器载荷装配 | R:- | A:- | S:追加不透明加速选项将所有权交给编译选项对象
+litert_options_test.cc[TA4S]: F:验证编译选项生命周期、硬件位集和不透明选项装配 | R:- | A:- | S:-
+litert_platform_support.h[LH4T]: F:暴露 OpenCL、OpenGL 和硬件内存等编译期支持状态 | R:- | A:- | S:-
+litert_profiler.cc[LO4S]: F:实现 C 分析器创建、开始停止、复位及事件集合访问 | R:- | A:- | S:-
+litert_profiler.h[LO4T]: F:声明推理分析器生命周期、事件源和拷贝接口 | R:- | A:- | S:事件通过调用方分配的缓冲区交付
+litert_profiler_event.h[LO4T]: F:定义与 TFLite 内存布局兼容的 C 分析事件、来源和内存统计结构 | R:- | A:- | S:-
+litert_profiler_test.cc[TO4S]: F:验证分析器初始事件数、开始停止、重置及事件读取 | R:- | A:- | S:-
+litert_tensor_buffer.cc[LA5L]: F:实现 C 张量缓冲的主机与硬件来源、事件、映射、复制和生命周期 | R:- | A:- | S:-
+litert_tensor_buffer.h[LA5M]: F:声明跨主机、硬件及图形后端的张量缓冲契约 | R:- | A:- | S:空主机内存析构回调表示调用方仍负责释放底层缓冲；内存须满足对齐
+litert_tensor_buffer_requirements.cc[LA4S]: F:实现缓冲要求的尺寸、对齐、可用类型查询和生命周期 | R:- | A:- | S:-
+litert_tensor_buffer_requirements.h[LA4T]: F:声明张量缓冲需求的尺寸、类型、步长、对齐和释放入口 | R:- | A:- | S:-
+litert_tensor_buffer_requirements_test.cc[TA4M]: F:验证缓冲需求有无步长、自定义对齐以及不同对齐的合并 | R:- | A:- | S:-
+litert_tensor_buffer_test.cc[TA4L]: F:验证 C 张量缓冲在宿主内存、AHWB、ION、DMA、FastRPC 和图形后端的行为 | R:- | A:- | S:-
+litert_tensor_buffer_test.mm[TA4S]: F:以 XCTest 验证 Metal 张量缓冲的原生创建与数据操作 | R:- | A:- | S:-
+litert_tensor_buffer_types.h[LA4S]: F:定义张量缓冲类别、各后端释放回调及主机缓冲默认对齐 | R:- | A:- | S:宿主内存默认要求 64 字节对齐
+windows_exported_symbols.def[LV4M]: F:列出 Windows DLL 或静态链接执行文件按需公开的 C API 符号 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/third_party/litert/include/litert/c/internal/===
+BUILD[LV3M]: F:声明 LiteRT 内部加速器、委托、日志与内部测试的 Bazel 目标 | R:- | A:- | S:-
+litert_accelerator.cc[LA4S]: F:实现已注册加速器枚举及名称、版本、支持能力和环境查询 | R:- | A:- | S:-
+litert_accelerator.h[LA4T]: F:声明 LiteRT 环境加速器查询的 C 函数和索引类型 | R:- | A:- | S:-
+litert_accelerator_registration.cc[LA4S]: F:实现加速器句柄创建销毁、注册和委托及指标回调装配 | R:- | A:- | S:-
+litert_accelerator_registration.h[LA4S]: F:声明 LiteRT 加速器注册以及委托、JIT 和指标回调接口 | R:- | A:- | S:-
+litert_accelerator_registration_test.cc[TA4S]: F:验证 LiteRT 加速器回调安装、空参数拒绝、注册及生命周期 | R:- | A:- | S:-
+litert_accelerator_test.cc[TA4M]: F:验证 C 加速器枚举、标识、版本、能力和编译代理查询 | R:- | A:- | S:-
+litert_delegate_wrapper.cc[LA4T]: F:封装和解封 TfLite 不透明委托，使 LiteRT 公开类型不暴露 TF Lite 接口 | R:- | A:- | S:-
+litert_delegate_wrapper.h[LA4T]: F:声明内部委托包装接口，将 TF Lite 类型限制于内部实现边界 | R:- | A:- | S:-
+litert_dispatch_delegate.h[LA4T]: F:声明由 Dispatch API 执行推理的目标委托及指标收集入口 | R:- | A:- | S:-
+litert_external_litert_buffer_context.cc[LA4T]: F:转发外部张量缓冲上下文的取用、创建、注册、环境与异步查询 | R:- | A:- | S:-
+litert_external_litert_buffer_context.h[LA5T]: F:声明外部张量缓冲上下文的 C API 和对象所有权规则 | R:- | A:- | S:查询返回引用计数副本由调用者销毁；注册时上下文取得缓冲或需求对象所有权
+litert_logging.cc[LO4M]: F:实现按严重度过滤的跨平台 LiteRT 日志并映射 Android 日志级别 | R:- | A:- | S:-
+litert_logging.h[LO4S]: F:定义 C 日志级别、宏、记录与过滤接口 | R:- | A:- | S:级别枚举值需与 TFLite LogSeverity 同步
+litert_logging_test.cc[TO4S]: F:验证原生日志器创建、最小等级、过滤与输出行为 | R:- | A:- | S:-
+litert_tensor_buffer_registry.cc[LA4T]: F:从环境读出张量缓冲注册表并安装类型专用处理器 | R:- | A:- | S:-
+litert_tensor_buffer_registry.h[LA4T]: F:声明按类型注册用户缓冲处理器和检索环境注册表的入口 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/third_party/litert/include/litert/c/options/===
+BUILD[LV3M]: F:为 LiteRT 各编译及硬件后端选项声明 C Bazel 库和测试目标 | R:- | A:- | S:-
+CMakeLists.txt[LV3T]: F:汇集 LiteRT 后端与运行时选项的 CMake 静态库 | R:- | A:- | S:-
+litert_compiler_options.cc[LA4S]: F:实现可装入不透明载荷链的编译器划分策略配置 | R:- | A:- | S:-
+litert_compiler_options.h[LA4T]: F:声明编译器选项的默认与实验分区策略和访问方法 | R:- | A:- | S:-
+litert_compiler_options_test.cc[TA4S]: F:验证编译器选项载荷创建、查找和设置往返 | R:- | A:- | S:-
+litert_cpu_options.cc[LA4S]: F:实现 CPU 后端的 XNNPACK 线程、标志及权重缓存路径和描述符设置 | R:- | A:- | S:-
+litert_cpu_options.h[LA4T]: F:声明 XNNPACK CPU 选项及线程、标志和缓存控制接口 | R:- | A:- | S:-
+litert_cpu_options_test.cc[TA4M]: F:验证 CPU 选项查找、线程、XNNPACK 标志和缓存配置的参数边界 | R:- | A:- | S:-
+litert_darwinn_runtime_options.cc[LA4S]: F:实现 DarwiNN 推理功耗、内存功耗、优先级及一致性配置 | R:- | A:- | S:-
+litert_darwinn_runtime_options.h[LA4T]: F:声明 DarwiNN 推理调度与功耗选项的不透明存取接口 | R:- | A:- | S:-
+litert_google_tensor_options.cc[LA4M]: F:实现 Google Tensor 编译载荷的截断、目录、计时、低位宽和分片配置 | R:- | A:- | S:-
+litert_google_tensor_options.h[LA4S]: F:声明 Google Tensor 编译选项的类型擦除载荷与具体设置 | R:- | A:- | S:-
+litert_google_tensor_options_test.cc[TA4M]: F:验证 Google Tensor 选项状态、哈希和 C 与 C++ 接口入口 | R:- | A:- | S:-
+litert_google_tensor_options_type.h[LA3T]: F:定义 Google Tensor 浮点截断方式与分片强度枚举 | R:- | A:- | S:-
+litert_gpu_options.cc[LA5L]: F:实现 GPU 不透明载荷，配置后端、张量共享、精度、序列化及设备调优 | R:- | A:- | S:-
+litert_gpu_options.h[LA4M]: F:声明 GPU 加速选项及精度、缓存、缓冲布局与后端选择接口 | R:- | A:- | S:-
+litert_gpu_options_test.cc[TA4M]: F:验证 GPU 载荷构造和张量、序列化、存储、Metal 及委托配置往返 | R:- | A:- | S:-
+litert_intel_openvino_options.cc[LA4S]: F:实现 Intel OpenVINO 设备、性能模式和任意配置映射 | R:- | A:- | S:-
+litert_intel_openvino_options.h[LA4S]: F:声明访问 OpenVINO 后端选项载荷、设备、性能模式与配置项的接口 | R:- | A:- | S:-
+litert_mediatek_options.cc[LA4M]: F:实现联发科编译载荷的 SDK 版本、性能、缓存、优化和 DLA 目录配置 | R:- | A:- | S:-
+litert_mediatek_options.h[LA4S]: F:声明联发科加速器编译参数及类型擦除选项入口 | R:- | A:- | S:-
+litert_mediatek_options_test.cc[TA4L]: F:验证联发科选项的 SDK、性能及优化参数和编译配置访问 | R:- | A:- | S:-
+litert_qualcomm_options.cc[LA5L]: F:实现 Qualcomm 运行与编译载荷的日志、分析、HTP、权重及优化设置 | R:- | A:- | S:-
+litert_qualcomm_options.h[LA5M]: F:声明 Qualcomm 加速配置公开 C ABI | R:- | A:- | S:公开接口构建独立于供应商共享库，不依赖 QNN 与 vendor 头
+litert_qualcomm_options_test.cc[TA4L]: F:验证 Qualcomm 选项查找以及日志、性能、权重及编译参数往返 | R:- | A:- | S:-
+litert_runtime_options.cc[LA4T]: F:实现推理运行时不透明选项的分析开关与错误报告模式 | R:- | A:- | S:-
+litert_runtime_options.h[LA4T]: F:声明 LiteRT 运行时选项的创建查找、分析和报错模式接口 | R:- | A:- | S:-
+litert_runtime_options_test.cc[TA3T]: F:验证空指针创建检查、运行时载荷标识及销毁 | R:- | A:- | S:-
+litert_webnn_options.cc[LA4S]: F:实现 WebNN 后端的设备偏好、功耗偏好和推理精度配置 | R:- | A:- | S:-
+litert_webnn_options.h[LA4T]: F:定义与 WebNN 委托对应的设备、功耗和精度选择枚举及接口 | R:- | A:- | S:-
+litert_webnn_options_test.cc[TA4S]: F:验证 WebNN 选项创建释放与设备、功耗、精度的设置和读取 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/third_party/litert/include/litert/cc/===
+BUILD[LV4L]: F:声明 LiteRT C++ 封装、平台扩展、模型与测试的上游 Bazel 目标 | R:- | A:- | S:-
+CMakeLists.txt[LV4S]: F:导出上游 LiteRT C++ 静态 API 库、公开头和内部与选项子目录 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/third_party/litert/include/litert/cc/dynamic_runtime/===
+BUILD[LV4L]: F:声明依赖动态 LiteRT C 运行时的 C++ API Bazel 目标和设备测试 | R:- | A:- | S:-
+README.md[SV3T]: F:说明 dynamic_runtime 目标供 SDK 内部使用及公开动态运行时入口 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/third_party/litert/include/litert/cc/dynamic_runtime/options/===
+BUILD[LV3M]: F:将 C++ 编译与硬件选项包装器链接到动态 LiteRT C API | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/third_party/litert/include/litert/cc/internal/===
+BUILD[LV3L]: F:定义 LiteRT C++ 内部运行时库、构建可见性及测试 | R:- | A:- | S:-
+CMakeLists.txt[LV3T]: F:定义 LiteRT C++ 内部头的 CMake 接口库及平台依赖 | R:- | A:- | S:-
+litert_builder.cc[LA4T]: F:实现内部 C++ 图改写的秩张量、标量和算子创建 | R:- | A:- | S:-
+litert_builder.h[LA4S]: F:声明 C++ 图改写 Builder 和秩张量属性构造器 | R:- | A:- | S:-
+litert_builder_test.cc[TA4M]: F:验证 C++ Builder 构造秩与无秩张量、量化、权重和算子选项 | R:- | A:- | S:-
+litert_c_types_printing.h[LO4M]: F:为 C API 张量元素、形状、布局和算子码提供 Absl 格式化 | R:- | A:- | S:-
+litert_c_types_printing_test.cc[TO3T]: F:验证标量和多维张量、布局与算子码的打印格式 | R:- | A:- | S:-
+litert_compiled_model_next.cc[LA4T]: F:实现实验性编译模型的创建及推理指标采集 | R:- | A:- | S:-
+litert_compiled_model_next.h[LA5S]: F:扩展编译模型接口以提供实验性指标与按签名管理的调度标注 | R:- | A:- | S:-
+litert_compiled_model_next_test.cc[TA4M]: F:验证实验编译模型执行、调度标注与无效签名处理 | R:- | A:- | S:-
+litert_consts.h[LP3T]: F:提供 LiteRT 内联容器的预期容量优化提示 | R:- | A:- | S:-
+litert_detail.h[LC4M]: F:提供编译期类型选择、类型列表展开、字符串拼接及容器转换 | R:- | A:- | S:-
+litert_detail_test.cc[TC3T]: F:验证编译期字符串从字面量构建与不同长度拼接 | R:- | A:- | S:-
+litert_dispatch_delegate.h[LA3T]: F:声明可自动释放的 C++ Dispatch 代理指针构建入口 | R:- | A:- | S:-
+litert_extended_model.cc[LA4S]: F:实现扩展模型的张量来源和用途、算子输入输出及子图访问 | R:- | A:- | S:-
+litert_extended_model.h[LA5L]: F:声明 C++ 扩展模型及权重、张量、算子、子图、签名包装 | R:- | A:- | S:部分子对象使用非拥有句柄；扩展模型分别支持拥有及借用入口
+litert_extended_model_test.cc[TA4M]: F:验证 C++ 扩展图包装的算子、张量名称权重与量化，以及元数据和模型导出 | R:- | A:- | S:-
+litert_external_litert_buffer_context.h[LA5S]: F:封装 C 外部张量缓冲上下文，提供取用、创建、注册及环境查看 | R:- | A:- | S:返回的缓冲包装拥有 C 引用；注册把所有权交给上下文
+litert_handle.h[LC5T]: F:以可移动 C++ RAII 容器封装拥有或借用的 C 不透明句柄 | R:- | A:- | S:-
+litert_handle_test.cc[TC4S]: F:验证拥有与借用句柄构造、移动、空值及主动释放和析构 | R:- | A:- | S:-
+litert_logging.h[LO4S]: F:提供 SDK 日志拦截、调试模式判定和可读字节数格式化 | R:- | A:- | S:-
+litert_logging_test.cc[TO3T]: F:验证诊断拦截收集日志，以及结束时恢复此前日志器 | R:- | A:- | S:-
+litert_model_predicates.cc[KA4S]: F:匹配模型模式中的秩张量、算子类型与张量使用关系 | R:- | A:- | S:-
+litert_model_predicates.h[LA4T]: F:声明张量与算子图模式匹配谓词 | R:- | A:- | S:空可选约束匹配任意对应字段
+litert_model_predicates_test.cc[TA4M]: F:验证张量、算子、元素类型和使用关系的可选图匹配边界 | R:- | A:- | S:-
+litert_numerics.h[KA4S]: F:扩展数值极限、加宽运算、上界下界处理及非常规数值类型工具 | R:- | A:- | S:-
+litert_op_options.cc[LA4L]: F:把 C 图算子选项读取为类型化 C++ 配置并支持构建端设置 | R:- | A:- | S:-
+litert_op_options.h[LA4L]: F:定义 LiteRT C++ 的算子选项结构及 TFLite 元素类型映射 | R:- | A:- | S:-
+litert_op_options_test.cc[TA4L]: F:验证 C++ 算子选项，包括 StableHLO 组合、RMSNorm 与大量内建算子 | R:- | A:- | S:-
+litert_platform_support.h[LH3T]: F:将各硬件缓冲和图形支持查询封装为 C++ 函数 | R:- | A:- | S:-
+litert_rng.cc[LV1T]: F:保留随机工具的空源码单元，当前实现在头文件 | R:- | A:- | S:-
+litert_rng.h[KA4L]: F:提供带可选种子的随机引擎封装和针对不同数据类型的生成器 | R:- | A:- | S:-
+litert_rng_test.cc[TA4L]: F:验证种子行为、随机引擎包装以及数据生成范围 | R:- | A:- | S:-
+litert_shared_library.cc[LR5M]: F:实现多平台共享库加载、查符号、错误映射与资源释放 | R:- | A:- | S:地址消毒构建剔除 RTLD_DEEPBIND
+litert_shared_library.h[LR5S]: F:提供可移动的共享库包装、加载标志和符号查找入口 | R:- | A:- | S:-
+
+===D:/Project/my/GestureEVO/GestureEVO/tools/===
+adb_memory_summary.py[XO5M]: F:通过 ADB 汇总目标应用的 meminfo、PSS 和按来源聚合的内存映射 | R:- | A:main,parse_meminfo,parse_smaps | S:smaps 通过 run-as 可选读取，权限不足时保留基础内存报告
+check_repository.py[XQ6T]: F:离线核查 Git 跟踪文件、必需文档、私钥标记及第三方输入哈希 | R:code:third_party/binary-manifest.json,code:.github/workflows/android.yml | A:main | S:仅扫描跟踪文件的开头 1 MiB 检测私钥标记；二进制清单校验完整文件
+compress_ocr_models.py[XV6T]: F:按稳定顺序将 OCR 模型打包为 tar.xz，并生成供应用判断缓存版本的文件 | R:code:app/build.gradle.kts,code:app/src/main/java/me/fleey/ppocrv5/OcrModelAssets.kt | A:main | S:版本结合 manifest 版本和相对路径与内容摘要；归档元数据归零以保证可复现
+generate_segmenter_dict.py[XA5S]: F:合并 jieba、THUOCL 和项目词项，生成客户端中文分词的词频表 | R:code:app/src/main/assets/segmenter/zh_core_dict.txt | A:main | S:重复词取最高词频，按词频等规则稳定排序后保留最多 60000 项
+install_debug.py[XV5S]: F:构建或装载已有 Debug APK 至指定设备，重启并检查 Debug 无障碍服务 | R:code:app/build.gradle.kts | A:main | S:按当前 Android 用户操作，每次修改服务列表都重读以保留其他服务
