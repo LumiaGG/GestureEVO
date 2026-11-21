@@ -60,6 +60,7 @@ class BigBangView : ViewGroup, NestedScrollingChild {
     private var mNeedReDetectInMeasure = true
     private var interruptTouchMoveEvent = false
     private var functionViewIsAdded = false
+    private var suppressNextFunctionViewScroll = false
 
     var onFunctionViewLayout: (Int) -> Unit = { _ -> }
     var onTouchCallback: (MotionEvent, View) -> Unit = { _, _ -> }
@@ -318,7 +319,7 @@ class BigBangView : ViewGroup, NestedScrollingChild {
             functionView.layout(
                 leftPos, actionBarBottom, rightPos, actionBarBottom + functionView.measuredHeight
             )
-            onFunctionViewLayout(actionBarBottom + functionView.measuredHeight)
+            notifyFunctionViewLayout(actionBarBottom + functionView.measuredHeight)
 
             selectBgView.layout(
                 0,
@@ -336,7 +337,7 @@ class BigBangView : ViewGroup, NestedScrollingChild {
             val actionBarTop = lastLineBottom + config.mLineSpace
             val actionBarBottom = lastLineBottom + config.mLineSpace + functionView.measuredHeight
             functionView.layout(leftPos, actionBarTop, rightPos, actionBarBottom)
-            onFunctionViewLayout(lastLineBottom + config.mLineSpace + functionView.measuredHeight)
+            notifyFunctionViewLayout(lastLineBottom + config.mLineSpace + functionView.measuredHeight)
 
             val selectBgTop = mLines.firstOrNull()?.let {
                 it.maxIndex * (itemHeight + config.mLineSpace) + config.itemPaddingTop + config.actionBarMargin
@@ -349,6 +350,14 @@ class BigBangView : ViewGroup, NestedScrollingChild {
                 measuredWidth,
                 actionBarBottom - functionView.measuredHeight / 2
             )
+        }
+    }
+
+    private fun notifyFunctionViewLayout(y: Int) {
+        if (suppressNextFunctionViewScroll) {
+            suppressNextFunctionViewScroll = false
+        } else {
+            onFunctionViewLayout(y)
         }
     }
 
@@ -477,6 +486,7 @@ class BigBangView : ViewGroup, NestedScrollingChild {
                 }
 
                 if (!mIsLongPress && firstTouchItem != null) {
+                    suppressNextFunctionViewScroll = mHasStartedSelection
                     // For single tap (no second item touched and not long-pressed), toggle selection
                     if (isClickSelection && !mHasStartedSelection) {
                         firstTouchItem?.let { item ->
