@@ -30,10 +30,9 @@
     app:layout_constraintTop_toTopOf="parent"
     app:layout_constraintVertical_bias="1"
     app:strokeColor="?attr/colorOutlineVariant">
-    <LinearLayout
+    <io.github.lumiagg.gestureevo.search.QuickSearchBottomInputContent
       android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:orientation="vertical">
+      android:layout_height="wrap_content">
       <FrameLayout
         android:id="@+id/drag_bar_container"
         android:layout_width="match_parent"
@@ -173,6 +172,6 @@
             tools:itemCount="5" />
         </LinearLayout>
       </com.google.android.material.card.MaterialCardView>
-    </LinearLayout>
+    </io.github.lumiagg.gestureevo.search.QuickSearchBottomInputContent>
   </com.google.android.material.card.MaterialCardView>
 </androidx.constraintlayout.widget.ConstraintLayout>

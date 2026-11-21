@@ -99,6 +99,7 @@ class SearchEngineManager(
                 .coerceIn(SearchEngineSettingsActivity.MIN_COLUMN_COUNT, SearchEngineSettingsActivity.MAX_COLUMN_COUNT)
 
         enginePager = binding.enginePager.apply {
+            limitHeight(Int.MAX_VALUE)
             setIconLoader { view, engine, badge -> loadEngineIcon(view, engine, badge) }
             configure(
                 QuickSearchEnginePager.Config(

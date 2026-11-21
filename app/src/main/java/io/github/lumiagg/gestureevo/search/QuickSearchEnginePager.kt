@@ -305,7 +305,10 @@ class QuickSearchEnginePager @JvmOverloads constructor(
         val rowHeight = template.measuredHeight + templateParams.topMargin + templateParams.bottomMargin
         val verticalPadding = paddingTop + paddingBottom
         val configuredRows = config.rowCount.coerceAtLeast(1)
-        val maxHeight = heightLimit
+        val maxHeight = heightLimit?.let {
+            if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.UNSPECIFIED) it
+            else minOf(it, MeasureSpec.getSize(heightMeasureSpec))
+        }
         val rows = if (maxHeight != null && rowHeight > 0) {
             ((maxHeight - verticalPadding) / rowHeight).coerceIn(1, configuredRows)
         } else {
