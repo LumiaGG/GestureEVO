@@ -88,6 +88,7 @@ object GlassEffectUtils {
         blurRegion: Boolean = true,
         backgroundBlurEnabled: Boolean = false,
         overlayOnContent: Boolean = false,
+        glassAlpha: Float? = null,
     ) {
         val isLightTheme = card.resources.configuration.uiMode and
             Configuration.UI_MODE_NIGHT_MASK != Configuration.UI_MODE_NIGHT_YES
@@ -108,6 +109,9 @@ object GlassEffectUtils {
                     (LIGHT_WINDOW_GLASS_CARD_ALPHA * 255).toInt()
                 )
             }
+            glassEnabled && glassAlpha != null -> {
+                ColorUtils.setAlphaComponent(color, (glassAlpha * 255).toInt())
+            }
             else -> glassCardColor(color, glassEnabled)
         }
         // A new ColorStateList is not equal to the current one even when the color matches,
@@ -125,11 +129,11 @@ object GlassEffectUtils {
         CardRegionBlur.update(card, glassEnabled && blurRegion, card.radius)
     }
 
-    fun applyGlassEdge(card: MaterialCardView) {
+    fun applyGlassEdge(card: MaterialCardView, alpha: Int = GLASS_EDGE_ALPHA) {
         val strokeWidth = 1f.dp2px.toInt().coerceAtLeast(1)
         val onSurface = DynamicColorUtils.onSurfaceColor.takeIf { it != 0 }
             ?: MaterialColors.getColor(card, com.google.android.material.R.attr.colorOnSurface)
-        val strokeColor = ColorUtils.setAlphaComponent(onSurface, GLASS_EDGE_ALPHA)
+        val strokeColor = ColorUtils.setAlphaComponent(onSurface, alpha)
         if (card.strokeWidth != strokeWidth) card.strokeWidth = strokeWidth
         if (card.strokeColor != strokeColor) card.strokeColor = strokeColor
     }
