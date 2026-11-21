@@ -4,7 +4,6 @@ import androidx.core.graphics.drawable.toDrawable
 
 import android.content.Context
 import android.net.Uri
-import android.os.SystemClock
 import android.util.Log
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
@@ -13,7 +12,6 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.lifecycleScope
 import androidx.datastore.preferences.core.Preferences
-import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.databinding.ActivityQuickSearchBinding
 import io.github.lumiagg.gestureevo.gesture.config.IconType
@@ -26,13 +24,11 @@ import io.github.lumiagg.gestureevo.utils.ClipboardUtils
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.icon.IconHelper
 import io.github.lumiagg.gestureevo.utils.readKey
-import io.github.lumiagg.gestureevo.utils.settingsStore
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.first
 import java.util.WeakHashMap
 
 class SearchEngineManager(
@@ -46,50 +42,46 @@ class SearchEngineManager(
     private val searchEngines = mutableListOf<SearchEngine>()
     private var enginePager: QuickSearchEnginePager? = null
     private var showImageBadge = true
-    private var bottomInputLayoutEnabled = false
     private val iconBindings = WeakHashMap<RoundImageTextView, Any>()
     private var engineDataLoaded = false
+    private var engineLoad: Job? = null
     private var pendingSearch: Pair<String, Boolean>? = null
 
     private val lifecycleScope: LifecycleCoroutineScope
         get() = activity.lifecycleScope
 
-    fun initialize() = lifecycleScope.launch(uiDispatcher) {
-        initEngineRecycler()
-        initEngineData()
-    }
-
-    suspend fun initEngineData() {
-        val (engines, defaultEngineTag) = withContext(ioDispatcher) {
-            Pair(
-                SearchEngineDataManager.readSearchEngineList(activity.applicationContext)
-                    .filter { it.showInSearchEngineList },
-                SearchEngineDataManager.getDefaultEngineTag(activity.applicationContext)
-            )
-        }
-        searchEngines.clear()
-        searchEngines.addAll(engines)
-        currentSearchEngine = engines.find { it.tag == defaultEngineTag } ?: engines.firstOrNull()
-        engineDataLoaded = true
+    fun ensureEnginesLoaded() {
         updateSearchEngineCardVisibility()
-        updateSearchEngineIcon()
-        enginePager?.submitList(searchEngines)
-        pendingSearch?.let { (query, freeform) ->
-            pendingSearch = null
-            performSearchByCurrentEngine(query, freeform)
+        if (engineDataLoaded || engineLoad?.isActive == true) return
+        engineLoad = lifecycleScope.launch(uiDispatcher) {
+            val (engines, defaultEngineTag) = try {
+                withContext(ioDispatcher) {
+                    val context = activity.applicationContext
+                    val engines = SearchEngineDataManager.readSearchEngineList(context)
+                        .filter { it.showInSearchEngineList }
+                    engines to SearchEngineDataManager.getDefaultEngineTag(context)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.w("SearchEngineManager", "Unable to load search engines", error)
+                return@launch
+            }
+            searchEngines.clear()
+            searchEngines.addAll(engines)
+            currentSearchEngine = engines.find { it.tag == defaultEngineTag } ?: engines.firstOrNull()
+            enginePager?.submitList(searchEngines)
+            engineDataLoaded = true
+            updateSearchEngineCardVisibility()
+            updateSearchEngineIcon()
+            pendingSearch?.let { (query, freeform) ->
+                pendingSearch = null
+                performSearchByCurrentEngine(query, freeform)
+            }
         }
-    }
-
-    suspend fun initEngineRecycler(snapshot: Preferences? = null) {
-        val preferences = snapshot ?: activity.settingsStore.data.first()
-        configureEngineRecycler(preferences)
     }
 
     fun configureEngineRecycler(preferences: Preferences) {
-        bottomInputLayoutEnabled = preferences.readKey(
-            SearchEngineSettingsActivity.KEY_BOTTOM_INPUT_LAYOUT,
-            false
-        )
         val showEngineLabel = preferences.readKey(
             SearchEngineSettingsActivity.KEY_ENGINE_SHOW_LABEL,
             true
@@ -107,6 +99,7 @@ class SearchEngineManager(
                 .coerceIn(SearchEngineSettingsActivity.MIN_COLUMN_COUNT, SearchEngineSettingsActivity.MAX_COLUMN_COUNT)
 
         enginePager = binding.enginePager.apply {
+            limitHeight(Int.MAX_VALUE)
             setIconLoader { view, engine, badge -> loadEngineIcon(view, engine, badge) }
             configure(
                 QuickSearchEnginePager.Config(
@@ -174,34 +167,10 @@ class SearchEngineManager(
         }
     }
 
-    private suspend fun updateSearchEngineCardVisibility() {
-        val hasSearchEngines = searchEngines.isNotEmpty()
-        binding.engineIcon.isVisible = hasSearchEngines
-        val card = binding.bottomEngineCard
-        val initialHeight = card.height
-        if (!hasSearchEngines && bottomInputLayoutEnabled && card.isVisible && initialHeight > 0) {
-            // An empty list is only known after IO. Collapse its reserved space
-            // smoothly rather than snapping the whole combined card to a new height.
-            val params = card.layoutParams
-            val originalHeight = params.height
-            val interpolator = FastOutSlowInInterpolator()
-            val startedAt = SystemClock.uptimeMillis()
-            try {
-                do {
-                    val progress = ((SystemClock.uptimeMillis() - startedAt) / 180f).coerceIn(0f, 1f)
-                    params.height = (initialHeight * (1f - interpolator.getInterpolation(progress))).toInt()
-                    card.layoutParams = params
-                    if (progress >= 1f) break
-                    delay(16L)
-                } while (true)
-                card.isVisible = false
-            } finally {
-                params.height = originalHeight
-                card.layoutParams = params
-            }
-        } else {
-            card.isVisible = hasSearchEngines
-        }
+    private fun updateSearchEngineCardVisibility() {
+        val visible = !engineDataLoaded || searchEngines.isNotEmpty()
+        binding.engineIcon.isVisible = visible
+        binding.bottomEngineCard.isVisible = visible
     }
 
     private fun clickSearchEngine(engine: SearchEngine, isPress: Boolean) {
@@ -347,7 +316,6 @@ class SearchEngineManager(
 
     fun getCurrentSearchEngine(): SearchEngine? = currentSearchEngine
 
-    fun getSearchEngines(): List<SearchEngine> = searchEngines.toList()
 }
 
 /**
