@@ -60,9 +60,9 @@ class BigBangView : ViewGroup, NestedScrollingChild {
     private var mNeedReDetectInMeasure = true
     private var interruptTouchMoveEvent = false
     private var functionViewIsAdded = false
-    private var suppressNextFunctionViewScroll = false
+    private var functionViewRevealRequested = false
 
-    var onFunctionViewLayout: (Int) -> Unit = { _ -> }
+    var onFunctionViewReveal: (Int) -> Unit = { _ -> }
     var onTouchCallback: (MotionEvent, View) -> Unit = { _, _ -> }
     var bigBangStatusListener: BigBangStatusListener? = null
 
@@ -183,6 +183,7 @@ class BigBangView : ViewGroup, NestedScrollingChild {
     fun reset() {
         mNeedReDetectInMeasure = true
         showAnimation = false
+        functionViewRevealRequested = false
         removeAllViews()
         functionViewIsAdded = false
         mLines.clear()
@@ -319,7 +320,6 @@ class BigBangView : ViewGroup, NestedScrollingChild {
             functionView.layout(
                 leftPos, actionBarBottom, rightPos, actionBarBottom + functionView.measuredHeight
             )
-            notifyFunctionViewLayout(actionBarBottom + functionView.measuredHeight)
 
             selectBgView.layout(
                 0,
@@ -337,7 +337,6 @@ class BigBangView : ViewGroup, NestedScrollingChild {
             val actionBarTop = lastLineBottom + config.mLineSpace
             val actionBarBottom = lastLineBottom + config.mLineSpace + functionView.measuredHeight
             functionView.layout(leftPos, actionBarTop, rightPos, actionBarBottom)
-            notifyFunctionViewLayout(lastLineBottom + config.mLineSpace + functionView.measuredHeight)
 
             val selectBgTop = mLines.firstOrNull()?.let {
                 it.maxIndex * (itemHeight + config.mLineSpace) + config.itemPaddingTop + config.actionBarMargin
@@ -351,14 +350,18 @@ class BigBangView : ViewGroup, NestedScrollingChild {
                 actionBarBottom - functionView.measuredHeight / 2
             )
         }
+
+        if (functionViewRevealRequested) {
+            functionViewRevealRequested = false
+            onFunctionViewReveal(functionView.bottom)
+        }
     }
 
-    private fun notifyFunctionViewLayout(y: Int) {
-        if (suppressNextFunctionViewScroll) {
-            suppressNextFunctionViewScroll = false
-        } else {
-            onFunctionViewLayout(y)
-        }
+    internal fun requestFunctionViewReveal() {
+        // A selection change or an asynchronous icon refresh may lay the bar out
+        // far from the viewport. Only a reveal request may move the viewport.
+        functionViewRevealRequested = true
+        requestLayout()
     }
 
     private fun findLastSelectedLine(): Line? {
@@ -407,6 +410,7 @@ class BigBangView : ViewGroup, NestedScrollingChild {
 
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                functionViewRevealRequested = false
                 showAnimation = true
                 isClickSelection = true
                 mIsLongPress = false
@@ -486,11 +490,11 @@ class BigBangView : ViewGroup, NestedScrollingChild {
                 }
 
                 if (!mIsLongPress && firstTouchItem != null) {
-                    suppressNextFunctionViewScroll = mHasStartedSelection
                     // For single tap (no second item touched and not long-pressed), toggle selection
-                    if (isClickSelection && !mHasStartedSelection) {
+                    if (event.action == MotionEvent.ACTION_UP && isClickSelection && !mHasStartedSelection) {
                         firstTouchItem?.let { item ->
                             item.view.isSelected = !mInitialItemState
+                            functionViewRevealRequested = item.view.isSelected
                         }
                     }
                     bigBangStatusListener?.onSelected()
@@ -514,6 +518,7 @@ class BigBangView : ViewGroup, NestedScrollingChild {
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        functionViewRevealRequested = false
         // Clean up long press detection
         mLongPressHandler.removeCallbacks(mLongPressRunnable ?: return)
     }
@@ -637,12 +642,14 @@ class BigBangView : ViewGroup, NestedScrollingChild {
                 }
             }
             checkURL()
+            functionViewRevealRequested = active
             requestLayout()
         })
     }
 
     fun cancelSelect() {
         post(Runnable {
+            functionViewRevealRequested = false
             for (line in mLines) {
                 val items = line.items
                 for (item in items) {
