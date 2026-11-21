@@ -70,6 +70,7 @@ class InspireFloating(private val context: GestureService) :
     private var transitionShown = false
     private var screenshotDone = false
     private var activityLaunching = false
+    private var ocrSession: ScreenOcr.Session? = null
     private var isAttached = false
     private var sessionScreenshot: ManagedBitmap? = null
     private var sessionCaptureJob: Job? = null
@@ -376,6 +377,8 @@ class InspireFloating(private val context: GestureService) :
 
     private fun resetSessionCapture() {
         invalidateSessionCapture()
+        ocrSession?.close()
+        ocrSession = null
         layoutParams.alpha = 1f
         updateViewLayoutSafely(inspireView, layoutParams)
     }
@@ -415,9 +418,10 @@ class InspireFloating(private val context: GestureService) :
         }
         val screenshot = sessionScreenshot?.acquire() ?: return
         val detectionGeneration = textBoxGeneration
+        val session = ocrSession
         textBoxDetectionJob = context.launch(Dispatchers.Default) {
             val boxes = try {
-                screenshot.use { ScreenOcr.detectTextBoxes(it.requireBitmap()) }
+                screenshot.use { ScreenOcr.detectTextBoxes(it.requireBitmap(), session) }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -545,10 +549,11 @@ class InspireFloating(private val context: GestureService) :
     }
 
     private suspend fun recognizeDetectedTextBox(textBox: Rect): String {
+        val session = withContext(Dispatchers.Main) { ocrSession }
         acquireSessionScreenshot()?.use { screenshot ->
             screenshot.cropByRect(textBox)?.use { cropped ->
                 return cropped.requireBitmap().useSoftwareBitmap { bitmap ->
-                    ScreenOcr.recognizeTextBox(bitmap)
+                    ScreenOcr.recognizeTextBox(bitmap, session)
                 }
             }
         }
@@ -602,7 +607,7 @@ class InspireFloating(private val context: GestureService) :
                 InspireDataHolder.forceImageTextSelection = sessionForceImageTextSelection
                 InspireDataHolder.triggerSide = sessionTriggerSide
 
-                launchInspireContentActivity()
+                withContext(Dispatchers.Main) { launchInspireContentActivity() }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -650,7 +655,14 @@ class InspireFloating(private val context: GestureService) :
         if (source != null && source != context.packageName) InspireDataHolder.sourcePackage = source
         activityLaunching = true
         cancelTransition()
-        InspireContentActivity.start(context)
+        val handoff = ocrSession?.let(ScreenOcr::offerHandoff)
+        ocrSession = null
+        try {
+            InspireContentActivity.start(context, ocrHandoff = handoff)
+        } catch (error: Exception) {
+            ScreenOcr.takeHandoff(handoff)?.close()
+            throw error
+        }
         hide()
     }
 
@@ -663,7 +675,6 @@ class InspireFloating(private val context: GestureService) :
             inspireView.clear()
             detachIfNeeded()
             resetSessionCapture()
-            if (!activityLaunching) ScreenOcr.releaseSession()
         }
     }
 
@@ -676,13 +687,6 @@ class InspireFloating(private val context: GestureService) :
             inspireView.clear()
             detachIfNeeded()
             resetSessionCapture()
-            ScreenOcr.releaseSession()
-        }
-    }
-
-    private fun preloadOcrModel() {
-        context.launch(Dispatchers.IO) {
-            ScreenOcr.preload()
         }
     }
 
@@ -702,7 +706,7 @@ class InspireFloating(private val context: GestureService) :
     private suspend fun prepareVisibleInspireView() {
         inspireView.edgeBackEnabled = context.settingsStore.readKey(KEY_INSPIRE_EDGE_BACK, true)
         context.gestureManager?.setInteractionMode(InteractionMode.INSPIRE_SELECT)
-        preloadOcrModel()
+        if (ScreenOcr.isSupported && ocrSession == null) ocrSession = ScreenOcr.openSession()
         ensureAttached()
         GestureFluidAppearance.refresh(context)
         inspireView.refreshDynamicColors()

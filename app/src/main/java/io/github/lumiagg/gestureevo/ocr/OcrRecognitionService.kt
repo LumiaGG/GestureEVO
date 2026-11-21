@@ -4,8 +4,8 @@ import android.app.Service
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
-import android.os.HandlerThread
 import android.os.IBinder
+import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.os.Process
@@ -19,6 +19,9 @@ import org.opencv.imgproc.Imgproc
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
 
 internal const val OCR_MIN_API = 28
@@ -28,66 +31,105 @@ internal const val OCR_WARM = 1
 internal const val OCR_DETECT = 2
 internal const val OCR_RECOGNIZE = 3
 internal const val OCR_LINE = 4
+internal const val OCR_CANCEL = 5
 
 /** Each request owns its shared-memory descriptor and runs on the same model worker. */
 @RequiresApi(OCR_MIN_API)
 class OcrRecognitionService : Service() {
-    private lateinit var worker: HandlerThread
-    private lateinit var handler: Handler
-    private var pipeline: OcrPipeline? = null
-
-    override fun onCreate() {
-        super.onCreate()
-        worker = HandlerThread("ocr-inference", Process.THREAD_PRIORITY_BACKGROUND).apply { start() }
-        handler = Handler(worker.looper, ::handleRequest)
+    private companion object {
+        // Serialize teardown with inference even if a new binding creates another service.
+        val worker = ThreadPoolExecutor(0, 1, 5, TimeUnit.SECONDS, LinkedBlockingQueue()) { task ->
+            Thread({
+                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+                task.run()
+            }, "ocr-inference")
+        }
     }
 
-    override fun onBind(intent: Intent): IBinder = Messenger(handler).binder
+    private val main = Handler(Looper.getMainLooper(), ::acceptRequest)
+    private val requests = mutableMapOf<Int, OcrRequest>()
+    private var stopping = false
+    private var pipeline: OcrPipeline? = null
+
+    override fun onBind(intent: Intent): IBinder = Messenger(main).binder
 
     override fun onDestroy() {
-        handler.post {
-            releasePipeline()
-            worker.quitSafely()
-        }
+        stopping = true
+        requests.values.forEach(OcrRequest::cancel)
+        worker.execute(::releasePipeline)
         super.onDestroy()
     }
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= TRIM_MEMORY_BACKGROUND) handler.post(::releasePipeline)
+        if (level >= TRIM_MEMORY_BACKGROUND) worker.execute(::releasePipeline)
     }
 
     override fun onLowMemory() {
         super.onLowMemory()
-        handler.post(::releasePipeline)
+        worker.execute(::releasePipeline)
     }
 
     @Suppress("DEPRECATION")
-    private fun handleRequest(message: Message): Boolean {
-        val result = Bundle()
-        try {
-            val data = message.data.apply { classLoader = SharedMemory::class.java.classLoader }
-            val frame = data.getParcelable<SharedMemory>("frame")
-            if (frame == null) {
-                check(message.what == OCR_WARM)
-                getPipeline()
-            } else {
-                frame.use { processFrame(message.what, it, data, result) }
-            }
-        } catch (error: Exception) {
-            result.putBoolean("failed", true)
-            android.util.Log.w("OcrService", "OCR request failed (${error.javaClass.simpleName})")
-        } catch (error: LinkageError) {
-            result.putBoolean("failed", true)
-            android.util.Log.w("OcrService", "OCR runtime could not be loaded")
+    private fun acceptRequest(message: Message): Boolean {
+        val id = message.arg1
+        if (message.what == OCR_CANCEL) {
+            requests[id]?.cancel()
+            return true
         }
-        runCatching {
-            message.replyTo?.send(Message.obtain().apply { data = result })
+
+        val operation = message.what
+        val data = message.data.apply { classLoader = SharedMemory::class.java.classLoader }
+        val frame = data.getParcelable<SharedMemory>("frame")
+        val reply = message.replyTo
+        if (stopping || requests.containsKey(id)) {
+            frame?.close()
+            sendReply(reply, Bundle().apply { putBoolean("failed", true) })
+            return true
+        }
+
+        val request = OcrRequest()
+        requests[id] = request
+        worker.execute {
+            val result = Bundle()
+            try {
+                request.use {
+                    frame.use {
+                        request.ensureActive()
+                        if (frame == null) {
+                            check(operation == OCR_WARM)
+                            getPipeline().warmDetection(request)
+                        } else {
+                            processFrame(operation, frame, data, result, request)
+                        }
+                    }
+                }
+            } catch (error: Exception) {
+                if (!request.isCancelled) {
+                    result.putBoolean("failed", true)
+                    android.util.Log.w("OcrService", "OCR request failed (${error.javaClass.simpleName})")
+                }
+            } catch (error: LinkageError) {
+                result.putBoolean("failed", true)
+                android.util.Log.w("OcrService", "OCR runtime could not be loaded")
+            } finally {
+                main.post {
+                    requests.remove(id)
+                    val response = if (request.isCancelled) {
+                        Bundle().apply { putBoolean("cancelled", true) }
+                    } else result
+                    sendReply(reply, response)
+                }
+            }
         }
         return true
     }
 
-    private fun processFrame(operation: Int, frame: SharedMemory, data: Bundle, result: Bundle) {
+    private fun sendReply(reply: Messenger?, result: Bundle) {
+        runCatching { reply?.send(Message.obtain().apply { data = result }) }
+    }
+
+    private fun processFrame(operation: Int, frame: SharedMemory, data: Bundle, result: Bundle, request: OcrRequest) {
         val width = data.getInt("width")
         val height = data.getInt("height")
         val stride = data.getInt("stride")
@@ -106,9 +148,9 @@ class OcrRecognitionService : Service() {
             try {
                 Imgproc.cvtColor(rgba, bgr, Imgproc.COLOR_RGBA2BGR)
                 when (operation) {
-                    OCR_LINE -> result.putString("line", engine.recognizeLine(bgr))
+                    OCR_LINE -> result.putString("line", engine.recognizeLine(bgr, request))
                     OCR_DETECT, OCR_RECOGNIZE -> {
-                        val regions = if (operation == OCR_DETECT) engine.detectRegions(bgr) else engine.recognize(bgr)
+                        val regions = if (operation == OCR_DETECT) engine.detectRegions(bgr, request) else engine.recognize(bgr, request)
                         val corners = DoubleArray(regions.size * 8)
                         regions.forEachIndexed { index, region ->
                             region.points.forEachIndexed { corner, point ->
@@ -137,14 +179,10 @@ class OcrRecognitionService : Service() {
         pipeline?.let { return it }
         check(OpenCVLoader.initLocal()) { "OpenCV initialization failed" }
         Core.setNumThreads(1)
-        val characters = assets.open("ocr/ppocrv5-characters.txt").bufferedReader(Charsets.UTF_8).use { it.readLines() }
-        return ZipFile(applicationInfo.sourceDir).use { apk ->
-            OcrPipeline(
-                mapModel(apk, "ch_PP-OCRv5_det_mobile.onnx"),
-                mapModel(apk, "ch_PP-OCRv5_rec_mobile.onnx"),
-                characters,
-            )
-        }.also { pipeline = it }
+        return OcrPipeline(
+            { name -> ZipFile(applicationInfo.sourceDir).use { mapModel(it, name) } },
+            { assets.open("ocr/ppocrv5-characters.txt").bufferedReader(Charsets.UTF_8).use { it.readLines() } },
+        ).also { pipeline = it }
     }
 
     private fun releasePipeline() {

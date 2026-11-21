@@ -37,9 +37,11 @@ internal class InspireContentLoader(private val context: Context) {
 
     suspend fun buildOcrResult(
         originalBitmap: Bitmap,
+        ocrSession: ScreenOcr.Session,
     ): OcrProcessingResult = ocrImageTextProcessor.process(
         originalBitmap = originalBitmap,
         allowedTextBoxes = InspireDataHolder.ocrAllowedTextBoxes,
+        ocrSession = ocrSession,
     )
 
     fun segmentOcrText(rawText: String): List<String> {

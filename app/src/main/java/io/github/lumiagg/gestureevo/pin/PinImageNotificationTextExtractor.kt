@@ -7,6 +7,7 @@ import android.util.Log
 import io.github.lumiagg.gestureevo.inspire.ScreenContentNode
 import io.github.lumiagg.gestureevo.inspire.SmartSegmenter
 import io.github.lumiagg.gestureevo.ocr.ScreenOcr
+import kotlinx.coroutines.CancellationException
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
@@ -29,7 +30,10 @@ object PinImageNotificationTextExtractor {
     private suspend fun extractInternal(context: Context?, bitmap: Bitmap): PinNotificationText? {
         if (bitmap.width < MIN_OCR_SIZE || bitmap.height < MIN_OCR_SIZE) return null
         val nodes = runCatching { ScreenOcr.detect(bitmap) }
-            .onFailure { Log.w(TAG, "OCR failed for pin image notification", it) }
+            .onFailure {
+                if (it is CancellationException) throw it
+                Log.w(TAG, "OCR failed for pin image notification", it)
+            }
             .getOrDefault(arrayListOf())
         return PinImageTopicPredictionEngine.predict(context, nodes, bitmap.width, bitmap.height)
     }

@@ -102,13 +102,13 @@ class EvoApplication : Application() {
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         if (!isOcrProcess && level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
-            ScreenOcr.releaseSession()
+            ScreenOcr.trimMemory()
         }
     }
 
     override fun onLowMemory() {
         super.onLowMemory()
-        if (!isOcrProcess) ScreenOcr.releaseSession()
+        if (!isOcrProcess) ScreenOcr.trimMemory()
     }
 
     private fun applySavedLanguage(languageTag: String) {

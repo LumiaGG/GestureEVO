@@ -14,14 +14,24 @@ import android.os.Messenger
 import android.os.SharedMemory
 import android.system.OsConstants
 import androidx.annotation.RequiresApi
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.sqrt
 
 @RequiresApi(OCR_MIN_API)
 internal class OcrServiceClient(private val context: Context) : AutoCloseable {
+    companion object {
+        private const val CANCEL_DRAIN_MS = 2_000L
+        private val nextRequestId = AtomicInteger()
+    }
+
     private val connected = CompletableDeferred<Messenger>()
     private val disconnected = CompletableDeferred<Nothing>()
     private val connection = object : ServiceConnection {
@@ -53,23 +63,47 @@ internal class OcrServiceClient(private val context: Context) : AutoCloseable {
             response.complete(message.data)
             true
         })
+        val id = nextRequestId.incrementAndGet()
         val request = Message.obtain().apply {
             what = operation
+            arg1 = id
             replyTo = reply
         }
+        var sent = false
         try {
             if (bitmap == null) {
                 service.send(request)
             } else {
                 sendFrame(service, request, bitmap)
             }
+            sent = true
             return select {
                 disconnected.onAwait { it }
                 response.onAwait {
+                    if (it.getBoolean("cancelled")) throw CancellationException("OCR request cancelled")
                     check(!it.getBoolean("failed")) { "OCR inference failed" }
                     it
                 }
             }
+        } catch (error: CancellationException) {
+            if (sent && !response.isCompleted) {
+                withContext(NonCancellable) {
+                    // Let the worker close this frame before the next request allocates another.
+                    runCatching {
+                        service.send(Message.obtain().apply {
+                            what = OCR_CANCEL
+                            arg1 = id
+                        })
+                        withTimeoutOrNull(CANCEL_DRAIN_MS) {
+                            select<Unit> {
+                                response.onAwait { }
+                                disconnected.onAwait { }
+                            }
+                        }
+                    }
+                }
+            }
+            throw error
         } finally {
             response.cancel()
         }

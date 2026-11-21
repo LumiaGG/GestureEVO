@@ -12,6 +12,7 @@ import ai.onnxruntime.OnnxTensor;
 import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.text.Normalizer;
 import java.util.ArrayList;
@@ -21,6 +22,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
 
@@ -28,39 +31,74 @@ final class OcrPipeline implements AutoCloseable {
     // Screens can be denser than camera strips. Keep the work and IPC result bounded.
     private static final int MAX_SCREEN_REGIONS = 256;
     private final OrtEnvironment environment = OrtEnvironment.getEnvironment();
-    private final OrtSession detection;
-    private final OrtSession recognition;
-    private final String[] alphabet;
-    // Keep the model mappings alive for the lifetime of the native sessions.
-    private final java.nio.ByteBuffer detectionModel;
-    private final java.nio.ByteBuffer recognitionModel;
+    private final Function<String, ByteBuffer> mapModel;
+    private final Supplier<List<String>> readCharacters;
+    private ModelSession detection;
+    private ModelSession recognition;
+    private String[] alphabet;
 
-    OcrPipeline(java.nio.ByteBuffer det, java.nio.ByteBuffer recModel, List<String> characters)
-            throws OrtException {
-        detectionModel = det;
-        recognitionModel = recModel;
-        try (OrtSession.SessionOptions options = new OrtSession.SessionOptions()) {
-            options.setIntraOpNumThreads(2);
-            options.setInterOpNumThreads(1);
-            options.addConfigEntry("session.intra_op.allow_spinning", "0");
-            options.addConfigEntry("session.inter_op.allow_spinning", "0");
-            options.setMemoryPatternOptimization(false);
-            detection = environment.createSession(detectionModel, options);
-            OrtSession rec = null;
+    OcrPipeline(Function<String, ByteBuffer> mapModel, Supplier<List<String>> readCharacters) {
+        this.mapModel = mapModel;
+        this.readCharacters = readCharacters;
+    }
+
+    private final class ModelSession implements AutoCloseable {
+        // The mapping and options must outlive the native session.
+        private final ByteBuffer weights;
+        private final OrtSession.SessionOptions options = new OrtSession.SessionOptions();
+        private final OrtSession session;
+        private final String inputName;
+
+        ModelSession(ByteBuffer weights) throws OrtException {
+            this.weights = weights;
+            OrtSession created = null;
             try {
-                rec = environment.createSession(recognitionModel, options);
-                List<String> chars = new ArrayList<>();
-                chars.add(""); // CTC blank
-                chars.addAll(characters);
-                chars.add(" ");
-                alphabet = chars.toArray(new String[0]);
-                recognition = rec;
-            } catch (Exception error) {
-                if (rec != null) rec.close();
-                detection.close();
+                options.setIntraOpNumThreads(2);
+                options.setInterOpNumThreads(1);
+                options.addConfigEntry("session.intra_op.allow_spinning", "0");
+                options.addConfigEntry("session.inter_op.allow_spinning", "0");
+                options.setMemoryPatternOptimization(false);
+                created = environment.createSession(this.weights, options);
+                inputName = created.getInputNames().iterator().next();
+                session = created;
+            } catch (OrtException | RuntimeException error) {
+                try {
+                    if (created != null) created.close();
+                } catch (OrtException closeError) {
+                    error.addSuppressed(closeError);
+                } finally {
+                    options.close();
+                }
                 throw error;
             }
         }
+
+        @Override public void close() throws OrtException {
+            try { session.close(); } finally { options.close(); }
+        }
+    }
+
+    void warmDetection(OcrRequest request) throws OrtException {
+        detection(request);
+    }
+
+    private ModelSession detection(OcrRequest request) throws OrtException {
+        request.ensureActive();
+        if (detection == null) detection = new ModelSession(mapModel.apply("ch_PP-OCRv5_det_mobile.onnx"));
+        return detection;
+    }
+
+    private ModelSession recognition(OcrRequest request) throws OrtException {
+        request.ensureActive();
+        if (recognition == null) {
+            List<String> chars = new ArrayList<>();
+            chars.add(""); // CTC blank
+            chars.addAll(readCharacters.get());
+            chars.add(" ");
+            alphabet = chars.toArray(new String[0]);
+            recognition = new ModelSession(mapModel.apply("ch_PP-OCRv5_rec_mobile.onnx"));
+        }
+        return recognition;
     }
 
     static final class TextRegion {
@@ -73,22 +111,23 @@ final class OcrPipeline implements AutoCloseable {
         double height() { return Math.max(distance(points[0], points[3]), distance(points[1], points[2])); }
     }
 
-    List<TextRegion> detectRegions(Mat bgr) throws OrtException {
+    List<TextRegion> detectRegions(Mat bgr, OcrRequest request) throws OrtException {
         List<TextRegion> regions = new ArrayList<>();
-        for (Point[] box : detectBoxes(bgr)) regions.add(new TextRegion(box, ""));
+        for (Point[] box : detectBoxes(bgr, request)) regions.add(new TextRegion(box, ""));
         return readingOrder(regions);
     }
 
-    List<TextRegion> recognize(Mat bgr) throws OrtException {
-        List<Point[]> boxes = detectBoxes(bgr);
+    List<TextRegion> recognize(Mat bgr, OcrRequest request) throws OrtException {
+        List<Point[]> boxes = detectBoxes(bgr, request);
         List<TextRegion> text = new ArrayList<>();
         List<TextRegion> candidates = new ArrayList<>();
         for (Point[] box : boxes) candidates.add(new TextRegion(box, ""));
         List<TextRegion> ordered = readingOrder(candidates);
         for (TextRegion candidate : ordered.subList(0, Math.min(MAX_SCREEN_REGIONS, ordered.size()))) {
+            request.ensureActive();
             Mat crop = bgr.submat(bounds(candidate.points, bgr.cols(), bgr.rows()));
             try {
-                Line line = read(crop);
+                Line line = read(crop, request);
                 if (line.accepted()) text.add(new TextRegion(candidate.points, line.text));
             } finally {
                 crop.release();
@@ -96,17 +135,17 @@ final class OcrPipeline implements AutoCloseable {
         }
         // The upstream isolated-symbol recovery is designed for horizontal strips.
         if (bgr.cols() >= 3L * bgr.rows() && bgr.total() <= 1_048_576) {
-            recoverIsolatedMarks(bgr, boxes, text);
+            recoverIsolatedMarks(bgr, boxes, text, request);
         }
         return readingOrder(text);
     }
 
-    String recognizeLine(Mat bgr) throws OrtException {
-        Line line = read(bgr);
+    String recognizeLine(Mat bgr, OcrRequest request) throws OrtException {
+        Line line = read(bgr, request);
         return line.accepted() ? line.text : "";
     }
 
-    private List<Point[]> detectBoxes(Mat bgr) throws OrtException {
+    private List<Point[]> detectBoxes(Mat bgr, OcrRequest request) throws OrtException {
         double scale = Math.max(1, Math.max(320.0 / Math.min(bgr.rows(), bgr.cols()),
                 2048.0 / Math.max(bgr.rows(), bgr.cols())));
         // Excessive enlargement of small screenshot crops can fragment DB boxes.
@@ -114,8 +153,8 @@ final class OcrPipeline implements AutoCloseable {
         scale = Math.min(scale, Math.sqrt(1_048_576.0 / bgr.total()));
         int height = multiple32(bgr.rows() * scale);
         int width = multiple32(bgr.cols() * scale);
-        return detect(run(detection, normalize(bgr, width, height, width, true),
-                new long[]{1, 3, height, width}), bgr.cols(), bgr.rows());
+        return detect(run(detection(request), normalize(bgr, width, height, width, true),
+                new long[]{1, 3, height, width}, request), bgr.cols(), bgr.rows());
     }
 
     static Rect bounds(Point[] points, int width, int height) {
@@ -138,11 +177,11 @@ final class OcrPipeline implements AutoCloseable {
         boolean accepted() { return !text.isEmpty() && confidence >= .65f; }
     }
 
-    private Line read(Mat crop) throws OrtException {
+    private Line read(Mat crop, OcrRequest request) throws OrtException {
         int contentWidth = Math.max(1, Math.min(1600, (int)Math.ceil(48.0 * crop.cols() / crop.rows())));
         int tensorWidth = Math.max(320, contentWidth);
-        TensorOutput output = run(recognition, normalize(crop, contentWidth, 48, tensorWidth, false),
-                new long[]{1, 3, 48, tensorWidth});
+        TensorOutput output = run(recognition(request), normalize(crop, contentWidth, 48, tensorWidth, false),
+                new long[]{1, 3, 48, tensorWidth}, request);
         if (output.shape.length != 3 || output.shape[2] != alphabet.length) {
             throw new IllegalArgumentException("OCR alphabet " + alphabet.length + " does not match output " + Arrays.toString(output.shape));
         }
@@ -165,7 +204,7 @@ final class OcrPipeline implements AutoCloseable {
      * "<", "," legends on keycaps, although the recognizer reads them inside a line. Find small
      * high-contrast marks that no accepted text covers and add the symbols read for them.
      */
-    private void recoverIsolatedMarks(Mat bgr, List<Point[]> boxes, List<TextRegion> text) throws OrtException {
+    private void recoverIsolatedMarks(Mat bgr, List<Point[]> boxes, List<TextRegion> text, OcrRequest request) throws OrtException {
         int rows = bgr.rows(), cols = bgr.cols();
         List<Rect> marks = new ArrayList<>();
         int k = Math.max(9, (int)(Math.min(rows, cols) * .3)) | 1;
@@ -241,7 +280,7 @@ final class OcrPipeline implements AutoCloseable {
             if (band.width < 4 || band.height < 4) continue;
             Mat crop = bgr.submat(band);
             Line line;
-            try { line = read(crop); } finally { crop.release(); }
+            try { line = read(crop, request); } finally { crop.release(); }
             if (!line.accepted()) continue;
             String missed = missedSymbols(line.text, known.toString());
             if (missed.isEmpty()) continue;
@@ -321,9 +360,10 @@ final class OcrPipeline implements AutoCloseable {
         TensorOutput(float[] data, long[] shape) { this.data = data; this.shape = shape; }
     }
 
-    private TensorOutput run(OrtSession session, float[] input, long[] shape) throws OrtException {
+    private TensorOutput run(ModelSession model, float[] input, long[] shape, OcrRequest request) throws OrtException {
         try (OnnxTensor tensor = OnnxTensor.createTensor(environment, FloatBuffer.wrap(input), shape);
-             OrtSession.Result result = session.run(Collections.singletonMap(session.getInputNames().iterator().next(), tensor))) {
+             OrtSession.Result result = model.session.run(Collections.singletonMap(model.inputName, tensor), request.runOptions())) {
+            request.ensureActive();
             OnnxTensor output = (OnnxTensor) result.get(0);
             FloatBuffer buffer = output.getFloatBuffer();
             // ORT 1.28 already copies FP32 output to a heap buffer.
@@ -408,7 +448,11 @@ final class OcrPipeline implements AutoCloseable {
     }
 
     @Override public void close() throws OrtException {
-        try { recognition.close(); } finally { detection.close(); }
+        try (ModelSession detector = detection; ModelSession recognizer = recognition) {
+            detection = null;
+            recognition = null;
+            alphabet = null;
+        }
         // OrtEnvironment is process-shared; closing one OCR session must not invalidate another.
     }
 }
