@@ -62,7 +62,7 @@ import io.github.lumiagg.gestureevo.gesture.SearchEvent
 import io.github.lumiagg.gestureevo.inspire.ClipboardToInspireActivityUtils
 import io.github.lumiagg.gestureevo.inspire.InspireHelperUtils
 import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
-import io.github.lumiagg.gestureevo.utils.MlKitOcr
+import io.github.lumiagg.gestureevo.ocr.ScreenOcr
 import io.github.lumiagg.gestureevo.search.InjectionTask
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_PIN_POOL_BACKGROUND_BLUR
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.KEY_PIN_POOL_CARD_BACKGROUND_BLUR
@@ -1154,7 +1154,7 @@ class PinPoolFloating : AppCompatActivity() {
                     loadScaledBitmap(it, metrics.widthPixels, metrics.heightPixels)
                 } ?: return null
                 try {
-                    MlKitOcr.detect(bitmap)
+                    ScreenOcr.detect(bitmap)
                         .mapNotNull { it.content?.trim()?.takeIf(String::isNotEmpty) }
                         .joinToString(" ")
                 } catch (error: kotlinx.coroutines.CancellationException) {

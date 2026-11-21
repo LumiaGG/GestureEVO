@@ -181,12 +181,12 @@ def print_smaps(groups: dict[str, SmapsGroup], limit: int) -> None:
         )
     print()
 
-    print("== OCR / TFLite / LiteRT mappings ==")
+    print("== OCR runtime and model mappings ==")
     ocr_total = 0
     found = False
     for path, group in sorted(groups.items(), key=lambda item: item[1].pss, reverse=True):
         lower = path.lower()
-        if any(token in lower for token in ("ocr_", "tflite", "litert", "ppocr")):
+        if any(token in lower for token in ("ocr_", "tflite", "litert", "ppocr", "onnx", "opencv", "evo-ocr-frame")):
             found = True
             ocr_total += group.pss
             print(
@@ -229,26 +229,31 @@ def main() -> int:
     if args.device is None and len(devices) > 1:
         print("Multiple devices found; use --device <serial> if needed.", file=sys.stderr)
 
-    pid_output = run_adb(["shell", "pidof", args.package], args.device, check=False).strip()
-    if not pid_output:
+    processes: list[tuple[str, str, MemSummary]] = []
+    for name in (args.package, f"{args.package}:ocr"):
+        pids = run_adb(["shell", "pidof", name], args.device, check=False).split()
+        for pid in pids:
+            meminfo = run_adb(["shell", "dumpsys", "meminfo", "-a", pid], args.device)
+            summary = parse_meminfo(meminfo)
+            processes.append((name, pid, summary))
+            print_summary(name, pid, summary)
+    if not processes:
         raise RuntimeError(f"Process not found for package '{args.package}'. Is the app running?")
-    pid = pid_output.split()[0]
-
-    meminfo = run_adb(["shell", "dumpsys", "meminfo", "-a", args.package], args.device)
-    summary = parse_meminfo(meminfo)
-    print_summary(args.package, pid, summary)
+    totals = [summary.total_pss for _, _, summary in processes]
+    if all(pss is not None for pss in totals):
+        print_kb("Combined PSS:", sum(pss for pss in totals if pss is not None))
 
     if args.no_smaps:
         print("smaps parsing skipped by --no-smaps.")
         return 0
 
-    smaps = run_adb(["shell", "run-as", args.package, "cat", f"/proc/{pid}/smaps"], args.device, check=False)
-    if re.search(r"Permission denied|not debuggable|run-as", smaps, re.IGNORECASE):
-        print("smaps unavailable via run-as; package may not be debuggable.", file=sys.stderr)
-        return 0
-
-    groups = parse_smaps(smaps)
-    print_smaps(groups, args.top)
+    for name, pid, _ in processes:
+        print(f"== {name} ({pid}) ==")
+        smaps = run_adb(["shell", "run-as", args.package, "cat", f"/proc/{pid}/smaps"], args.device, check=False)
+        if re.search(r"Permission denied|not debuggable|run-as|No such file", smaps, re.IGNORECASE):
+            print("smaps unavailable via run-as.", file=sys.stderr)
+            continue
+        print_smaps(parse_smaps(smaps), args.top)
     return 0
 
 

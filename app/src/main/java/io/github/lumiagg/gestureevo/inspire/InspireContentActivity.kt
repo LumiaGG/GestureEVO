@@ -41,6 +41,8 @@ import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.TransparentActivityLauncher
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
+import io.github.lumiagg.gestureevo.ocr.ScreenOcr
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -318,7 +320,9 @@ class InspireContentActivity : AppCompatActivity() {
             screenshotBitmapHandle = InspireDataHolder.acquireScreenshotBitmap()
             val loadPlan = contentLoader.buildLoadPlan(screenshotBitmapHandle)
             inspireContentView.setInitialTokenMode(loadPlan.initialTokenMode)
-            inspireContentView.setRequestableTokenModes(loadPlan.requestableTokenModes)
+            inspireContentView.setRequestableTokenModes(loadPlan.requestableTokenModes.let { modes ->
+                if (ScreenOcr.isSupported) modes else modes - InspireTokenContentMode.OCR
+            })
             if (loadPlan.initialDisplayMode.isImageTextSelection) {
                 showScreenshotPreview()
                 inspireContentView.setDisplayMode(loadPlan.initialDisplayMode)
@@ -332,14 +336,29 @@ class InspireContentActivity : AppCompatActivity() {
     }
 
     private suspend fun processOCRData(loadPlan: InspireContentLoadPlan) {
-        if (!loadPlan.hasScreenshot) return
-        val ocrResult = withContext(Dispatchers.Default) {
-            screenshotBitmapHandle?.bitmapOrNull?.let { originalBitmap ->
-                contentLoader.buildOcrResult(
-                    originalBitmap = originalBitmap,
-                )
+        if (!loadPlan.hasScreenshot || !ScreenOcr.isSupported) return
+        val screenshot = screenshotBitmapHandle?.acquire() ?: return
+        val ocrResult = try {
+            screenshot.use { handle ->
+                withContext(Dispatchers.Default) {
+                    contentLoader.buildOcrResult(originalBitmap = handle.requireBitmap())
+                }
             }
-        } ?: return
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w(TAG, "Screen OCR failed", error)
+            inspireContentView.setRequestableTokenModes(loadPlan.requestableTokenModes - InspireTokenContentMode.OCR)
+            if (inspireContentView.getCurrentDisplayMode().isImageTextSelection) {
+                inspireContentView.setDisplayMode(InspireDisplayMode.TOKEN_SELECTION)
+            }
+            if (inspireContentView.getCurrentMode().isOCR) {
+                inspireContentView.switchToMode(InspireTokenContentMode.ACCESSIBILITY)
+                requestTokenContent(InspireTokenContentMode.ACCESSIBILITY)
+                ToastHelper.showInUIThread(this, R.string.screen_ocr_failed)
+            }
+            return
+        }
         tokenContentController.applyOcrResult(ocrResult, loadPlan)
     }
 
@@ -581,6 +600,7 @@ class InspireContentActivity : AppCompatActivity() {
     override fun onDestroy() {
         GlassEffectUtils.applyWindowBlur(window, false)
         contentLoadJob?.cancel()
+        ScreenOcr.releaseSession()
         tokenContentController.cancel()
         imageActionJob?.cancel()
         inspireContentView.clear()

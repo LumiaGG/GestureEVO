@@ -3,6 +3,7 @@ package io.github.lumiagg.gestureevo.inspire
 import android.content.Context
 import android.graphics.Bitmap
 import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.ocr.ScreenOcr
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_DEFAULT_IMAGE_TEXT_OVERLAY
 import io.github.lumiagg.gestureevo.utils.readKey
@@ -15,15 +16,16 @@ internal class InspireContentLoader(private val context: Context) {
         val defaultImageTextOverlay = InspireDataHolder.forceImageTextSelection ||
                 context.settingsStore.readKey(KEY_DEFAULT_IMAGE_TEXT_OVERLAY, false)
         val hasScreenshot = screenshotBitmapHandle?.bitmapOrNull != null
+        val canRecognizeScreenshot = hasScreenshot && ScreenOcr.isSupported
         val accessibilityContent = InspireDataHolder.accessibilityContent
         val hasAccessibilityContent = !accessibilityContent.isNullOrBlank()
-        val initialDisplayMode = if (defaultImageTextOverlay && hasScreenshot) {
+        val initialDisplayMode = if (defaultImageTextOverlay && canRecognizeScreenshot) {
             InspireDisplayMode.IMAGE_TEXT_SELECTION
         } else {
             InspireDisplayMode.TOKEN_SELECTION
         }
         val initialTokenMode = selectInitialTokenMode(
-            hasScreenshot = hasScreenshot,
+            hasScreenshot = canRecognizeScreenshot,
             hasAccessibilityContent = hasAccessibilityContent,
         )
         return InspireContentLoadPlan(

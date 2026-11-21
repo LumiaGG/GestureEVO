@@ -19,10 +19,11 @@ import io.github.lumiagg.gestureevo.inspire.cropByRect
 import io.github.lumiagg.gestureevo.inspire.preferredScreenTextIndices
 import io.github.lumiagg.gestureevo.inspire.withAccessibilityNodes
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
-import io.github.lumiagg.gestureevo.utils.MlKitOcr
+import io.github.lumiagg.gestureevo.ocr.ScreenOcr
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.dp2px
 import io.github.lumiagg.gestureevo.utils.postOnMain
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -155,6 +156,10 @@ class ScreenSearchFloating(private val context: GestureService) :
     }
 
     fun show() = context.postOnMain {
+        if (!ScreenOcr.isSupported) {
+            ToastHelper.showInUIThread(context, R.string.screen_ocr_unsupported)
+            return@postOnMain
+        }
         ensureViewsAttached()
         applyThemeColors()
         binding.root.visibility = View.VISIBLE
@@ -244,9 +249,12 @@ class ScreenSearchFloating(private val context: GestureService) :
 
                 if (currentStep >= maxAttempts) {
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
+                ScreenOcr.releaseSession()
                 updateUiSearching(false)
                 updateIndicatorSearching(false)
             }
@@ -323,8 +331,10 @@ class ScreenSearchFloating(private val context: GestureService) :
 
             val ocrResult = try {
                 ocrBitmapHandle.use { handle ->
-                    MlKitOcr.detect(handle.requireBitmap())
+                    ScreenOcr.detect(handle.requireBitmap())
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 e.printStackTrace()
                 return CaptureResult(matches = emptyList(), failed = true)

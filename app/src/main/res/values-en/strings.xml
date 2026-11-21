@@ -558,6 +558,8 @@
     <string name="screen_search_status_idle">Ready to search</string>
     <string name="screen_search_empty_keyword">Please enter a keyword</string>
     <string name="screen_search_found_toast">Keyword found</string>
+    <string name="screen_ocr_failed">Screen text recognition failed</string>
+    <string name="screen_ocr_unsupported">Screen text recognition requires Android 9 or later</string>
     <string name="inspire_screenshot_failed">Screenshot failed</string>
     <string name="inspire_link_no_app">No app found to open this link</string>
     <string name="inspire_link_not_found">No link found</string>

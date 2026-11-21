@@ -6,7 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Rect
 import androidx.core.graphics.createBitmap
-import io.github.lumiagg.gestureevo.utils.MlKitOcr
+import io.github.lumiagg.gestureevo.ocr.ScreenOcr
 import io.github.lumiagg.gestureevo.utils.dp2px
 
 internal class OcrImageTextProcessor(private val context: Context) {
@@ -73,7 +73,7 @@ internal class OcrImageTextProcessor(private val context: Context) {
         sourceHeight: Int,
         paddingPx: Int,
     ): List<ScreenContentNode> {
-        return MlKitOcr.detect(paddedBitmap).mapNotNull { node ->
+        return ScreenOcr.detect(paddedBitmap).mapNotNull { node ->
             node.toSourceNode(sourceWidth, sourceHeight, paddingPx)
         }.sortedWith(OCR_NODE_POSITION_COMPARATOR)
     }

@@ -30,7 +30,7 @@ import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.K
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_SCREEN_CONTENT_LINK_RADAR
 import io.github.lumiagg.gestureevo.share.ImageShareLauncher
 import io.github.lumiagg.gestureevo.utils.ClipboardUtils
-import io.github.lumiagg.gestureevo.utils.MlKitOcr
+import io.github.lumiagg.gestureevo.ocr.ScreenOcr
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.postOnMain
 import io.github.lumiagg.gestureevo.utils.readKey
@@ -408,14 +408,18 @@ class InspireFloating(private val context: GestureService) :
     }
 
     private fun startFullScreenTextBoxDetectionIfReady() {
-        if (!textBoxPreviewEnabled || sessionTextBoxes != null || textBoxDetectionJob?.isActive == true) {
+        if (!ScreenOcr.isSupported || !textBoxPreviewEnabled ||
+            sessionTextBoxes != null || textBoxDetectionJob?.isActive == true
+        ) {
             return
         }
         val screenshot = sessionScreenshot?.acquire() ?: return
         val detectionGeneration = textBoxGeneration
         textBoxDetectionJob = context.launch(Dispatchers.Default) {
             val boxes = try {
-                screenshot.use { MlKitOcr.detectTextBoxes(it.requireBitmap()) }
+                screenshot.use { ScreenOcr.detectTextBoxes(it.requireBitmap()) }
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: Exception) {
                 Log.w("InspireFloating", "Full-screen text box detection failed", error)
                 emptyList()
@@ -544,7 +548,7 @@ class InspireFloating(private val context: GestureService) :
         acquireSessionScreenshot()?.use { screenshot ->
             screenshot.cropByRect(textBox)?.use { cropped ->
                 return cropped.requireBitmap().useSoftwareBitmap { bitmap ->
-                    MlKitOcr.recognizeTextBox(bitmap)
+                    ScreenOcr.recognizeTextBox(bitmap)
                 }
             }
         }
@@ -659,6 +663,7 @@ class InspireFloating(private val context: GestureService) :
             inspireView.clear()
             detachIfNeeded()
             resetSessionCapture()
+            if (!activityLaunching) ScreenOcr.releaseSession()
         }
     }
 
@@ -671,12 +676,13 @@ class InspireFloating(private val context: GestureService) :
             inspireView.clear()
             detachIfNeeded()
             resetSessionCapture()
+            ScreenOcr.releaseSession()
         }
     }
 
     private fun preloadOcrModel() {
         context.launch(Dispatchers.IO) {
-            MlKitOcr.preload()
+            ScreenOcr.preload()
         }
     }
 
