@@ -110,7 +110,7 @@ class InspireContentView : MaterialCardView {
     private fun setupBigBangLayout() {
         val edgeScroller = EdgeScroller(binding.bigBangLayoutNestedScroll, null)
         binding.bigBangLayout.apply {
-            onFunctionViewLayout = { y -> smoothScrollTo(y) }
+            onFunctionViewReveal = { y -> smoothScrollTo(y) }
             onTouchCallback = { event, view ->
                 when (event.action) {
                     MotionEvent.ACTION_MOVE -> edgeScroller.handleDrag(event.y, view)
@@ -344,7 +344,7 @@ class InspireContentView : MaterialCardView {
             preSetContent()
             tokenContentState.currentContents?.forEach { binding.bigBangLayout.addTextItem(it, isSelected) }
             selectedIndexes?.let { binding.bigBangLayout.setSelectedContentIndexes(it) }
-            requestLayout()
+            if (preserveScroll) requestLayout() else requestFunctionViewReveal()
         }
         if (preserveScroll) {
             binding.bigBangLayoutNestedScroll.post {
@@ -371,6 +371,9 @@ class InspireContentView : MaterialCardView {
             texts = changedContents,
             selectedIndexes = selectedIndexes,
         )
+        if (replaced && !preserveScroll) {
+            binding.bigBangLayout.requestFunctionViewReveal()
+        }
         if (preserveScroll) {
             binding.bigBangLayoutNestedScroll.post {
                 binding.bigBangLayoutNestedScroll.scrollTo(0, scrollY)
