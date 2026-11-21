@@ -44,11 +44,6 @@ class OcrRecognitionService : Service() {
 
     override fun onBind(intent: Intent): IBinder = Messenger(handler).binder
 
-    override fun onUnbind(intent: Intent): Boolean {
-        handler.post(::releasePipeline)
-        return false
-    }
-
     override fun onDestroy() {
         handler.post {
             releasePipeline()
@@ -115,17 +110,17 @@ class OcrRecognitionService : Service() {
                     OCR_DETECT, OCR_RECOGNIZE -> {
                         val regions = if (operation == OCR_DETECT) engine.detectRegions(bgr) else engine.recognize(bgr)
                         val corners = DoubleArray(regions.size * 8)
-                        val text = ArrayList<String>(regions.size)
                         regions.forEachIndexed { index, region ->
                             region.points.forEachIndexed { corner, point ->
                                 val coordinate = index * 8 + corner * 2
                                 corners[coordinate] = point.x * scaleX
                                 corners[coordinate + 1] = point.y * scaleY
                             }
-                            text.add(region.text)
                         }
                         result.putDoubleArray("corners", corners)
-                        result.putStringArrayList("text", text)
+                        if (operation == OCR_RECOGNIZE) {
+                            result.putStringArrayList("text", regions.mapTo(ArrayList(regions.size)) { it.text })
+                        }
                     }
                     else -> error("Unknown OCR operation")
                 }

@@ -15,8 +15,7 @@ internal class InspireContentLoader(private val context: Context) {
     suspend fun buildLoadPlan(screenshotBitmapHandle: ManagedBitmap?): InspireContentLoadPlan {
         val defaultImageTextOverlay = InspireDataHolder.forceImageTextSelection ||
                 context.settingsStore.readKey(KEY_DEFAULT_IMAGE_TEXT_OVERLAY, false)
-        val hasScreenshot = screenshotBitmapHandle?.bitmapOrNull != null
-        val canRecognizeScreenshot = hasScreenshot && ScreenOcr.isSupported
+        val canRecognizeScreenshot = ScreenOcr.isSupported && screenshotBitmapHandle?.bitmapOrNull != null
         val accessibilityContent = InspireDataHolder.accessibilityContent
         val hasAccessibilityContent = !accessibilityContent.isNullOrBlank()
         val initialDisplayMode = if (defaultImageTextOverlay && canRecognizeScreenshot) {
@@ -25,13 +24,13 @@ internal class InspireContentLoader(private val context: Context) {
             InspireDisplayMode.TOKEN_SELECTION
         }
         val initialTokenMode = selectInitialTokenMode(
-            hasScreenshot = canRecognizeScreenshot,
+            canRecognizeScreenshot = canRecognizeScreenshot,
             hasAccessibilityContent = hasAccessibilityContent,
         )
         return InspireContentLoadPlan(
             initialDisplayMode = initialDisplayMode,
             initialTokenMode = initialTokenMode,
-            hasScreenshot = hasScreenshot,
+            canRecognizeScreenshot = canRecognizeScreenshot,
             hasAccessibilityContent = hasAccessibilityContent,
         )
     }
@@ -59,13 +58,12 @@ internal class InspireContentLoader(private val context: Context) {
     }
 
     private suspend fun selectInitialTokenMode(
-        hasScreenshot: Boolean,
+        canRecognizeScreenshot: Boolean,
         hasAccessibilityContent: Boolean,
     ): InspireTokenContentMode {
         val isOcrPriority = context.settingsStore.readKey(InspireSettingsActivity.KEY_OCR_PRIORITY, true)
         return when {
-            hasScreenshot && (isOcrPriority || !hasAccessibilityContent) -> InspireTokenContentMode.OCR
-            hasAccessibilityContent -> InspireTokenContentMode.ACCESSIBILITY
+            canRecognizeScreenshot && (isOcrPriority || !hasAccessibilityContent) -> InspireTokenContentMode.OCR
             else -> InspireTokenContentMode.ACCESSIBILITY
         }
     }

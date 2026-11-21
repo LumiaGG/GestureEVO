@@ -320,9 +320,7 @@ class InspireContentActivity : AppCompatActivity() {
             screenshotBitmapHandle = InspireDataHolder.acquireScreenshotBitmap()
             val loadPlan = contentLoader.buildLoadPlan(screenshotBitmapHandle)
             inspireContentView.setInitialTokenMode(loadPlan.initialTokenMode)
-            inspireContentView.setRequestableTokenModes(loadPlan.requestableTokenModes.let { modes ->
-                if (ScreenOcr.isSupported) modes else modes - InspireTokenContentMode.OCR
-            })
+            inspireContentView.setRequestableTokenModes(loadPlan.requestableTokenModes)
             if (loadPlan.initialDisplayMode.isImageTextSelection) {
                 showScreenshotPreview()
                 inspireContentView.setDisplayMode(loadPlan.initialDisplayMode)
@@ -336,7 +334,7 @@ class InspireContentActivity : AppCompatActivity() {
     }
 
     private suspend fun processOCRData(loadPlan: InspireContentLoadPlan) {
-        if (!loadPlan.hasScreenshot || !ScreenOcr.isSupported) return
+        if (!loadPlan.canRecognizeScreenshot) return
         val screenshot = screenshotBitmapHandle?.acquire() ?: return
         val ocrResult = try {
             screenshot.use { handle ->
