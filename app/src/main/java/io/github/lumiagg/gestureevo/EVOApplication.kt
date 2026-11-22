@@ -2,6 +2,7 @@ package io.github.lumiagg.gestureevo
 
 import io.github.lumiagg.gestureevo.diagnostics.AppLogger
 import android.app.Application
+import android.os.Build
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -13,7 +14,9 @@ import androidx.core.os.LocaleListCompat
 import androidx.core.content.ContextCompat
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
-import io.github.lumiagg.gestureevo.utils.MlKitOcr
+import io.github.lumiagg.gestureevo.ocr.OCR_MIN_API
+import io.github.lumiagg.gestureevo.ocr.OCR_PROCESS_SUFFIX
+import io.github.lumiagg.gestureevo.ocr.ScreenOcr
 import io.github.lumiagg.gestureevo.utils.AppCrashHandler
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
@@ -64,10 +67,15 @@ class EvoApplication : Application() {
         }
     }
 
+    private val isOcrProcess: Boolean
+        get() = Build.VERSION.SDK_INT >= OCR_MIN_API && getProcessName() == packageName + OCR_PROCESS_SUFFIX
+
     override fun onCreate() {
         super.onCreate()
+        if (isOcrProcess) return
         application = this
         AppLogger.initialize(this)
+        maintenanceScope.launch { java.io.File(filesDir, "ocr_models").deleteRecursively() }
         val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler(AppCrashHandler(this, previousHandler))
         val preferences = runBlocking { settingsStore.data.first() }
@@ -88,19 +96,20 @@ class EvoApplication : Application() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        DynamicColorUtils.refreshSurfaceColors(this)
+        if (!isOcrProcess) DynamicColorUtils.refreshSurfaceColors(this)
     }
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
-            MlKitOcr.releasePreload()
+        if (!isOcrProcess && (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND ||
+                    level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL)) {
+            ScreenOcr.trimMemory()
         }
     }
 
     override fun onLowMemory() {
         super.onLowMemory()
-        MlKitOcr.releasePreload()
+        if (!isOcrProcess) ScreenOcr.trimMemory()
     }
 
     private fun applySavedLanguage(languageTag: String) {

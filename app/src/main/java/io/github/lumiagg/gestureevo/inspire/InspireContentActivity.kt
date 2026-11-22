@@ -41,6 +41,8 @@ import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.TransparentActivityLauncher
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
+import io.github.lumiagg.gestureevo.ocr.ScreenOcr
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -57,6 +59,7 @@ class InspireContentActivity : AppCompatActivity() {
     private var launchingImageEditor = false
     private var strongCopyHandled = false
     private var contentLoadJob: Job? = null
+    private var ocrSession: ScreenOcr.Session? = null
     private var imageActionJob: Job? = null
     private var screenshotBitmapHandle: ManagedBitmap? = null
     private var screenContentBackgroundBlurEnabled = false
@@ -81,6 +84,7 @@ class InspireContentActivity : AppCompatActivity() {
 
     companion object {
         const val TAG = "InspireContentActivity"
+        private const val EXTRA_OCR_HANDOFF = "ocr_handoff"
         private const val ANIMATION_DURATION_ENTER = 300L
         private const val ANIMATION_DURATION_EXIT = 200L
 
@@ -88,10 +92,12 @@ class InspireContentActivity : AppCompatActivity() {
         private val EMPHASIZED_DECELERATE = PathInterpolator(0.05f, 0.7f, 0.1f, 1f)
         private val EMPHASIZED_ACCELERATE = PathInterpolator(0.3f, 0f, 0.8f, 0.15f)
 
-        fun start(context: Context) {
+        fun start(context: Context, ocrHandoff: String? = null) {
             TransparentActivityLauncher.start(
                 context,
-                Intent(context, InspireContentActivity::class.java)
+                Intent(context, InspireContentActivity::class.java).apply {
+                    if (ocrHandoff != null) putExtra(EXTRA_OCR_HANDOFF, ocrHandoff)
+                }
             )
         }
     }
@@ -273,6 +279,7 @@ class InspireContentActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         applySystemBarsVisibility()
 
         // Reset entry state
@@ -312,6 +319,9 @@ class InspireContentActivity : AppCompatActivity() {
 
     private fun loadInspireContent() {
         contentLoadJob?.cancel()
+        val handedOff = ScreenOcr.takeHandoff(intent.getStringExtra(EXTRA_OCR_HANDOFF))
+        ocrSession?.close()
+        ocrSession = handedOff
         tokenContentController.reset()
         contentLoadJob = lifecycleScope.launch {
             screenshotBitmapHandle?.close()
@@ -332,14 +342,36 @@ class InspireContentActivity : AppCompatActivity() {
     }
 
     private suspend fun processOCRData(loadPlan: InspireContentLoadPlan) {
-        if (!loadPlan.hasScreenshot) return
-        val ocrResult = withContext(Dispatchers.Default) {
-            screenshotBitmapHandle?.bitmapOrNull?.let { originalBitmap ->
-                contentLoader.buildOcrResult(
-                    originalBitmap = originalBitmap,
-                )
+        if (!loadPlan.canRecognizeScreenshot) {
+            ocrSession?.close()
+            ocrSession = null
+            return
+        }
+        val screenshot = screenshotBitmapHandle?.acquire() ?: return
+        val session = ocrSession ?: ScreenOcr.openSession().also { ocrSession = it }
+        val ocrResult = try {
+            screenshot.use { handle ->
+                withContext(Dispatchers.Default) {
+                    contentLoader.buildOcrResult(originalBitmap = handle.requireBitmap(), ocrSession = session)
+                }
             }
-        } ?: return
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            session.close()
+            if (ocrSession === session) ocrSession = null
+            Log.w(TAG, "Screen OCR failed", error)
+            inspireContentView.setRequestableTokenModes(loadPlan.requestableTokenModes - InspireTokenContentMode.OCR)
+            if (inspireContentView.getCurrentDisplayMode().isImageTextSelection) {
+                inspireContentView.setDisplayMode(InspireDisplayMode.TOKEN_SELECTION)
+            }
+            if (inspireContentView.getCurrentMode().isOCR) {
+                inspireContentView.switchToMode(InspireTokenContentMode.ACCESSIBILITY)
+                requestTokenContent(InspireTokenContentMode.ACCESSIBILITY)
+                ToastHelper.showInUIThread(this, R.string.screen_ocr_failed)
+            }
+            return
+        }
         tokenContentController.applyOcrResult(ocrResult, loadPlan)
     }
 
@@ -581,6 +613,8 @@ class InspireContentActivity : AppCompatActivity() {
     override fun onDestroy() {
         GlassEffectUtils.applyWindowBlur(window, false)
         contentLoadJob?.cancel()
+        ocrSession?.close()
+        ocrSession = null
         tokenContentController.cancel()
         imageActionJob?.cancel()
         inspireContentView.clear()

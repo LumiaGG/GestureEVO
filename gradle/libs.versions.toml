@@ -6,7 +6,8 @@ room = "2.8.4"
 junit = "4.13.2"
 androidx-test-runner = "1.7.0"
 kxml2 = "2.3.0"
-xz = "1.12"
+onnxruntime = "1.28.0"
+opencv = "4.12.0"
 ahocorasick = "0.6.3"
 zxing = "3.5.3"
 sardine = "0.9"
@@ -32,7 +33,8 @@ kotlinx-serialization = "1.8.1"
 junit = { module = "junit:junit", version.ref = "junit" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidx-test-runner" }
 kxml2 = { module = "net.sf.kxml:kxml2", version.ref = "kxml2" }
-xz = { module = "org.tukaani:xz", version.ref = "xz" }
+onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
+opencv = { module = "org.opencv:opencv", version.ref = "opencv" }
 ahocorasick = { module = "org.ahocorasick:ahocorasick", version.ref = "ahocorasick" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 sardine-android = { module = "com.github.thegrizzlylabs:sardine-android", version.ref = "sardine" }

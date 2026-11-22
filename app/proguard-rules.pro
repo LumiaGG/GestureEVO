@@ -26,3 +26,7 @@
 
 -keep class org.xmlpull.** { *; }
 -keepclassmembers class org.xmlpull.** { *; }
+
+# These OCR JNI bindings construct Java objects and look up their members by name.
+-keep class ai.onnxruntime.** { *; }
+-keep class org.opencv.** { *; }

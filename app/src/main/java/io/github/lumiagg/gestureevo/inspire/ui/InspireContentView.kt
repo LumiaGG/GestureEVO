@@ -18,7 +18,7 @@ import io.github.lumiagg.gestureevo.inspire.InspireDisplayMode
 import io.github.lumiagg.gestureevo.inspire.InspireTokenContentMode
 import io.github.lumiagg.gestureevo.inspire.ManagedBitmap
 import io.github.lumiagg.gestureevo.inspire.ScreenContentNode
-import io.github.lumiagg.gestureevo.utils.MlKitOcr
+import io.github.lumiagg.gestureevo.ocr.ScreenOcr
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.UrlDetector
 import kotlin.math.ceil
@@ -205,6 +205,10 @@ class InspireContentView : MaterialCardView {
     }
 
     private fun toggleImageTextOverlayMode() {
+        if (!ScreenOcr.isSupported) {
+            ToastHelper.showInUIThread(context, R.string.screen_ocr_unsupported)
+            return
+        }
         if (!imagePreviewController.hasImageTextNodes) {
             ToastHelper.showInUIThread(context, context.getString(R.string.inspire_content_ocr_empty))
             return
@@ -280,7 +284,7 @@ class InspireContentView : MaterialCardView {
             updateOpenUrlVisibility(null)
         }
         contents?.let { setContent(it, isSelected) } ?: {
-            if (tokenContentState.currentMode.isOCR && MlKitOcr.taskRunning) {
+            if (tokenContentState.currentMode.isOCR && ScreenOcr.taskRunning) {
                 ToastHelper.showInUIThread(
                     context,
                     context.getString(R.string.inspire_recognizing)

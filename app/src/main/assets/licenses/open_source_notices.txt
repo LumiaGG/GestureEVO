@@ -89,35 +89,14 @@ Runtime and UI Libraries
   Source: https://github.com/promeG/TinyPinyin
   License: Apache License 2.0
 
-- XZ for Java
-  Source: https://github.com/tukaani-project/xz-java
-  License: 0BSD
-
 OCR, Native, and Model Components
 ---------------------------------
 
-- PP-OCRv5 OCR integration code
-  Copyright: Copyright (C) 2025 Fleey
-  License: Apache License 2.0
-  Notes: Java/Kotlin and native OCR engine integration files under package me.fleey.ppocrv5 and app/src/main/cpp include Apache License 2.0 headers.
-
-- PaddleOCR / PP-OCRv5 model assets
-  Source: https://github.com/PaddlePaddle/PaddleOCR
-  License: Apache License 2.0
-  Bundled files: ocr_det_h1728_w768_fp16.tflite, ocr_rec_w320_fp32.tflite, ocr_rec_w640_fp32.tflite, keys_v5.txt
-
-- LiteRT C/C++ SDK
-  Source: https://ai.google.dev/edge/litert
-  License: Apache License 2.0
-
-- Abseil C++
-  Source: https://github.com/abseil/abseil-cpp
-  Version: 20250814.1
-  License: Apache License 2.0
-
-- stb_image_write.h
-  Source: https://github.com/nothings/stb
-  License: Public Domain or MIT License
+- GestureEVO screenshot OCR adapts CyIME c875fe8 (GPL-3.0).
+- PaddleOCR / RapidOCR PP-OCRv5 Mobile models (Apache-2.0).
+- ONNX Runtime Android 1.28.0 (MIT).
+- OpenCV Android 4.12.0 (Apache-2.0).
+  Source, model hashes, and license files: licenses/ocr/PP-OCR-NOTICE.txt.
 
 SmartSegmenter Dictionary Notices
 ---------------------------------
