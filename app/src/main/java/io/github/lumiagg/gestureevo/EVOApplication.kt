@@ -101,7 +101,8 @@ class EvoApplication : Application() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (!isOcrProcess && level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
+        if (!isOcrProcess && (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND ||
+                    level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL)) {
             ScreenOcr.trimMemory()
         }
     }

@@ -56,13 +56,21 @@ class OcrRecognitionService : Service() {
     override fun onDestroy() {
         stopping = true
         requests.values.forEach(OcrRequest::cancel)
-        worker.execute(::releasePipeline)
+        worker.execute {
+            releasePipeline()
+            // When unbound and destroyed, terminate process so no cached/frozen pages linger in memory.
+            Process.killProcess(Process.myPid())
+        }
         super.onDestroy()
     }
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= TRIM_MEMORY_BACKGROUND) worker.execute(::releasePipeline)
+        if (level >= TRIM_MEMORY_BACKGROUND) {
+            worker.execute(::releasePipeline)
+        } else if (level >= TRIM_MEMORY_RUNNING_LOW) {
+            worker.execute { pipeline?.releaseRecognition() }
+        }
     }
 
     override fun onLowMemory() {

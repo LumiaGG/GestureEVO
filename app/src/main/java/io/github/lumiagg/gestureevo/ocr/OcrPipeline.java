@@ -448,11 +448,22 @@ final class OcrPipeline implements AutoCloseable {
     }
 
     @Override public void close() throws OrtException {
-        try (ModelSession detector = detection; ModelSession recognizer = recognition) {
+        releaseRecognition();
+        try (ModelSession detector = detection) {
             detection = null;
-            recognition = null;
-            alphabet = null;
         }
         // OrtEnvironment is process-shared; closing one OCR session must not invalidate another.
+    }
+
+    void releaseRecognition() {
+        ModelSession recognizer = recognition;
+        recognition = null;
+        alphabet = null;
+        if (recognizer != null) {
+            try {
+                recognizer.close();
+            } catch (OrtException ignored) {
+            }
+        }
     }
 }
