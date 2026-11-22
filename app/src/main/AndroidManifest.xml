@@ -206,6 +206,11 @@
         <activity android:name=".settings.LogManagerActivity" android:exported="false" />
 
         <service
+            android:name=".ocr.OcrRecognitionService"
+            android:exported="false"
+            android:process=":ocr" />
+
+        <service
             android:name=".gesture.GestureService"
             android:enabled="true"
             android:exported="true"

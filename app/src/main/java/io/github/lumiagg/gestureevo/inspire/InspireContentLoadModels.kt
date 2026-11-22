@@ -3,13 +3,13 @@ package io.github.lumiagg.gestureevo.inspire
 internal data class InspireContentLoadPlan(
     val initialDisplayMode: InspireDisplayMode,
     val initialTokenMode: InspireTokenContentMode,
-    val hasScreenshot: Boolean,
+    val canRecognizeScreenshot: Boolean,
     val hasAccessibilityContent: Boolean,
 )
 
 internal val InspireContentLoadPlan.requestableTokenModes: Set<InspireTokenContentMode>
     get() = buildSet {
-        if (hasScreenshot) add(InspireTokenContentMode.OCR)
+        if (canRecognizeScreenshot) add(InspireTokenContentMode.OCR)
         if (hasAccessibilityContent) add(InspireTokenContentMode.ACCESSIBILITY)
     }
 

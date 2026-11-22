@@ -1,0 +1,22 @@
+Offline OCR uses PP-OCRv5 mobile detection and recognition models by PaddlePaddle,
+distributed as ONNX by RapidAI/RapidOCR v3.9.2. Apache-2.0.
+https://github.com/PaddlePaddle/PaddleOCR
+https://github.com/RapidAI/RapidOCR/tree/v3.9.2
+Licenses: PaddleOCR-LICENSE, RapidOCR-LICENSE in this directory.
+
+Model source: https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv5/
+det/ch_PP-OCRv5_det_mobile.onnx
+SHA256 4d97c44a20d30a81aad087d6a396b08f786c4635742afc391f6621f5c6ae78ae
+rec/ch_PP-OCRv5_rec_mobile.onnx
+SHA256 5825fc7ebf84ae7a412be049820b4d86d77620f204a041697b0494669b1742c5
+The UTF-8 dictionary is extracted from the recognition model metadata.
+GestureEVO bundles the original weights and memory maps a private cache copy. Its screenshot pipeline adapts
+CyIME c875fe8a49372bbc8cd881caf9958c1283d0dec7 (GPL-3.0) and uses DB detection,
+axis-aligned crops and CTC decoding.
+https://github.com/Cyletix/CyIME/tree/c875fe8a49372bbc8cd881caf9958c1283d0dec7
+https://github.com/RapidAI/RapidOCR/tree/v3.9.2/python/rapidocr
+
+OpenCV 4.12.0 Android is distributed under Apache-2.0.
+https://github.com/opencv/opencv/tree/4.12.0
+ONNX Runtime Android 1.28.0 is distributed under MIT.
+https://github.com/microsoft/onnxruntime/tree/v1.28.0

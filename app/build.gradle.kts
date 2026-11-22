@@ -11,26 +11,19 @@ plugins {
 android {
     namespace = "io.github.lumiagg.gestureevo"
     compileSdk = 36
-    ndkVersion = "27.0.12077973"
 
     defaultConfig {
         applicationId = "io.github.lumiagg.gestureevo"
         minSdk = 24
         targetSdk = 36
-        versionCode = 261121001
-        versionName = "2.2-1121001"
+        versionCode = 261122001
+        versionName = "2.2-1122001"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
             //noinspection ChromeOsAbiSupport
             abiFilters += listOf("arm64-v8a")
-        }
-
-        externalNativeBuild {
-            cmake {
-                cppFlags += "-std=c++17"
-            }
         }
     }
 
@@ -73,55 +66,19 @@ android {
         viewBinding = true
         aidl = true
     }
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
     sourceSets {
         getByName("androidTest") {
             assets.srcDir("schemas")
         }
         getByName("main") {
             aidl.srcDirs("src/main/aidl")
-            assets.srcDir(layout.buildDirectory.dir("generated/ocrModelAssets"))
             assets.srcDir(layout.buildDirectory.dir("generated/projectDocuments"))
         }
     }
-    androidResources {
-        noCompress += "xz"
-    }
     packaging {
-        jniLibs.keepDebugSymbols.add("**/libc++_shared.so")
+        // Store the larger AAR libraries compressed in the downloadable APK.
+        jniLibs.useLegacyPackaging = true
     }
-}
-
-val compressOcrModels by tasks.registering(Exec::class) {
-    val sourceDir = layout.projectDirectory.dir("src/main/modelAssets/models")
-    val outputDir = layout.buildDirectory.dir("generated/ocrModelAssets/models")
-    val archiveFile = outputDir.map { it.file("ocr_models.tar.xz") }
-    val versionFile = outputDir.map { it.file("ocr_models.version") }
-
-    inputs.dir(sourceDir)
-    inputs.file(rootProject.layout.projectDirectory.file("tools/compress_ocr_models.py"))
-    outputs.file(archiveFile)
-    outputs.file(versionFile)
-
-    val defaultPythonExecutable = providers.systemProperty("os.name").map { name ->
-        if (name.startsWith("Windows", ignoreCase = true)) "python" else "python3"
-    }
-
-    commandLine(
-        providers.gradleProperty("pythonExecutable").orElse(defaultPythonExecutable).get(),
-        layout.projectDirectory.file("../tools/compress_ocr_models.py").asFile.absolutePath,
-        "--source",
-        sourceDir.asFile.absolutePath,
-        "--output",
-        archiveFile.get().asFile.absolutePath,
-        "--version-output",
-        versionFile.get().asFile.absolutePath
-    )
 }
 
 val prepareProjectDocuments by tasks.registering(Copy::class) {
@@ -140,7 +97,6 @@ tasks.matching {
     (it.name.startsWith("merge") && it.name.endsWith("Assets")) ||
         it.name.contains("lint", ignoreCase = true)
 }.configureEach {
-    dependsOn(compressOcrModels)
     dependsOn(prepareProjectDocuments)
 }
 
@@ -181,11 +137,12 @@ dependencies {
     implementation(libs.bundles.shizuku)
     implementation(libs.hiddenapibypass)
 
-    // Text processing, model compression, barcode decoding and WebDAV.
+    // Text processing, offline OCR, barcode decoding and WebDAV.
     // Local binary provenance and checksum: third_party/binary-manifest.json.
     implementation(files("libs/tinypinyin-2.0.3.jar"))
     implementation(libs.ahocorasick)
-    implementation(libs.xz)
+    implementation(libs.onnxruntime.android)
+    implementation(libs.opencv)
     implementation(libs.zxing.core)
     implementation(libs.sardine.android)
 

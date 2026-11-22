@@ -19,12 +19,14 @@ import io.github.lumiagg.gestureevo.inspire.cropByRect
 import io.github.lumiagg.gestureevo.inspire.preferredScreenTextIndices
 import io.github.lumiagg.gestureevo.inspire.withAccessibilityNodes
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
-import io.github.lumiagg.gestureevo.utils.MlKitOcr
+import io.github.lumiagg.gestureevo.ocr.ScreenOcr
 import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.dp2px
 import io.github.lumiagg.gestureevo.utils.postOnMain
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -155,6 +157,10 @@ class ScreenSearchFloating(private val context: GestureService) :
     }
 
     fun show() = context.postOnMain {
+        if (!ScreenOcr.isSupported) {
+            ToastHelper.showInUIThread(context, R.string.screen_ocr_unsupported)
+            return@postOnMain
+        }
         ensureViewsAttached()
         applyThemeColors()
         binding.root.visibility = View.VISIBLE
@@ -205,6 +211,7 @@ class ScreenSearchFloating(private val context: GestureService) :
 
         searchJob?.cancel()
         searchJob = context.launch {
+            var ocrSession: ScreenOcr.Session? = null
             try {
                 var currentStep = 0
                 var captureFailures = 0
@@ -216,7 +223,8 @@ class ScreenSearchFloating(private val context: GestureService) :
                     val result = if (binding.switchAccessibilityMode.isChecked) {
                         captureAndMatchAccessibility(keyword, !forceFullScan)
                     } else {
-                        captureAndMatch(keyword, !forceFullScan)
+                        val session = ocrSession ?: ScreenOcr.openSession().also { ocrSession = it }
+                        captureAndMatch(keyword, !forceFullScan, session)
                     }
 
                     if (result.failed) {
@@ -244,11 +252,16 @@ class ScreenSearchFloating(private val context: GestureService) :
 
                 if (currentStep >= maxAttempts) {
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
-                updateUiSearching(false)
-                updateIndicatorSearching(false)
+                ocrSession?.close()
+                if (searchJob === currentCoroutineContext()[Job]) {
+                    updateUiSearching(false)
+                    updateIndicatorSearching(false)
+                }
             }
         }
     }
@@ -296,7 +309,11 @@ class ScreenSearchFloating(private val context: GestureService) :
         }
     }
 
-    private suspend fun captureAndMatch(keyword: String, reducedScope: Boolean): CaptureResult {
+    private suspend fun captureAndMatch(
+        keyword: String,
+        reducedScope: Boolean,
+        ocrSession: ScreenOcr.Session,
+    ): CaptureResult {
         val bitmapHandle = try {
             context.takeManagedScreenshot() ?: return CaptureResult(matches = emptyList(), failed = true)
         } catch (e: Exception) {
@@ -323,8 +340,10 @@ class ScreenSearchFloating(private val context: GestureService) :
 
             val ocrResult = try {
                 ocrBitmapHandle.use { handle ->
-                    MlKitOcr.detect(handle.requireBitmap())
+                    ScreenOcr.detect(handle.requireBitmap(), ocrSession)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 e.printStackTrace()
                 return CaptureResult(matches = emptyList(), failed = true)

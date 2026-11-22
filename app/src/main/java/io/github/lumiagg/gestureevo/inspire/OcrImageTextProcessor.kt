@@ -6,13 +6,14 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Rect
 import androidx.core.graphics.createBitmap
-import io.github.lumiagg.gestureevo.utils.MlKitOcr
+import io.github.lumiagg.gestureevo.ocr.ScreenOcr
 import io.github.lumiagg.gestureevo.utils.dp2px
 
 internal class OcrImageTextProcessor(private val context: Context) {
     suspend fun process(
         originalBitmap: Bitmap,
         allowedTextBoxes: List<Rect>? = null,
+        ocrSession: ScreenOcr.Session? = null,
     ): OcrProcessingResult {
         val paddingPx = OCR_PADDING_DP.dp2px.toInt()
         return originalBitmap.useSoftwareBitmap { softwareOriginalBitmap ->
@@ -23,6 +24,7 @@ internal class OcrImageTextProcessor(private val context: Context) {
                     sourceWidth = softwareOriginalBitmap.width,
                     sourceHeight = softwareOriginalBitmap.height,
                     paddingPx = paddingPx,
+                    ocrSession = ocrSession,
                 ).filterByAllowedTextBoxes(allowedTextBoxes)
                 val rawText = OcrTextFormatter.buildText(imageNodes)
                 OcrProcessingResult(
@@ -72,8 +74,9 @@ internal class OcrImageTextProcessor(private val context: Context) {
         sourceWidth: Int,
         sourceHeight: Int,
         paddingPx: Int,
+        ocrSession: ScreenOcr.Session?,
     ): List<ScreenContentNode> {
-        return MlKitOcr.detect(paddedBitmap).mapNotNull { node ->
+        return ScreenOcr.detect(paddedBitmap, ocrSession).mapNotNull { node ->
             node.toSourceNode(sourceWidth, sourceHeight, paddingPx)
         }.sortedWith(OCR_NODE_POSITION_COMPARATOR)
     }

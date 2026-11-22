@@ -622,6 +622,8 @@
     <string name="screen_search_empty_keyword">请输入搜索关键词</string>
     <string name="screen_search_found_toast">已找到关键词</string>
     <string name="screen_search_accessibility_mode">使用无障碍获取文本而不是OCR</string>
+    <string name="screen_ocr_failed">屏幕文字识别失败</string>
+    <string name="screen_ocr_unsupported">屏幕文字识别需要 Android 9 或更高版本</string>
     <string name="inspire_screenshot_failed">截图失败</string>
     <string name="inspire_link_no_app">没有找到可以打开此链接的应用</string>
     <string name="inspire_link_not_found">没有找到链接</string>

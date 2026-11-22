@@ -30,7 +30,7 @@ import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.K
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_SCREEN_CONTENT_LINK_RADAR
 import io.github.lumiagg.gestureevo.share.ImageShareLauncher
 import io.github.lumiagg.gestureevo.utils.ClipboardUtils
-import io.github.lumiagg.gestureevo.utils.MlKitOcr
+import io.github.lumiagg.gestureevo.ocr.ScreenOcr
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.postOnMain
 import io.github.lumiagg.gestureevo.utils.readKey
@@ -70,6 +70,7 @@ class InspireFloating(private val context: GestureService) :
     private var transitionShown = false
     private var screenshotDone = false
     private var activityLaunching = false
+    private var ocrSession: ScreenOcr.Session? = null
     private var isAttached = false
     private var sessionScreenshot: ManagedBitmap? = null
     private var sessionCaptureJob: Job? = null
@@ -376,6 +377,8 @@ class InspireFloating(private val context: GestureService) :
 
     private fun resetSessionCapture() {
         invalidateSessionCapture()
+        ocrSession?.close()
+        ocrSession = null
         layoutParams.alpha = 1f
         updateViewLayoutSafely(inspireView, layoutParams)
     }
@@ -408,14 +411,19 @@ class InspireFloating(private val context: GestureService) :
     }
 
     private fun startFullScreenTextBoxDetectionIfReady() {
-        if (!textBoxPreviewEnabled || sessionTextBoxes != null || textBoxDetectionJob?.isActive == true) {
+        if (!ScreenOcr.isSupported || !textBoxPreviewEnabled ||
+            sessionTextBoxes != null || textBoxDetectionJob?.isActive == true
+        ) {
             return
         }
         val screenshot = sessionScreenshot?.acquire() ?: return
         val detectionGeneration = textBoxGeneration
+        val session = ocrSession
         textBoxDetectionJob = context.launch(Dispatchers.Default) {
             val boxes = try {
-                screenshot.use { MlKitOcr.detectTextBoxes(it.requireBitmap()) }
+                screenshot.use { ScreenOcr.detectTextBoxes(it.requireBitmap(), session) }
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: Exception) {
                 Log.w("InspireFloating", "Full-screen text box detection failed", error)
                 emptyList()
@@ -541,10 +549,11 @@ class InspireFloating(private val context: GestureService) :
     }
 
     private suspend fun recognizeDetectedTextBox(textBox: Rect): String {
+        val session = withContext(Dispatchers.Main) { ocrSession }
         acquireSessionScreenshot()?.use { screenshot ->
             screenshot.cropByRect(textBox)?.use { cropped ->
                 return cropped.requireBitmap().useSoftwareBitmap { bitmap ->
-                    MlKitOcr.recognizeTextBox(bitmap)
+                    ScreenOcr.recognizeTextBox(bitmap, session)
                 }
             }
         }
@@ -598,7 +607,7 @@ class InspireFloating(private val context: GestureService) :
                 InspireDataHolder.forceImageTextSelection = sessionForceImageTextSelection
                 InspireDataHolder.triggerSide = sessionTriggerSide
 
-                launchInspireContentActivity()
+                withContext(Dispatchers.Main) { launchInspireContentActivity() }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -646,7 +655,14 @@ class InspireFloating(private val context: GestureService) :
         if (source != null && source != context.packageName) InspireDataHolder.sourcePackage = source
         activityLaunching = true
         cancelTransition()
-        InspireContentActivity.start(context)
+        val handoff = ocrSession?.let(ScreenOcr::offerHandoff)
+        ocrSession = null
+        try {
+            InspireContentActivity.start(context, ocrHandoff = handoff)
+        } catch (error: Exception) {
+            ScreenOcr.takeHandoff(handoff)?.close()
+            throw error
+        }
         hide()
     }
 
@@ -674,12 +690,6 @@ class InspireFloating(private val context: GestureService) :
         }
     }
 
-    private fun preloadOcrModel() {
-        context.launch(Dispatchers.IO) {
-            MlKitOcr.preload()
-        }
-    }
-
     private fun prewarmSegmenterDictionary() {
         SmartSegmenter.prewarm(context.applicationContext)
     }
@@ -696,7 +706,7 @@ class InspireFloating(private val context: GestureService) :
     private suspend fun prepareVisibleInspireView() {
         inspireView.edgeBackEnabled = context.settingsStore.readKey(KEY_INSPIRE_EDGE_BACK, true)
         context.gestureManager?.setInteractionMode(InteractionMode.INSPIRE_SELECT)
-        preloadOcrModel()
+        if (ScreenOcr.isSupported && ocrSession == null) ocrSession = ScreenOcr.openSession()
         ensureAttached()
         GestureFluidAppearance.refresh(context)
         inspireView.refreshDynamicColors()
