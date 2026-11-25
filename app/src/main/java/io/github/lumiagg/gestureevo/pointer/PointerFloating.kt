@@ -7,6 +7,7 @@ import io.github.lumiagg.gestureevo.databinding.GestureActionPointerViewBinding
 import io.github.lumiagg.gestureevo.databinding.PointerFloatingViewBinding
 
 import android.annotation.SuppressLint
+import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Canvas
@@ -28,6 +29,8 @@ import com.google.android.material.card.MaterialCardView
 import com.google.zxing.common.detector.MathUtils.distance
 import io.github.lumiagg.gestureevo.R
 import io.github.lumiagg.gestureevo.floating.BaseFloatingWindow
+import io.github.lumiagg.gestureevo.gesture.AccessibilityActionEvent
+import io.github.lumiagg.gestureevo.gesture.EventBusManager.produceAccessibilityActionEvent
 import io.github.lumiagg.gestureevo.gesture.EventBusManager.produceInspireEvent
 import io.github.lumiagg.gestureevo.gesture.GestureManager.InteractionMode
 import io.github.lumiagg.gestureevo.gesture.GestureService
@@ -50,6 +53,7 @@ import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companio
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_ALWAYS_SHOW_POINTER_TOUCH_AREA
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_ENABLE_POINTER_DRAG_MODE
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_POINTER_HOVER_MENU
+import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_POINTER_TOP_EDGE_PANELS
 import io.github.lumiagg.gestureevo.pointer.radar.LinkRegion
 import android.view.accessibility.AccessibilityEvent
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_POINTER_TOUCH_AREA_OFFSET_DP
@@ -105,6 +109,7 @@ class PointerFloating(
     private var touchAreaOffsetDp = 0
     private var pointerVisibleRequested = false
     private var hoverMenuEnabled = false
+    private var topEdgePanelsEnabled = false
     var captureLinks: suspend () -> List<LinkRegion> = { emptyList() }
     private val hoverMenu by lazy {
         PointerHoverMenuController(context, pointerFloatingView, { captureLinks() }, { anchor ->
@@ -353,6 +358,7 @@ class PointerFloating(
         ensureViewsAttached()
         updateTouchAreaConfig()
         hoverMenuEnabled = context.settingsStore.readKey(KEY_POINTER_HOVER_MENU, false)
+        topEdgePanelsEnabled = context.settingsStore.readKey(KEY_POINTER_TOP_EDGE_PANELS, false)
         hoverMenu.reset()
         pointerManger.resetMenuMapping()
         pointerManger.updatePointerColorConfig()
@@ -1043,7 +1049,8 @@ class PointerFloating(
                 return PointerCoordinateMapping(screenWidth, screenHeight, origin[0], origin[1], touchWidth, touchHeight)
             }
 
-            fun computePosition(): Point = coordinateMapping()?.map(Point(touchViewX, touchViewY), menuMappingOffset)
+            fun computePosition(mapping: PointerCoordinateMapping? = coordinateMapping()): Point =
+                mapping?.map(Point(touchViewX, touchViewY), menuMappingOffset)
                 ?: Point((view.x + view.width / 2).coerceAtLeast(0f), (view.y + view.height / 2).coerceAtLeast(0f))
 
             fun handleActionMove(event: MotionEvent) {
@@ -1143,8 +1150,20 @@ class PointerFloating(
                     }
                     trailView.clearTrail()
                 } else {
-                    val targetPoint = computePosition()
+                    val mapping = coordinateMapping()
+                    val targetPoint = computePosition(mapping)
                     trailView.clearTrail()
+                    if (topEdgePanelsEnabled && !isLongPressRunning && !isHoverInteractionActive && mapping != null) {
+                        val panel = mapping.topEdgePanel(targetPoint, 24f.dp2px)
+                        if (panel != null) {
+                            val action = when (panel) {
+                                PointerTopEdgePanel.NOTIFICATIONS -> AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
+                                PointerTopEdgePanel.QUICK_SETTINGS -> AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
+                            }
+                            context.launch { produceAccessibilityActionEvent(AccessibilityActionEvent(action)) }
+                            return
+                        }
+                    }
                     Log.d(
                         "PointerFloating",
                         "handleActionUp: ${targetPoint.x}, ${targetPoint.y}"
