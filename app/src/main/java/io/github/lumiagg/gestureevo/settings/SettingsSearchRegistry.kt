@@ -871,6 +871,15 @@ object SettingsSearchRegistry {
             keywords = listOf("屏幕内容", "链接雷达", "链接高亮", "screen content", "link radar")
         ),
         entry(
+            id = "pointer_top_edge_panels",
+            titleResId = R.string.pointer_top_edge_panels_title,
+            summaryResId = R.string.pointer_top_edge_panels_summary,
+            pageTitleResId = R.string.inspire_settings_title,
+            targetActivity = InspireSettingsActivity::class.java,
+            targetViewId = R.id.pointer_top_edge_panels_row,
+            keywords = listOf("指针", "顶部", "通知中心", "控制中心", "pointer", "notifications", "quick settings")
+        ),
+        entry(
             id = "pointer_hover_menu",
             titleResId = R.string.pointer_hover_menu_title,
             summaryResId = R.string.pointer_hover_menu_summary,

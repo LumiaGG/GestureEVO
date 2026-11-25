@@ -1481,6 +1481,8 @@ Create a rule or import templates to get started</string>
     <string name="link_rule_not_selected">Not selected</string>
     <string name="link_rule_enable_named">Enable rule: %1$s</string>
     <string name="link_settings_templates_description">Available rules for installed apps are selected. Review your selection before importing.</string>
+    <string name="pointer_top_edge_panels_title">Open system panels on release at top edge</string>
+    <string name="pointer_top_edge_panels_summary">Move the pointer to the top of the screen and release. The left side opens notifications and the right side opens Quick Settings.</string>
     <string name="pointer_hover_menu_title">Show actions on pointer hover</string>
     <string name="pointer_hover_menu_summary">Hover, then slide up or down to select long press, double tap, selection and link targets. Release to run an action; dwell on Select to enter selection mode.</string>
     <string name="pointer_hover_menu_overrides_drag">The action menu now handles hovering. Use Select in the menu to enter selection mode.</string>

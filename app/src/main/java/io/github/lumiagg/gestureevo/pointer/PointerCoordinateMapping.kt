@@ -2,6 +2,11 @@ package io.github.lumiagg.gestureevo.pointer
 
 import io.github.lumiagg.gestureevo.utils.Point
 
+internal enum class PointerTopEdgePanel {
+    NOTIFICATIONS,
+    QUICK_SETTINGS,
+}
+
 /** A comparable coordinate space lets a menu reject input after its touch area is resized. */
 internal data class PointerCoordinateMapping(
     val screenWidth: Int,
@@ -15,4 +20,10 @@ internal data class PointerCoordinateMapping(
         rebasePointerPosition(((input.x - touchLeft) / touchWidth).coerceIn(0f, 1f) * screenWidth, offset.x, screenWidth),
         rebasePointerPosition(((input.y - touchTop) / touchHeight).coerceIn(0f, 1f) * screenHeight, offset.y, screenHeight),
     )
+
+    fun topEdgePanel(point: Point, edgeHeight: Float): PointerTopEdgePanel? {
+        if (point.y !in 0f..edgeHeight) return null
+        return if (point.x < screenWidth / 2f) PointerTopEdgePanel.NOTIFICATIONS
+        else PointerTopEdgePanel.QUICK_SETTINGS
+    }
 }
