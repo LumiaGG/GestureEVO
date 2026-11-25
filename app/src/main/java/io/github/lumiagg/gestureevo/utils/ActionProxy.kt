@@ -90,6 +90,7 @@ class ActionProxy(private val context: Context, linkString: String) {
     val timeout: Boolean = link.getBooleanQueryParameter("timeout", false)
     val useCustomTabs: Boolean = link.getBooleanQueryParameter("useCustomTabs", false)
     val triggerSideParam: String? = link.getQueryParameter("triggerSide")
+    private val delayMs = parseActionDelayMs(link.getQueryParameter(ACTION_DELAY_PARAMETER))
 
     suspend fun execute(anchor: TriggerSide.Point? = null, side: String? = null, sourceTriggerTag: String? = null) {
         executeTracked(anchor, side) { executeAction(sourceTriggerTag) }
@@ -109,7 +110,7 @@ class ActionProxy(private val context: Context, linkString: String) {
         require(context is ShortcutLaunchActivity && event == GestureActionType.OTHER_SHORTCUT)
         val uri = requireNotNull(otherLink).toUri()
         require(uri.scheme == DynamicShortcuts.SCHEME)
-        return executeTracked(null, null) {
+        return executeTracked(null, null, waitMs = 0) {
             launchDynamicShortcut(uri, pkg.orEmpty(), continued = true, shortcutOptions = options)
         }
     }
@@ -117,6 +118,7 @@ class ActionProxy(private val context: Context, linkString: String) {
     private suspend fun <T> executeTracked(
         anchor: TriggerSide.Point?,
         side: String?,
+        waitMs: Long = delayMs,
         action: suspend () -> T,
     ): T {
         val startedAt = android.os.SystemClock.elapsedRealtime()
@@ -126,12 +128,15 @@ class ActionProxy(private val context: Context, linkString: String) {
         if (AppLogger.detailed) AppLogger.event(LogModule.ACTION, "action_environment", LogLevel.DEBUG,
             trace = trace, fields = AppLogger.actionState())
         val effectiveSide = side ?: triggerSideParam
-        if (anchor != null) {
-            TriggerSide.record(anchor)
-        } else if (effectiveSide != null) {
-            TriggerSide.record(effectiveSide)
-        }
+        var dispatched = false
         try {
+            if (waitMs > 0) delay(waitMs)
+            if (anchor != null) {
+                TriggerSide.record(anchor)
+            } else if (effectiveSide != null) {
+                TriggerSide.record(effectiveSide)
+            }
+            dispatched = true
             val result = action()
             AppLogger.event(LogModule.ACTION, "action_dispatch_returned", trace = trace,
                 fields = mapOf("durationMs" to android.os.SystemClock.elapsedRealtime() - startedAt))
@@ -143,7 +148,7 @@ class ActionProxy(private val context: Context, linkString: String) {
             AppLogger.event(LogModule.ACTION, "action_failed", LogLevel.ERROR, trace, error = e)
             throw e
         } finally {
-            TriggerSide.take()
+            if (dispatched) TriggerSide.take()
         }
     }
 
