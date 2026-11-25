@@ -41,7 +41,7 @@ object QuickSetupRepository {
     private const val KEY_CONFIG = "settings_guide_quick_config"
     private const val KEY_FREE_TRIGGERS = "key_free_triggers"
 
-    suspend fun load(context: Context): QuickSetupConfig = withContext(Dispatchers.IO) {
+    suspend fun load(context: Context, initializeDefaults: Boolean): QuickSetupConfig = withContext(Dispatchers.IO) {
         val app = context.applicationContext
         val gestures = app.gestureStore.data.first()
         val actions = app.actionStore.data.first()
@@ -58,9 +58,15 @@ object QuickSetupRepository {
         }
         val defaultWheelJson = actions.readKey(WHEEL_TAG, "")
         val wheelJson = defaultWheelJson.ifBlank { actions.readKey(LEGACY_WHEEL_TAG, "") }
-        buildGuideDraft(trigger, triggerActions,
-            if (wheelJson.isBlank()) QuickSetupConfig.default().wheelItems else readActions(wheelJson),
-            existingTrigger).copy(hasPersistedConfiguration = existingTrigger && !isGuideTrigger(trigger.tag) && defaultWheelJson.isNotBlank() && trigger.actionMap.isEmpty())
+        val useExistingActions = existingTrigger &&
+            !(initializeDefaults && triggerActions.isEmpty() && wheelJson.isBlank())
+        val wheelItems = if (wheelJson.isBlank() && (initializeDefaults || !existingTrigger)) {
+            QuickSetupConfig.default().wheelItems
+        } else {
+            readActions(wheelJson)
+        }
+        buildGuideDraft(trigger, triggerActions, wheelItems,
+            useExistingActions).copy(hasPersistedConfiguration = existingTrigger && !isGuideTrigger(trigger.tag) && defaultWheelJson.isNotBlank() && trigger.actionMap.isEmpty())
     }
 
     suspend fun readWheelConfig(context: Context): ActionConfig {

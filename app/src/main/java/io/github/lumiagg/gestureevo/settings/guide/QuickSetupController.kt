@@ -15,9 +15,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.appcompat.widget.TooltipCompat
-import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.slider.Slider
 import com.google.android.material.textview.MaterialTextView
 import io.github.lumiagg.gestureevo.R
@@ -31,7 +31,10 @@ import io.github.lumiagg.gestureevo.utils.CurrentPackageProvider
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import java.util.UUID
 import kotlin.math.roundToInt
 
@@ -40,6 +43,7 @@ internal class QuickSetupController(
     private val gestureBinding: GuideGestureSetupBinding,
     private val wheelBinding: GuideWheelSetupBinding,
     savedInstanceState: Bundle?,
+    private val initializeDefaults: Boolean,
     private val onChanged: () -> Unit
 ) {
     private var config = QuickSetupConfig.default()
@@ -56,9 +60,8 @@ internal class QuickSetupController(
     private var updatingViews = false
     private val practiced = mutableSetOf<QuickGesture>()
     private val previewOwner = UUID.randomUUID().toString()
-    private var previewActive = false
-    private var previewFinished = false
-    private var wheelMode = GuideWheelMode.HIDDEN
+    private var pendingSave: Job? = null
+    private var trackingSlider = false
     private var wheelActionDialog: Dialog? = null
     private var editorPending = savedInstanceState?.getBoolean(KEY_EDITOR_PENDING) ?: false
     private var editorGesture = savedInstanceState?.getString(KEY_EDITOR_GESTURE)
@@ -72,8 +75,15 @@ internal class QuickSetupController(
     }
 
     val hasUnsavedChanges: Boolean get() = !loading && draftContentJson != savedJson
+    val isLoaded: Boolean get() = !loading
+    val failureMessage: Int? get() = when {
+        loadFailed -> R.string.guide_load_failed
+        saveFailed -> R.string.quick_setup_save_failed
+        else -> null
+    }
     val isSaving: Boolean get() = saving
     val isSaved: Boolean get() = !loading && savedJson != null && !hasUnsavedChanges && !saving
+    val triggerPreviewConfig: QuickSetupConfig? get() = config.takeUnless { loading }
     val selectedTriggerTag: String? get() = config.baseTrigger?.tag
 
     init {
@@ -110,19 +120,20 @@ internal class QuickSetupController(
         gestureBinding.positionSlider.setLabelFormatter { activity.getString(R.string.display_percent, it.roundToInt()) }
         gestureBinding.heightSlider.setLabelFormatter { activity.getString(R.string.quick_setup_dp, it.roundToInt()) }
 
-        listOf(gestureBinding.positionSlider, gestureBinding.heightSlider)
-            .forEach { slider ->
-                slider.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
-                    override fun onStartTrackingTouch(slider: Slider) {
-                        wheelMode = GuideWheelMode.PREVIEW
-                        refreshPreview()
-                    }
-                    override fun onStopTrackingTouch(slider: Slider) {
-                        wheelMode = GuideWheelMode.HIDDEN
-                        refreshPreview()
-                    }
-                })
+        val sliderTouchListener = object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                trackingSlider = true
+                pendingSave?.cancel()
+                pendingSave = null
             }
+
+            override fun onStopTrackingTouch(slider: Slider) {
+                trackingSlider = false
+                scheduleSave()
+            }
+        }
+        gestureBinding.positionSlider.addOnSliderTouchListener(sliderTouchListener)
+        gestureBinding.heightSlider.addOnSliderTouchListener(sliderTouchListener)
 
         wheelBinding.resetDefaultsButton.setOnClickListener {
             MaterialAlertDialogBuilder(activity)
@@ -132,14 +143,6 @@ internal class QuickSetupController(
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()
         }
-
-        gestureBinding.applyQuickSetupButton.setText(R.string.quick_setup_save_button)
-        gestureBinding.applyQuickSetupButton.setIconResource(R.drawable.baseline_save_24)
-        gestureBinding.applyQuickSetupButton.setOnClickListener { if (loadFailed) loadConfiguration(null) else saveConfig() }
-
-        gestureBinding.practiceQuickSetupButton.setText(R.string.quick_setup_practice_button)
-        gestureBinding.practiceQuickSetupButton.setIconResource(R.drawable.baseline_gesture_24)
-        gestureBinding.practiceQuickSetupButton.setOnClickListener { practiceSequence() }
 
         loadConfiguration(savedInstanceState)
         render()
@@ -151,9 +154,10 @@ internal class QuickSetupController(
         renderState()
         activity.lifecycleScope.launch {
             try {
-                val loaded = QuickSetupRepository.load(activity)
+                val loaded = QuickSetupRepository.load(activity, initializeDefaults)
                 baseActionConfig = QuickSetupRepository.readWheelConfig(activity)
-                savedJson = loaded.takeIf { it.hasPersistedConfiguration }?.contentJson()
+                savedJson = loaded.takeIf { it.hasPersistedConfiguration || (!initializeDefaults && it.editedGestures.isEmpty()) }
+                    ?.contentJson()
                 config = savedInstanceState?.getString(KEY_DRAFT)?.let {
                     runCatching { QuickSetupConfig.fromJson(it) }.getOrNull()
                 } ?: loaded
@@ -168,16 +172,20 @@ internal class QuickSetupController(
                 wheelBinding.wheelSampleView.setActionConfig(baseActionConfig)
                 render()
                 onChanged()
+                scheduleSave()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 android.util.Log.e("QuickSetup", "Unable to load quick setup", e)
                 loadFailed = true
+                Snackbar.make(gestureBinding.root.rootView, R.string.guide_load_failed, Snackbar.LENGTH_INDEFINITE)
+                    .setAction(R.string.guide_retry) { loadConfiguration(savedInstanceState) }.show()
                 renderState()
                 onChanged()
             }
         }
     }
+
     fun saveState(outState: Bundle) {
         if (!loading) outState.putString(KEY_DRAFT, draftJson)
         outState.putStringArrayList(KEY_PRACTICED, ArrayList(practiced.map { it.name }))
@@ -187,26 +195,8 @@ internal class QuickSetupController(
         outState.putString(KEY_EDITOR_RESULT, editorResult)
     }
 
-    fun resumePreview() {
-        previewFinished = false
-        previewActive = true
-        refreshPreview()
-    }
-
-    fun suspendPreview() {
-        previewActive = false
-        GuidePreviewSession.clear(previewOwner)
-    }
-
-    fun finishPreview() {
-        previewFinished = true
+    fun dismissDialogs() {
         wheelActionDialog?.dismiss()
-        suspendPreview()
-    }
-
-    fun refreshPreview() {
-        if (loading || !previewActive || previewFinished) return
-        GuidePreviewSession.refresh(previewOwner, config, wheelMode, baseActionConfig)
     }
 
     private fun update(value: QuickSetupConfig, rebuild: Boolean = true) {
@@ -227,8 +217,8 @@ internal class QuickSetupController(
         }
         if (!rebuild) renderGestures()
         if (rebuild) render() else renderState()
-        refreshPreview()
         onChanged()
+        scheduleSave(delayMillis = if (rebuild) 0L else 350L)
     }
 
     private fun render() {
@@ -246,7 +236,6 @@ internal class QuickSetupController(
         renderGestures()
         renderWheelItems()
         renderState()
-        refreshPreview()
     }
 
     private fun Slider.setSafeValue(target: Float) {
@@ -269,13 +258,10 @@ internal class QuickSetupController(
             loading -> R.string.guide_loading
             saving -> R.string.quick_setup_saving
             saveFailed -> R.string.quick_setup_save_failed
-            hasUnsavedChanges -> R.string.quick_setup_unsaved
+            hasUnsavedChanges -> R.string.quick_setup_saving
             else -> R.string.quick_setup_saved
         })
-        gestureBinding.applyQuickSetupButton.isEnabled = loadFailed || (!loading && !saving)
-        gestureBinding.applyQuickSetupButton.setText(if (loadFailed) R.string.guide_retry else R.string.quick_setup_save_button)
         wheelBinding.wheelSampleView.isEnabled = !loading && !saving
-        gestureBinding.practiceQuickSetupButton.isEnabled = !loading && !saving
         wheelBinding.resetDefaultsButton.isEnabled = !loading && !saving
         gestureBinding.sideGroup.isEnabled = !loading && !saving
         for (index in 0 until gestureBinding.sideGroup.childCount) gestureBinding.sideGroup.getChildAt(index).isEnabled = !loading && !saving
@@ -428,20 +414,22 @@ internal class QuickSetupController(
         editorResult = null
     }
 
-    fun saveConfig() {
-        if (loading || saving) return
-        activity.lifecycleScope.launch {
-            if (save()) {
-                android.widget.Toast.makeText(activity, R.string.quick_setup_saved_toast, android.widget.Toast.LENGTH_SHORT).show()
-            }
+    private fun scheduleSave(delayMillis: Long = 0L) {
+        if (trackingSlider || saving || !hasUnsavedChanges) return
+        pendingSave?.cancel()
+        pendingSave = activity.lifecycleScope.launch {
+            if (delayMillis > 0) delay(delayMillis) else yield()
+            pendingSave = null
+            save()
         }
     }
 
-    suspend fun save(): Boolean = saveDraft(config.snapshot())
-
-    private suspend fun saveDraft(draft: QuickSetupConfig): Boolean {
+    suspend fun save(): Boolean {
+        pendingSave?.cancel()
+        pendingSave = null
         if (loading || saving) return false
-        if (savedJson == draft.contentJson()) return true
+        if (!hasUnsavedChanges) return true
+        val draft = config.snapshot()
         saving = true
         saveFailed = false
         renderState()
@@ -459,6 +447,8 @@ internal class QuickSetupController(
         } catch (e: Exception) {
             android.util.Log.e("QuickSetup", "Failed to save quick setup", e)
             saveFailed = true
+            Snackbar.make(gestureBinding.root.rootView, R.string.quick_setup_save_failed, Snackbar.LENGTH_INDEFINITE)
+                .setAction(R.string.guide_retry_save) { scheduleSave() }.show()
             false
         } finally {
             saving = false
@@ -466,40 +456,9 @@ internal class QuickSetupController(
             onChanged()
         }
     }
-    private fun practiceSequence() {
-        if (loading || saving) return
-        if (CurrentPackageProvider.accessibilityService() == null) {
-            wheelBinding.quickSetupMessage.setText(R.string.quick_setup_preview_permission)
-            onChanged()
-            return
-        }
-        try {
-            config.validate(Build.VERSION.SDK_INT)
-        } catch (_: IllegalArgumentException) {
-            wheelBinding.quickSetupMessage.setText(R.string.quick_setup_invalid)
-            return
-        }
-        val gestures = QuickGesture.entries.filter { !config.gestures.getValue(it).isUnassigned }
-        if (gestures.isEmpty()) return
-        val draft = config.snapshot()
-        showGuidePracticeSequence(
-            activity = activity,
-            gestures = gestures,
-            initialIndex = 0,
-            config = draft,
-            previewOwner = previewOwner,
-            actionConfig = baseActionConfig,
-            onRecognized = { gesture ->
-                check(saveDraft(draft)) { "Unable to save practiced configuration" }
-                practiced.add(gesture)
-                render()
-                onChanged()
-            }
-        )
-    }
 
     private fun practice(gesture: QuickGesture) {
-        if (loading || saving) return
+        if (loading || saving || hasUnsavedChanges) return
         if (CurrentPackageProvider.accessibilityService() == null) {
             wheelBinding.quickSetupMessage.setText(R.string.quick_setup_preview_permission)
             onChanged()
@@ -513,7 +472,6 @@ internal class QuickSetupController(
         }
         val draft = config.snapshot()
         showGuidePractice(activity, gesture, draft, previewOwner, baseActionConfig, onRecognized = {
-            check(saveDraft(draft)) { "Unable to save practiced configuration" }
             practiced.add(gesture)
             render()
             onChanged()

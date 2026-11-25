@@ -32,7 +32,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:accessibilityLiveRegion="polite"
-        android:text="@string/quick_setup_unsaved"
+        android:text="@string/guide_loading"
         android:textAppearance="?attr/textAppearanceBodyMedium"
         android:textColor="?attr/colorOnSurfaceVariant" />
 

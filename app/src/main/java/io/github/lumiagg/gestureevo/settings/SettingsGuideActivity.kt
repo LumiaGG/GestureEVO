@@ -51,6 +51,7 @@ import rikka.shizuku.Shizuku
 class SettingsGuideActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsGuideBinding
     private var leaving = false
+    private var exitPending = false
     private var currentStatus: SettingsGuideStatus? = null
     private lateinit var quickSetup: QuickSetupController
     private val contactsPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -73,9 +74,15 @@ class SettingsGuideActivity : AppCompatActivity() {
             this,
             binding.gestureSetup,
             binding.wheelSetup,
-            savedInstanceState
+            savedInstanceState,
+            initializeDefaults = intent.getBooleanExtra(EXTRA_FROM_LAUNCHER, false)
         ) {
+            binding.triggerPreview.show(quickSetup.triggerPreviewConfig)
             currentStatus?.let(::renderStatus)
+            if (exitPending && !quickSetup.isSaving && (quickSetup.isLoaded || quickSetup.failureMessage != null)) {
+                exitPending = false
+                if (quickSetup.failureMessage == null) requestExit()
+            }
         }
         setupNavigation()
         setupActions()
@@ -88,7 +95,6 @@ class SettingsGuideActivity : AppCompatActivity() {
                         if (failure is CancellationException) throw failure
                         Log.w(TAG, "Unable to observe guide settings", failure)
                         currentStatus = null
-                        binding.finishButton.isEnabled = false
                         binding.statusMessage.setText(R.string.guide_load_failed)
                         delay(((attempt + 1).coerceAtMost(10) * 1_000L))
                         true
@@ -103,24 +109,8 @@ class SettingsGuideActivity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
     }
 
-    override fun onPause() {
-        quickSetup.suspendPreview()
-        super.onPause()
-        binding.finishButton.isEnabled = false
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (!leaving) quickSetup.resumePreview()
-    }
-
-    override fun onStop() {
-        quickSetup.suspendPreview()
-        super.onStop()
-    }
-
     override fun onDestroy() {
-        quickSetup.finishPreview()
+        quickSetup.dismissDialogs()
         super.onDestroy()
     }
 
@@ -128,7 +118,6 @@ class SettingsGuideActivity : AppCompatActivity() {
         try {
             val current = SettingsGuideStatusReader.read(this)
             currentStatus = current
-            quickSetup.refreshPreview()
             renderStatus(current)
             refreshOptionalPermissions()
         } catch (e: CancellationException) {
@@ -136,11 +125,15 @@ class SettingsGuideActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.w(TAG, "Unable to read guide status", e)
             currentStatus = null
-            binding.finishButton.isEnabled = false
             binding.progressText.setText(R.string.guide_load_failed)
             binding.statusMessage.setText(R.string.guide_load_failed)
         }
     }
+
+    private fun isReady(current: SettingsGuideStatus): Boolean =
+        current.accessibilityEnabled && current.serviceConnected &&
+            quickSetup.selectedTriggerTag in current.enabledTriggerTags &&
+            quickSetup.selectedTriggerTag in current.configuredTriggerTags
 
     private fun renderStatus(current: SettingsGuideStatus) {
         val serviceReady = current.accessibilityEnabled && current.serviceConnected
@@ -164,13 +157,13 @@ class SettingsGuideActivity : AppCompatActivity() {
         binding.actionStatus.setText(
             if (actionReady) R.string.guide_action_ready else R.string.guide_action_missing
         )
-        binding.statusMessage.setText(when {
-            !quickSetup.isSaved -> R.string.quick_setup_unsaved
+        binding.statusMessage.setText(quickSetup.failureMessage ?: when {
+            !quickSetup.isLoaded -> R.string.guide_loading
+            !quickSetup.isSaved -> R.string.quick_setup_saving
             !serviceReady -> R.string.quick_setup_permission_pending
             !ready -> R.string.guide_incomplete
             else -> R.string.quick_setup_ready
         })
-        binding.finishButton.isEnabled = ready && quickSetup.isSaved && !leaving
     }
 
     private fun setupInsets() {
@@ -202,7 +195,7 @@ class SettingsGuideActivity : AppCompatActivity() {
         binding.toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
         binding.toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
         onBackPressedDispatcher.addCallback(this) {
-            confirmLeave { quickSetup.finishPreview(); finish() }
+            requestExit()
         }
     }
 
@@ -222,36 +215,42 @@ class SettingsGuideActivity : AppCompatActivity() {
             contactsPermission.launch(Manifest.permission.READ_CONTACTS)
         }
         binding.advancedButton.setOnClickListener { showAdvancedOptions() }
-        binding.finishButton.setOnClickListener {
-            lifecycleScope.launch {
-                if (quickSetup.hasUnsavedChanges) {
-                    quickSetup.save()
-                }
-                refreshStatus()
-                if (binding.finishButton.isEnabled) leaveGuide(completed = true)
-            }
-        }
-        binding.skipButton.setOnClickListener { confirmLeave { leaveGuide(completed = false) } }
     }
 
-    private fun confirmLeave(leave: () -> Unit) {
-        if (quickSetup.isSaving) return
-        if (!quickSetup.hasUnsavedChanges) {
-            leave()
+    private fun requestExit() {
+        if (leaving) return
+        if (quickSetup.isSaving || (!quickSetup.isLoaded && quickSetup.failureMessage == null)) {
+            exitPending = true
             return
         }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.quick_setup_unsaved_title)
-            .setMessage(R.string.quick_setup_unsaved_exit)
-            .setPositiveButton(R.string.quick_setup_save_and_exit) { _, _ ->
-                lifecycleScope.launch {
-                    if (quickSetup.save()) leave()
-                    else Toast.makeText(this@SettingsGuideActivity, R.string.quick_setup_save_failed, Toast.LENGTH_LONG).show()
+        leaving = true
+        lifecycleScope.launch {
+            try {
+                if (quickSetup.hasUnsavedChanges && !quickSetup.save()) return@launch
+                if (intent.getBooleanExtra(EXTRA_FROM_LAUNCHER, false)) {
+                    val status = SettingsGuideStatusReader.read(this@SettingsGuideActivity)
+                    if (isReady(status)) SettingsGuideState.markCompleted(this@SettingsGuideActivity)
+                    else SettingsGuideState.markSkipped(this@SettingsGuideActivity)
+                    if (settingsStore.readKey(SearchEngineSettingsActivity.KEY_DEFAULT_SEARCH_PAGE, false)) {
+                        QuickSearchActivity.start(this@SettingsGuideActivity)
+                    } else {
+                        startActivity(Intent(this@SettingsGuideActivity, SettingsActivity::class.java).apply {
+                            if (!settingsStore.readKey(BackgroundStabilityActivity.HIDE_TASK, true)) {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT
+                            }
+                        })
+                    }
                 }
+                finish()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Unable to leave settings guide", e)
+                Toast.makeText(this@SettingsGuideActivity, R.string.guide_save_failed, Toast.LENGTH_LONG).show()
+            } finally {
+                leaving = false
             }
-            .setNegativeButton(R.string.quick_setup_discard) { _, _ -> leave() }
-            .setNeutralButton(android.R.string.cancel, null)
-            .show()
+        }
     }
 
     private fun openAccessibilitySettings() {
@@ -342,40 +341,6 @@ class SettingsGuideActivity : AppCompatActivity() {
     } catch (e: SecurityException) {
         Log.w(TAG, "Settings destination denied: ${intent.action}", e)
         false
-    }
-
-    private fun leaveGuide(completed: Boolean) {
-        if (leaving) return
-        leaving = true
-        quickSetup.finishPreview()
-        binding.finishButton.isEnabled = false
-        binding.skipButton.isEnabled = false
-        lifecycleScope.launch {
-            try {
-                if (completed) SettingsGuideState.markCompleted(this@SettingsGuideActivity)
-                else SettingsGuideState.markSkipped(this@SettingsGuideActivity)
-                if (intent.getBooleanExtra(EXTRA_FROM_LAUNCHER, false)) {
-                    if (settingsStore.readKey(SearchEngineSettingsActivity.KEY_DEFAULT_SEARCH_PAGE, false)) {
-                        QuickSearchActivity.start(this@SettingsGuideActivity)
-                    } else {
-                        startActivity(Intent(this@SettingsGuideActivity, SettingsActivity::class.java).apply {
-                            if (!settingsStore.readKey(BackgroundStabilityActivity.HIDE_TASK, true)) {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT
-                            }
-                        })
-                    }
-                }
-                finish()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e(TAG, "Unable to save guide state or open destination", e)
-                leaving = false
-                quickSetup.resumePreview()
-                binding.skipButton.isEnabled = true
-                Toast.makeText(this@SettingsGuideActivity, R.string.guide_save_failed, Toast.LENGTH_LONG).show()
-            }
-        }
     }
 
     companion object {

@@ -59,18 +59,21 @@ data class QuickSetupConfig(
         fun fromJson(json: String): QuickSetupConfig? = MoshiUtils.toModel(json)
 
         private fun defaultGestures(): Map<QuickGesture, GestureActionItem> = mapOf(
-            QuickGesture.TAP to createAccessibilityAction(1),
+            QuickGesture.TAP to createGuideAction(GestureActionType.CLICK_THROUGH),
             QuickGesture.SWIPE_IN to createGuideAction(GestureActionType.SHOW_ACTION_VIEW,
                 mapOf("actionItemsTag" to QuickSetupRepository.WHEEL_TAG)),
-            QuickGesture.SWIPE_UP to createAccessibilityAction(2),
-            QuickGesture.SWIPE_DOWN to createAccessibilityAction(4),
-            QuickGesture.LONG_PRESS to createGuideAction(GestureActionType.SEARCH)
+            QuickGesture.SWIPE_UP to createGuideAction(GestureActionType.POINTER),
+            QuickGesture.SWIPE_DOWN to createGuideAction(GestureActionType.SEARCH),
+            QuickGesture.LONG_PRESS to createGuideAction(GestureActionType.SCREEN_CONTENT)
         )
 
         private fun defaultWheelItems(): List<GestureActionItem> = listOf(
-            createAccessibilityAction(1), createAccessibilityAction(2), createAccessibilityAction(3),
-            createGuideAction(GestureActionType.SEARCH), createAccessibilityAction(5),
-            createGuideAction(GestureActionType.SCREEN_SEARCH)
+            createGuideAction(GestureActionType.SEARCH),
+            createGuideAction(GestureActionType.SCREEN_CONTENT_FULLSCREEN),
+            createGuideAction(GestureActionType.PIN_POOL),
+            createGuideAction(GestureActionType.KEYBOARD),
+            createGuideAction(GestureActionType.POINTER),
+            createGuideAction(GestureActionType.FREEFORM_FOREGROUND)
         )
     }
 }

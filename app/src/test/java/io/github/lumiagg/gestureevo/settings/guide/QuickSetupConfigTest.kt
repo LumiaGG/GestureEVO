@@ -11,7 +11,14 @@ class QuickSetupConfigTest {
         val config = QuickSetupConfig.default()
         config.validate(24)
         assertEquals(GestureActionType.SHOW_ACTION_VIEW, config.gestures.getValue(QuickGesture.SWIPE_IN).guideActionType)
-        assertTrue(config.wheelItems.isNotEmpty())
+        assertEquals(GestureActionType.CLICK_THROUGH, config.gestures.getValue(QuickGesture.TAP).guideActionType)
+        assertEquals(GestureActionType.POINTER, config.gestures.getValue(QuickGesture.SWIPE_UP).guideActionType)
+        assertEquals(GestureActionType.SEARCH, config.gestures.getValue(QuickGesture.SWIPE_DOWN).guideActionType)
+        assertEquals(GestureActionType.SCREEN_CONTENT, config.gestures.getValue(QuickGesture.LONG_PRESS).guideActionType)
+        val wheelTypes = config.wheelItems.map { it.guideActionType }
+        assertEquals(config.wheelItems.size, wheelTypes.distinct().size)
+        assertTrue(wheelTypes.containsAll(listOf(GestureActionType.SEARCH, GestureActionType.PIN_POOL)))
+        assertFalse(GestureActionType.ACC_ACTION in wheelTypes)
     }
 
     @Test fun snapshotsKeepAllRuntimeActionFieldsAndAreDetached() {

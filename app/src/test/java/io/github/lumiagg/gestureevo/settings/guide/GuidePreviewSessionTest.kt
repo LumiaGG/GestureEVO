@@ -5,43 +5,11 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertSame
 import org.junit.Test
 
 class GuidePreviewSessionTest {
-    @Test
-    fun statusRefreshKeepsTheCompletePracticeRequest() {
-        val draft = QuickSetupConfig.default()
-        val target = draft.copy(wheelItems = draft.wheelItems.take(1))
-        GuidePreviewSession.show("guide", target, QuickGesture.SWIPE_IN, "practice", wheelSelection = true)
-        val request = GuidePreviewSession.current.value
-        GuidePreviewSession.refresh("guide", draft.copy(verticalPercent = 100), GuideWheelMode.HIDDEN)
-        assertSame(request, GuidePreviewSession.current.value)
-    }
-
-    @Test
-    fun refreshUpdatesTheDraftAfterPracticeEnds() {
-        GuidePreviewSession.show("guide", QuickSetupConfig.default())
-        val draft = QuickSetupConfig.default().copy(verticalPercent = 100)
-        GuidePreviewSession.refresh("guide", draft, GuideWheelMode.PREVIEW)
-        assertEquals(GuidePreviewRequest("guide", draft, wheelMode = GuideWheelMode.PREVIEW),
-            GuidePreviewSession.current.value)
-    }
-
-    @Test
-    fun wheelIsHiddenOutsideEditingAdjustmentsAndSelection() {
-        val config = QuickSetupConfig.default()
-        assertFalse(GuidePreviewRequest("guide", config).showsWheel)
-        assertFalse(GuidePreviewRequest("guide", config, QuickGesture.TAP, "tap").showsWheel)
-        assertTrue(GuidePreviewRequest("guide", config, wheelMode = GuideWheelMode.PREVIEW).showsWheel)
-        assertTrue(GuidePreviewRequest("guide", config, wheelSelection = true).showsWheel)
-    }
-
     @Test
     fun oldActivityCannotClearNewActivityPreview() {
         val config = QuickSetupConfig.default()

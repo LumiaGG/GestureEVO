@@ -49,39 +49,13 @@ internal fun showGuidePractice(
     config: QuickSetupConfig,
     previewOwner: String,
     actionConfig: ActionConfig? = null,
-    onRecognized: suspend (QuickGesture) -> Unit,
-    onDismissed: (() -> Unit)? = null
+    onRecognized: () -> Unit
 ) {
-    showGuidePracticeSequence(
-        activity = activity,
-        gestures = listOf(gesture),
-        initialIndex = 0,
-        config = config,
-        previewOwner = previewOwner,
-        actionConfig = actionConfig,
-        onRecognized = onRecognized,
-        onDismissed = onDismissed
-    )
-}
-
-internal fun showGuidePracticeSequence(
-    activity: AppCompatActivity,
-    gestures: List<QuickGesture>,
-    initialIndex: Int = 0,
-    config: QuickSetupConfig,
-    previewOwner: String,
-    actionConfig: ActionConfig? = null,
-    onRecognized: suspend (QuickGesture) -> Unit,
-    onDismissed: (() -> Unit)? = null
-) {
-    if (gestures.isEmpty()) return
     val context = DynamicColorUtils.dynamicThemedContext(activity)
     val dialog = Dialog(context, R.style.Theme_GestureEVO)
     dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
 
-    var currentIndex = initialIndex.coerceIn(0, gestures.size - 1)
-    var currentGesture = gestures[currentIndex]
-    var practiceId = UUID.randomUUID().toString()
+    val practiceId = UUID.randomUUID().toString()
 
     val root = FrameLayout(context).apply {
         setBackgroundColor(Color.argb(160, 0, 0, 0))
@@ -350,10 +324,8 @@ internal fun showGuidePracticeSequence(
     }
 
     var recognized = false
-    var saving = false
     var disposed = false
     var awaitingWheel = false
-    var saveJob: Job? = null
     var transitionJob: Job? = null
     var wheelLoadJob: Job? = null
     var practiceConfig = config
@@ -361,40 +333,22 @@ internal fun showGuidePracticeSequence(
     var wheelLoading = false
 
     fun publishPractice() {
-        if (!disposed && !wheelLoading && activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) GuidePreviewSession.show(previewOwner, practiceConfig, currentGesture,
+        if (!disposed && !wheelLoading && activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) GuidePreviewSession.show(previewOwner, practiceConfig, gesture,
             practiceId, wheelSelection = awaitingWheel, actionConfig = practiceActionConfig)
     }
 
-    fun restorePreview() {
-        if (GuidePreviewSession.current.value?.let { it.owner == previewOwner && it.practiceId == practiceId } == true) {
-            GuidePreviewSession.show(previewOwner, config, actionConfig = actionConfig)
+    fun clearPreview() {
+        if (GuidePreviewSession.current.value?.let { it.owner == previewOwner } == true) {
+            GuidePreviewSession.clear(previewOwner)
         }
     }
 
-    fun displayGesture(index: Int) {
-        transitionJob?.cancel()
-        wheelLoadJob?.cancel()
-        currentIndex = index
-        currentGesture = gestures[currentIndex]
-        recognized = false
-        saving = false
-        awaitingWheel = false
-        practiceId = UUID.randomUUID().toString()
-        practiceConfig = config
-        practiceActionConfig = actionConfig
-        wheelLoading = false
+    fun displayGesture() {
+        badgeView.setText(R.string.quick_practice_dialog_title)
+        titleView.text = gesture.label(context)
+        demoView.show(gesture, config.side)
 
-        val isLast = currentIndex + 1 >= gestures.size
-        badgeView.text = if (gestures.size > 1) {
-            "${context.getString(R.string.quick_practice_dialog_title)} (${currentIndex + 1}/${gestures.size})"
-        } else {
-            context.getString(R.string.quick_practice_dialog_title)
-        }
-
-        titleView.text = currentGesture.label(context)
-        demoView.show(currentGesture, config.side)
-
-        val targetAction = config.gestures[currentGesture]
+        val targetAction = config.gestures[gesture]
         if (targetAction != null) {
             actionBadge.isVisible = true
             actionIcon.bindGuideAction(targetAction)
@@ -403,19 +357,19 @@ internal fun showGuidePracticeSequence(
             actionBadge.isVisible = false
         }
 
-        instructionView.text = currentGesture.instruction(context)
+        instructionView.text = gesture.instruction(context)
         statusBanner.text = context.getString(R.string.quick_practice_status_waiting)
         (statusBanner.background as? GradientDrawable)?.setColor(DynamicColorUtils.surfaceContainerHighColor)
         statusBanner.setTextColor(DynamicColorUtils.onSurfaceVariantColor)
 
-        skipButton.text = context.getString(if (!isLast) R.string.quick_practice_skip else R.string.quick_practice_exit)
+        skipButton.text = context.getString(R.string.quick_practice_exit)
         skipButton.isVisible = true
         skipButton.isEnabled = true
         closeButton.isEnabled = true
         dialog.setCancelable(true)
 
         nextButton.isVisible = false
-        nextButton.text = context.getString(if (!isLast) R.string.quick_practice_next else R.string.quick_practice_done)
+        nextButton.text = context.getString(R.string.quick_practice_done)
 
         pointerPill.isVisible = true
         if (!bounceAnimator.isRunning) {
@@ -455,88 +409,13 @@ internal fun showGuidePracticeSequence(
         }
     }
 
-    skipButton.setOnClickListener {
-        transitionJob?.cancel()
-        if (currentIndex + 1 < gestures.size) {
-            displayGesture(currentIndex + 1)
-        } else {
-            dialog.dismiss()
-        }
-    }
-
-    nextButton.setOnClickListener {
-        transitionJob?.cancel()
-        if (currentIndex + 1 < gestures.size) {
-            displayGesture(currentIndex + 1)
-        } else {
-            dialog.dismiss()
-        }
-    }
-
-    fun save() {
-        if (saving || disposed) return
-        saving = true
-        skipButton.isEnabled = false
-        closeButton.isEnabled = false
-        dialog.setCancelable(false)
-        statusBanner.text = context.getString(R.string.quick_setup_saving)
-
-        saveJob = activity.lifecycleScope.launch {
-            try {
-                onRecognized(currentGesture)
-                if (disposed) return@launch
-
-                VibratorUtils.vibrator(activity, true)
-                bounceAnimator.cancel()
-                pointerPill.isVisible = false
-
-                statusBanner.text = context.getString(R.string.quick_practice_status_success)
-                (statusBanner.background as? GradientDrawable)?.setColor(DynamicColorUtils.secondaryContainerColor)
-                statusBanner.setTextColor(DynamicColorUtils.primaryColor)
-
-                val hasNext = currentIndex + 1 < gestures.size
-                nextButton.text = context.getString(if (hasNext) R.string.quick_practice_next else R.string.quick_practice_done)
-                nextButton.isVisible = true
-                skipButton.isVisible = false
-                restorePreview()
-
-                transitionJob?.cancel()
-                transitionJob = launch {
-                    delay(800)
-                    if (!disposed && dialog.isShowing) {
-                        if (hasNext) {
-                            displayGesture(currentIndex + 1)
-                        } else {
-                            dialog.dismiss()
-                        }
-                    }
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                android.util.Log.e("GuidePractice", "Unable to apply practiced configuration", e)
-                if (!disposed) {
-                    statusBanner.text = context.getString(R.string.quick_setup_save_failed)
-                    recognized = false
-                    awaitingWheel = false
-                    practiceId = UUID.randomUUID().toString()
-                    publishPractice()
-                }
-            } finally {
-                saving = false
-                if (!disposed) {
-                    skipButton.isEnabled = true
-                    closeButton.isEnabled = true
-                    dialog.setCancelable(true)
-                }
-            }
-        }
-    }
+    skipButton.setOnClickListener { dialog.dismiss() }
+    nextButton.setOnClickListener { dialog.dismiss() }
 
     val gestureJob = activity.lifecycleScope.launch {
         GuidePreviewSession.gestures.collect { result ->
             if (disposed || recognized || result.owner != previewOwner || result.practiceId != practiceId) return@collect
-            if (config.gestures[currentGesture]?.guideActionType == GestureActionType.SHOW_ACTION_VIEW && result.wheelItemIndex == null) {
+            if (config.gestures[gesture]?.guideActionType == GestureActionType.SHOW_ACTION_VIEW && result.wheelItemIndex == null) {
                 if (!awaitingWheel) {
                     awaitingWheel = true
                     statusBanner.text = context.getString(R.string.quick_practice_choose_wheel)
@@ -545,7 +424,19 @@ internal fun showGuidePracticeSequence(
                 return@collect
             }
             recognized = true
-            save()
+            onRecognized()
+            VibratorUtils.vibrator(activity, true)
+            bounceAnimator.cancel()
+            pointerPill.isVisible = false
+            statusBanner.setText(R.string.quick_practice_status_success)
+            (statusBanner.background as? GradientDrawable)?.setColor(DynamicColorUtils.secondaryContainerColor)
+            statusBanner.setTextColor(DynamicColorUtils.primaryColor)
+            nextButton.isVisible = true
+            skipButton.isVisible = false
+            transitionJob = activity.lifecycleScope.launch {
+                delay(800)
+                if (!disposed && dialog.isShowing) dialog.dismiss()
+            }
         }
     }
 
@@ -556,7 +447,10 @@ internal fun showGuidePracticeSequence(
                 if (pointerPill.isVisible && !bounceAnimator.isRunning) bounceAnimator.start()
             }
         }
-        override fun onPause(owner: LifecycleOwner) { bounceAnimator.cancel() }
+        override fun onPause(owner: LifecycleOwner) {
+            bounceAnimator.cancel()
+            clearPreview()
+        }
         override fun onDestroy(owner: LifecycleOwner) { dialog.dismiss() }
     }
     activity.lifecycle.addObserver(lifecycleObserver)
@@ -565,16 +459,14 @@ internal fun showGuidePracticeSequence(
         disposed = true
         bounceAnimator.cancel()
         gestureJob.cancel()
-        saveJob?.cancel()
         transitionJob?.cancel()
         wheelLoadJob?.cancel()
-        restorePreview()
+        clearPreview()
         activity.lifecycle.removeObserver(lifecycleObserver)
-        onDismissed?.invoke()
     }
 
     dialog.setContentView(root)
-    displayGesture(currentIndex)
+    displayGesture()
     dialog.show()
     dialog.window?.let { window ->
         WindowCompat.setDecorFitsSystemWindows(window, false)

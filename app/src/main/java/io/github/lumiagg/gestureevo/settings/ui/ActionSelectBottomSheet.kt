@@ -163,7 +163,6 @@ internal fun actionCategories(
         system += navigation(8, R.string.acc_action_select_lock_screen)
     }
     return listOf(
-        R.string.quick_setup_category_system to system,
         R.string.quick_setup_category_tools to listOf(
             simple(GestureActionType.SEARCH), simple(GestureActionType.SCREEN_SEARCH),
             simple(GestureActionType.SCREEN_CONTENT), simple(GestureActionType.SCREEN_CONTENT_FULLSCREEN),
@@ -183,6 +182,7 @@ internal fun actionCategories(
             ActionChoice(GestureActionType.OTHER_LINK), ActionChoice(GestureActionType.OPEN_SHELL),
             ActionChoice(GestureActionType.CLIPBOARD_ACTION), ActionChoice(GestureActionType.TEMP_DND),
             simple(GestureActionType.NONE).takeIf { allowNone }
-        )
+        ),
+        R.string.quick_setup_category_system to system
     )
 }

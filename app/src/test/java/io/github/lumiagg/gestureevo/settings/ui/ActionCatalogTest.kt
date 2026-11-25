@@ -6,6 +6,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ActionCatalogTest {
+    @Test fun featuredCategoriesComeBeforeSystemNavigation() {
+        val categories = actionCategories(36).map { it.first }
+        assertEquals(R.string.quick_setup_category_tools, categories[0])
+        assertEquals(R.string.quick_setup_category_apps, categories[1])
+        assertEquals(R.string.quick_setup_category_system, categories.last())
+    }
+
     @Test fun unifiedCatalogIncludesEveryExistingActionType() {
         val choices = actionCategories(36).flatMap { it.second }
         assertEquals(GestureActionType.entries.toSet(), choices.map { it.type }.toSet())
