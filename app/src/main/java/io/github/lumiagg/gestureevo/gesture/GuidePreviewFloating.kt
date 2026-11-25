@@ -17,7 +17,6 @@ import io.github.lumiagg.gestureevo.gesture.ui.TriggerCallBack
 import io.github.lumiagg.gestureevo.gesture.ui.TriggerView
 import io.github.lumiagg.gestureevo.settings.guide.GuidePreviewRequest
 import io.github.lumiagg.gestureevo.settings.guide.GuidePreviewSession
-import io.github.lumiagg.gestureevo.settings.guide.GuideWheelMode
 import io.github.lumiagg.gestureevo.settings.guide.QuickSetupConfig
 import io.github.lumiagg.gestureevo.settings.guide.QuickSetupRepository
 import io.github.lumiagg.gestureevo.settings.guide.QuickSetupSide
@@ -87,7 +86,7 @@ class GuidePreviewFloating(private val context: GestureService) :
         val expectedTags = triggers.map { it.tag }.toSet()
         val wheelTag = if (wheelSide == QuickSetupSide.LEFT) QuickSetupRepository.PREVIEW_LEFT_TRIGGER_TAG
             else QuickSetupRepository.PREVIEW_RIGHT_TRIGGER_TAG
-        val expectedWheels = if (request.showsWheel) setOf(wheelTag) else emptySet()
+        val expectedWheels = if (request.wheelSelection) setOf(wheelTag) else emptySet()
         (wheels.keys - expectedWheels).toList().forEach { tag ->
             removeWheelTouchViews(tag)
             wheels.remove(tag)?.destroyGuidePreview()
@@ -132,7 +131,6 @@ class GuidePreviewFloating(private val context: GestureService) :
                     if (this.request == request && request.wheelSelection && reportedWheelPracticeId != request.practiceId) {
                         addWheelTouchViews(config.tag, wheel, request)
                     }
-                    wheel.actionView.alpha = if (request.wheelMode == GuideWheelMode.PREVIEW) 0.65f else 1f
                 },
             )
         }
