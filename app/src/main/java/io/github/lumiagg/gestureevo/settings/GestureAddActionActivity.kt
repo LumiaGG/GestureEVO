@@ -53,6 +53,7 @@ import io.github.lumiagg.gestureevo.settings.ui.showActionSelectBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.showDynamicShortcutSelectBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.showEditTextBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.showPieGroupSelectBottomSheet
+import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.GestureActionLink
 import io.github.lumiagg.gestureevo.utils.MultiUserAPP
 import io.github.lumiagg.gestureevo.utils.NotificationPermissionUtils
@@ -143,12 +144,13 @@ class GestureAddActionActivity : AppCompatActivity() {
         binding.longAction.actionTitle.text = getString(R.string.gesture_add_action_long_press)
         binding.shortAction.actionTimeout.text = getString(R.string.gesture_add_action_touch_execute)
         binding.fab.setOnClickListener { saveAction(false) }
+        binding.toolbar.setNavigationIconTint(DynamicColorUtils.primaryColor)
         binding.toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
         binding.changeIcon.setOnClickListener { selectImage(binding.actionIcon) }
         binding.actionIcon.setOnClickListener {
             selectImage(it as RoundImageTextView)
         }
-        binding.actionIcon.setImage(R.drawable.baseline_image_24)
+        binding.actionIcon.setImageWithBackplate(R.drawable.baseline_image_24)
         binding.btnSyncDown.setOnClickListener {
             syncLink(binding.shortAction, binding.longAction)
         }
@@ -303,7 +305,7 @@ class GestureAddActionActivity : AppCompatActivity() {
         configBinding.actionTimeout.isChecked = actionLink.isTimeout
         configBinding.getButtonsState().enable = true
         if (configBinding == binding.shortAction && actionItem.iconType == IconType.OTHER) {
-            binding.actionIcon.setImage(R.drawable.baseline_gesture_24)
+            binding.actionIcon.setImageWithBackplate(R.drawable.baseline_gesture_24)
             gestureActionIcon(this, binding.actionIcon, actionItem)
         }
         applyLink(configBinding)
@@ -874,7 +876,7 @@ class GestureAddActionActivity : AppCompatActivity() {
         val hasLong = parseValidLink(binding.longAction.actionLink.text.toString()) != null
         binding.btnSyncDown.isEnabled = hasShort
         binding.btnSyncUp.isEnabled = hasLong
-        binding.copyConfigHint.setText(if (hasShort || hasLong) R.string.action_copy_panel_hint else R.string.action_copy_panel_empty)
+        binding.copyConfigHint.isVisible = hasShort || hasLong
     }
 
 

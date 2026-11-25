@@ -40,12 +40,14 @@
             android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="48dp"
             android:layout_marginEnd="4dp" android:paddingHorizontal="8dp" android:textSize="13sp"
             android:text="@string/action_copy_short_compact" android:contentDescription="@string/action_copy_short"
+            app:icon="@drawable/ic_action_copy_down_24" app:iconGravity="textStart"
             app:cornerRadius="12dp" />
           <com.google.android.material.button.MaterialButton android:id="@+id/btnSyncUp"
             style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp"
             android:layout_weight="1" android:layout_height="wrap_content" android:minHeight="48dp"
             android:layout_marginStart="4dp" android:paddingHorizontal="8dp" android:textSize="13sp"
             android:text="@string/action_copy_long_compact" android:contentDescription="@string/action_copy_long"
+            app:icon="@drawable/ic_action_copy_up_24" app:iconGravity="textStart"
             app:cornerRadius="12dp" />
         </LinearLayout>
       </LinearLayout>

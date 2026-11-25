@@ -18,8 +18,7 @@
     <string name="settings_summary_unavailable">Unable to read configuration. Tap to view</string>
     <string name="action_copy_panel_title">Copy settings</string>
     <string name="action_copy_panel_hint">Choose a direction. You can undo the replacement.</string>
-    <string name="action_copy_panel_empty">Choose an action before copying settings.</string>
-    <string name="action_copy_short_compact">Short → Long</string>
-    <string name="action_copy_long_compact">Long → Short</string>
+    <string name="action_copy_short_compact">Copy to long press</string>
+    <string name="action_copy_long_compact">Copy to short press</string>
     <string name="action_copy_result">Copied to %1$s. Save to apply.</string>
 </resources>
