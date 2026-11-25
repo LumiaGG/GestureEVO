@@ -122,6 +122,18 @@
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/pointer_link_radar_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_link_radar_title" app:settingsRowSummary="@string/inspire_settings_link_radar_desc">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/pointerLinkRadarSwitch" android:checked="false" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+                        android:id="@+id/pointer_top_edge_panels_row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        app:settingsRowTitle="@string/pointer_top_edge_panels_title"
+                        app:settingsRowSummary="@string/pointer_top_edge_panels_summary">
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/pointerTopEdgePanelsSwitch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/pointer_hover_menu_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/pointer_hover_menu_title" app:settingsRowSummary="@string/pointer_hover_menu_summary">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/pointerHoverMenuSwitch" android:checked="false" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
