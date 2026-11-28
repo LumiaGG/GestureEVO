@@ -7,6 +7,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
+import androidx.annotation.MainThread
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import java.io.File
@@ -21,6 +22,16 @@ object ClipboardUtils {
 
     private fun clipboard(context: Context): ClipboardManager? =
         context.getSystemService(ClipboardManager::class.java)
+
+    @MainThread
+    internal fun readPrimaryClip(context: Context): ClipData? {
+        return try {
+            clipboard(context)?.primaryClip
+        } catch (e: Exception) {
+            Log.w(TAG, "Unable to read clipboard (${e.javaClass.simpleName})")
+            null
+        }
+    }
 
     /**
      * Copies text to the clipboard.
@@ -43,13 +54,15 @@ object ClipboardUtils {
     fun getText(context: Context): String {
         val clipboard = clipboard(context) ?: return ""
         return try {
-            val clip = clipboard.primaryClip
-            if (clip == null || clip.itemCount == 0) "" else clip.getItemAt(0).text?.toString().orEmpty()
+            getText(clipboard.primaryClip)
         } catch (e: Exception) {
             Log.w(TAG, "Unable to read clipboard text (${e.javaClass.simpleName})")
             ""
         }
     }
+
+    internal fun getText(clip: ClipData?): String =
+        if (clip == null || clip.itemCount == 0) "" else clip.getItemAt(0).text?.toString().orEmpty()
 
     /**
      * Copies a bitmap image to the clipboard through the app FileProvider.
@@ -107,7 +120,15 @@ object ClipboardUtils {
     fun getImage(context: Context): Uri? {
         val clipboard = clipboard(context) ?: return null
         return try {
-            val clip = clipboard.primaryClip ?: return null
+            getImage(context, clipboard.primaryClip ?: return null)
+        } catch (e: Exception) {
+            Log.w(TAG, "Unable to read clipboard image (${e.javaClass.simpleName})")
+            null
+        }
+    }
+
+    internal fun getImage(context: Context, clip: ClipData): Uri? {
+        return try {
             val isClipImageDescription = clip.description.hasMimeType("image/*")
 
             for (i in 0 until clip.itemCount) {
