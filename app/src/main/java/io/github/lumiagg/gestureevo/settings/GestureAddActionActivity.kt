@@ -43,6 +43,7 @@ import io.github.lumiagg.gestureevo.gesture.ui.gestureActionIcon
 import io.github.lumiagg.gestureevo.settings.ui.ActivityModel
 import io.github.lumiagg.gestureevo.settings.ui.DefaultSelectAPPBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.LocalUserShortcutSheet
+import io.github.lumiagg.gestureevo.settings.ui.IntegerSliderBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.SelectAPPCallBack
 import io.github.lumiagg.gestureevo.settings.ui.SelectActivityBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.SelectActivityCallBack
@@ -55,6 +56,7 @@ import io.github.lumiagg.gestureevo.settings.ui.showEditTextBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.showPieGroupSelectBottomSheet
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
 import io.github.lumiagg.gestureevo.utils.GestureActionLink
+import io.github.lumiagg.gestureevo.utils.MAX_ACTION_DELAY_MS
 import io.github.lumiagg.gestureevo.utils.MultiUserAPP
 import io.github.lumiagg.gestureevo.utils.NotificationPermissionUtils
 import io.github.lumiagg.gestureevo.utils.TempDndPermissionRequester
@@ -193,7 +195,10 @@ class GestureAddActionActivity : AppCompatActivity() {
         }
 
         configBinding.executionToggle.setOnClickListener {
-            configBinding.actionExternButtons.isVisible = !configBinding.actionExternButtons.isVisible
+            configBinding.executionOptions.isVisible = !configBinding.executionOptions.isVisible
+        }
+        configBinding.actionDelay.setOnClickListener {
+            editActionDelay(configBinding)
         }
         configBinding.advancedToggle.setOnClickListener {
             configBinding.actionLinkLayout.isVisible = !configBinding.actionLinkLayout.isVisible
@@ -237,6 +242,26 @@ class GestureAddActionActivity : AppCompatActivity() {
             }
             applyLink(configBinding)
         }
+    }
+
+    private fun editActionDelay(configBinding: ActivityGestureAddActionConfigBinding) {
+        val link = parseValidLink(configBinding.actionLink.text.toString()) ?: return
+        IntegerSliderBottomSheet(
+            activity = this,
+            initialValue = link.delayMs.toInt(),
+            titleRes = R.string.action_delay_title,
+            maxValue = MAX_ACTION_DELAY_MS.toInt(),
+            stepSize = 10,
+            zeroLabelRes = R.string.action_delay_immediate,
+            valueFormatRes = R.string.action_delay_milliseconds,
+            exactInput = IntegerSliderBottomSheet.ExactInput(
+                hintRes = R.string.action_delay_input,
+                rangeErrorRes = R.string.action_delay_range,
+            ),
+        ) { value ->
+            link.delayMs = value.toLong()
+            fillActionConfig(configBinding, link.buildLink())
+        }.show()
     }
 
     private fun initData(savedInstanceState: Bundle?) {
@@ -378,7 +403,8 @@ class GestureAddActionActivity : AppCompatActivity() {
             getString(R.string.gesture_add_action_config_new_window).takeIf { link?.isNewWindow == true },
             getString(R.string.gesture_add_action_config_dual_open).takeIf { link?.isDualOpen == true },
             getString(if (configBinding == binding.shortAction) R.string.gesture_add_action_touch_execute else R.string.gesture_add_action_config_timeout_execute)
-                .takeIf { link?.isTimeout == true }
+                .takeIf { link?.isTimeout == true },
+            link?.delayMs?.takeIf { it > 0 }?.let { getString(R.string.action_delay_summary, it) }
         )
         configBinding.actionSummary.text = (listOfNotNull(detail) + options).joinToString(" · ")
             .ifBlank { link?.actionType?.showName(this) ?: getString(R.string.action_not_selected) }
@@ -388,10 +414,23 @@ class GestureAddActionActivity : AppCompatActivity() {
         configBinding.actionDualOpen.isVisible = (appOptions && params["pkg"] != null) || link?.isDualOpen == true
         configBinding.configureAction.isVisible = link?.actionType in CONFIGURABLE_ACTIONS
         configBinding.executionToggle.isVisible = link != null
-        if (link == null) configBinding.actionExternButtons.isVisible = false
+        configBinding.actionDelay.isVisible = when (link?.actionType) {
+            null, GestureActionType.NONE, GestureActionType.CLICK_THROUGH -> false
+            GestureActionType.SHOW_ACTION_VIEW -> !selectTriggerActionMode
+            else -> true
+        }
+        val delayMs = link?.delayMs ?: 0
+        configBinding.actionDelay.text = if (delayMs > 0) {
+            getString(R.string.action_delay_value, delayMs)
+        } else {
+            getString(R.string.action_delay_title)
+        }
+        if (link == null) configBinding.executionOptions.isVisible = false
     }
 
     private fun commitAction(configBinding: ActivityGestureAddActionConfigBinding, link: GestureActionLink) {
+        val previous = parseValidLink(configBinding.actionLink.text.toString())
+        link.delayMs = previous?.takeIf { it.actionType == link.actionType }?.delayMs ?: 0
         if (configBinding == binding.shortAction && actionItem.iconType == IconType.OTHER) actionItem.name = null
         fillActionConfig(configBinding, link.buildLink())
         if (configBinding == binding.shortAction && !selectTriggerActionMode && !externalActionMode &&
@@ -863,6 +902,7 @@ class GestureAddActionActivity : AppCompatActivity() {
                     isNewWindow = false
                     isTimeout = false
                     userId = 0
+                    delayMs = 0
                 }
                 if (parseValidLink(previous) == null) {
                     fillActionConfig(targetConfig, GestureActionLink().buildLink())
