@@ -1401,6 +1401,13 @@
     <string name="action_ready">选择此动作</string>
     <string name="action_selected">已选中</string>
     <string name="action_execution_options">执行选项</string>
+    <string name="action_delay_title">执行延迟</string>
+    <string name="action_delay_immediate">立即执行</string>
+    <string name="action_delay_milliseconds">%1$d ms</string>
+    <string name="action_delay_input">执行延迟（ms）</string>
+    <string name="action_delay_value">执行延迟 · %1$d ms</string>
+    <string name="action_delay_summary">延迟 %1$d ms</string>
+    <string name="action_delay_range">请输入 0 至 %1$,d 之间的整数</string>
     <string name="action_advanced">高级配置</string>
     <string name="action_raw_link">动作链接</string>
     <string name="action_copy_link">复制动作链接</string>

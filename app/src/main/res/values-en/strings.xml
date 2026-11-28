@@ -1399,6 +1399,13 @@
     <string name="action_ready">Select this action</string>
     <string name="action_selected">Selected</string>
     <string name="action_execution_options">Execution options</string>
+    <string name="action_delay_title">Execution delay</string>
+    <string name="action_delay_immediate">Immediate</string>
+    <string name="action_delay_milliseconds">%1$d ms</string>
+    <string name="action_delay_input">Execution delay (ms)</string>
+    <string name="action_delay_value">Execution delay · %1$d ms</string>
+    <string name="action_delay_summary">Delay %1$d ms</string>
+    <string name="action_delay_range">Enter a whole number from 0 to %1$,d</string>
     <string name="action_advanced">Advanced settings</string>
     <string name="action_raw_link">Action link</string>
     <string name="action_copy_link">Copy action link</string>

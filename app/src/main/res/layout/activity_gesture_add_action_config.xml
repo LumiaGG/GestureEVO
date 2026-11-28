@@ -22,22 +22,29 @@
     style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent"
     android:layout_height="wrap_content" android:gravity="start|center_vertical"
     android:text="@string/action_execution_options" />
-  <com.google.android.material.chip.ChipGroup android:id="@+id/actionExternButtons"
-    android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"
-    app:selectionRequired="false" app:singleSelection="false" app:singleLine="false">
-    <com.google.android.material.chip.Chip android:id="@+id/actionFreeform"
-      style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
-      android:layout_height="wrap_content" android:text="@string/gesture_add_action_config_freeform" />
-    <com.google.android.material.chip.Chip android:id="@+id/actionNewWindow"
-      style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
-      android:layout_height="wrap_content" android:text="@string/gesture_add_action_config_new_window" />
-    <com.google.android.material.chip.Chip android:id="@+id/actionDualOpen"
-      style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
-      android:layout_height="wrap_content" android:text="@string/gesture_add_action_config_dual_open" />
-    <com.google.android.material.chip.Chip android:id="@+id/actionTimeout"
-      style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
-      android:layout_height="wrap_content" android:text="@string/gesture_add_action_config_timeout_execute" />
-  </com.google.android.material.chip.ChipGroup>
+  <LinearLayout android:id="@+id/executionOptions" android:layout_width="match_parent"
+    android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
+    <com.google.android.material.chip.ChipGroup android:id="@+id/actionExternButtons"
+      android:layout_width="match_parent" android:layout_height="wrap_content"
+      app:selectionRequired="false" app:singleSelection="false" app:singleLine="false">
+      <com.google.android.material.chip.Chip android:id="@+id/actionFreeform"
+        style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:text="@string/gesture_add_action_config_freeform" />
+      <com.google.android.material.chip.Chip android:id="@+id/actionNewWindow"
+        style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:text="@string/gesture_add_action_config_new_window" />
+      <com.google.android.material.chip.Chip android:id="@+id/actionDualOpen"
+        style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:text="@string/gesture_add_action_config_dual_open" />
+      <com.google.android.material.chip.Chip android:id="@+id/actionTimeout"
+        style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:text="@string/gesture_add_action_config_timeout_execute" />
+      <com.google.android.material.chip.Chip android:id="@+id/actionDelay"
+        style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:checkable="false"
+        android:text="@string/action_delay_title" />
+    </com.google.android.material.chip.ChipGroup>
+  </LinearLayout>
   <com.google.android.material.button.MaterialButton android:id="@+id/advancedToggle"
     style="@style/Widget.Material3.Button.TextButton" android:layout_width="match_parent"
     android:layout_height="wrap_content" android:gravity="start|center_vertical" android:text="@string/action_advanced" />

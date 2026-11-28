@@ -783,7 +783,13 @@ class SearchResultManager(
         analysis: QueryAnalysis,
         query: String
     ): LoadedResults = coroutineScope {
-        val actionDeferred = async(computeDispatcher) { buildActionResults(analysis) }
+        val actionDeferred = async {
+            if (analysis.text.isEmpty()) {
+                loadClipboardResults()
+            } else {
+                withContext(computeDispatcher) { buildActionResults(analysis) }
+            }
+        }
         val contentDeferred = async { loadContentResults(query) }
         val pinQuery = normalizePinQuery(query)
         val pinsDeferred = async { loadResultPinOrder(pinQuery) }
@@ -857,22 +863,28 @@ class SearchResultManager(
         return true
     }
 
+    private suspend fun loadClipboardResults(): List<SearchResult> = withContext(uiDispatcher) {
+        if (!showClipboardContentEnabled) return@withContext emptyList()
+        val context = activity.applicationContext
+        // Older Android versions need a Looper when creating the clipboard service.
+        val clip = ClipboardUtils.readPrimaryClip(context) ?: return@withContext emptyList()
+        val clipboardImage = if (activity.getAttachedImageUris().isEmpty()) {
+            withContext(ioDispatcher) { ClipboardUtils.getImage(context, clip) }
+        } else {
+            null
+        }
+        val clipboardText = ClipboardUtils.getText(clip)
+        buildList {
+            if (clipboardImage != null && activity.getAttachedImageUris().isEmpty()) {
+                add(SearchResult.PasteImageResult(clipboardImage))
+            }
+            if (clipboardText.isNotEmpty()) add(SearchResult.PasteResult(clipboardText))
+        }
+    }
+
     private fun buildActionResults(analysis: QueryAnalysis): List<SearchResult> {
         val results = ArrayList<SearchResult>(8)
         val query = analysis.text
-        if (query.isEmpty()) {
-            if (!showClipboardContentEnabled) return results
-            val clipboardImage = ClipboardUtils.getImage(activity.applicationContext)
-            if (clipboardImage != null && activity.getAttachedImageUris().isEmpty()) {
-                results.add(SearchResult.PasteImageResult(clipboardImage))
-            }
-            val clipboardText = ClipboardUtils.getText(activity.applicationContext)
-            if (clipboardText.isNotEmpty()) {
-                results.add(SearchResult.PasteResult(clipboardText))
-            }
-            return results
-        }
-
         results.addAll(buildGestureActionResults(query))
         if (matchesGestureEvoSettings(query)) {
             results.add(SearchResult.AppSettingsResult)

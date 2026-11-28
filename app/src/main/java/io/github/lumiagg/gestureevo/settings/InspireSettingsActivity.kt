@@ -38,7 +38,7 @@ import io.github.lumiagg.gestureevo.gesture.KeyboardEvent
 import io.github.lumiagg.gestureevo.quick.ui.KeyboardType
 import io.github.lumiagg.gestureevo.settings.ui.BlackListSelectAPPBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.DefaultSelectAPPBottomSheet
-import io.github.lumiagg.gestureevo.settings.ui.NotificationDisplayTimeBottomSheet
+import io.github.lumiagg.gestureevo.settings.ui.IntegerSliderBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.PointerTouchAreaOffsetBottomSheet
 import io.github.lumiagg.gestureevo.settings.ui.SelectAPPCallBack
 import io.github.lumiagg.gestureevo.settings.ui.showEditTextBottomSheet
@@ -1025,12 +1025,16 @@ class InspireSettingsActivity : AppCompatActivity() {
 
     private fun showNotificationDisplayTimeBottomSheet() {
         lifecycleScope.launch {
-            NotificationDisplayTimeBottomSheet(
+            IntegerSliderBottomSheet(
                 activity = this@InspireSettingsActivity,
-                initialSeconds = settingsStore.readKey(
+                initialValue = settingsStore.readKey(
                     KEY_NOTIFICATION_IMAGE_DISPLAY_SECONDS,
                     DEFAULT_NOTIFICATION_IMAGE_DISPLAY_SECONDS
-                )
+                ),
+                titleRes = R.string.inspire_settings_notification_display_time,
+                maxValue = 30,
+                zeroLabelRes = R.string.inspire_settings_notification_display_time_persist_short,
+                valueFormatRes = R.string.inspire_settings_notification_display_time_seconds,
             ) { selectedSeconds ->
                 lifecycleScope.launch {
                     settingsStore.saveKey(KEY_NOTIFICATION_IMAGE_DISPLAY_SECONDS, selectedSeconds)
@@ -1087,12 +1091,12 @@ class InspireSettingsActivity : AppCompatActivity() {
 
     private fun showPinPoolAutoDeleteBottomSheet() {
         lifecycleScope.launch {
-            NotificationDisplayTimeBottomSheet(
+            IntegerSliderBottomSheet(
                 activity = this@InspireSettingsActivity,
-                initialSeconds = settingsStore.readKey(KEY_PIN_POOL_AUTO_DELETE_DAYS, 0),
+                initialValue = settingsStore.readKey(KEY_PIN_POOL_AUTO_DELETE_DAYS, 0),
                 titleRes = R.string.inspire_settings_pin_pool_auto_delete_title,
                 maxValue = PIN_POOL_AUTO_DELETE_DAYS_MAX,
-                persistLabelRes = R.string.inspire_settings_pin_pool_auto_delete_off_short,
+                zeroLabelRes = R.string.inspire_settings_pin_pool_auto_delete_off_short,
                 valueFormatRes = R.string.inspire_settings_pin_pool_auto_delete_days,
             ) { selectedDays ->
                 lifecycleScope.launch {
