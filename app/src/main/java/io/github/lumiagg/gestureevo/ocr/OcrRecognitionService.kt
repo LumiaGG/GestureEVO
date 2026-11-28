@@ -101,10 +101,9 @@ class OcrRecognitionService : Service() {
             val result = Bundle()
             try {
                 request.use {
-                    frame.use {
+                    frame.use { image ->
                         request.ensureActive()
-                        checkNotNull(frame)
-                        processFrame(operation, frame, data, result, request)
+                        processFrame(operation, checkNotNull(image), data, result, request)
                     }
                 }
             } catch (error: Exception) {

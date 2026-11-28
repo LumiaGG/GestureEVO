@@ -872,9 +872,7 @@ class PointerFloating(
             clearPotentialDragSelection()
             hasStartedDragSelection = false
             context.gestureManager?.setInteractionMode(InteractionMode.POINTER_DRAG_SELECT)
-            context.launch(Dispatchers.IO) {
-                SmartSegmenter.prewarm(context.applicationContext)
-            }
+            SmartSegmenter.prewarm(context.applicationContext)
             VibratorUtils.vibrator(context, true)
             trailView.enable = false
             trailView.clearTrail()
@@ -1103,6 +1101,7 @@ class PointerFloating(
                     resetHoverLongPressHint()
                     val currentSelectionRect = highlightRectView.currentSelectionRect(computePosition())
                     val draggedSelection = hasStartedDragSelection
+                    val selectionSide = triggerSide
                     val previewSelectionRect = potentialDragSelectRect
                         ?.takeIf { potentialDragSelectSourceRect == currentSelectionRect }
                         ?.let { Rect(it) }
@@ -1125,7 +1124,7 @@ class PointerFloating(
                                 max(it.top, it.bottom)
                             )
                         }
-                        val effectiveSide = triggerSide
+                        val effectiveSide = selectionSide
                             ?: (if (newRect.centerX() < context.resources.displayMetrics.widthPixels / 2f) TriggerSide.LEFT else TriggerSide.RIGHT)
                         val confirmSelection = draggedSelection &&
                             context.settingsStore.readKey(KEY_ENABLE_POINTER_DRAG_MODE, false) &&

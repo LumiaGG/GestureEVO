@@ -659,7 +659,6 @@ class InspireView : ConstraintLayout {
         needDoubleCheck = true
         isDrawingPath = true
         if (!dragSelectRect.isEmpty) {
-            inspireViewCallBack.onSelectionStarted()
             inspireViewCallBack.onDragMove(Rect(dragSelectRect))
         }
         showFunctionItem()
