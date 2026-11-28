@@ -52,6 +52,7 @@ import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companio
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SIZE_MIN
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_ALWAYS_SHOW_POINTER_TOUCH_AREA
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_ENABLE_POINTER_DRAG_MODE
+import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_POINTER_DRAG_DOUBLE_CHECK
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_POINTER_HOVER_MENU
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_POINTER_TOP_EDGE_PANELS
 import io.github.lumiagg.gestureevo.pointer.radar.LinkRegion
@@ -1103,6 +1104,7 @@ class PointerFloating(
                 if (isDragMode) {
                     resetHoverLongPressHint()
                     val currentSelectionRect = highlightRectView.currentSelectionRect(computePosition())
+                    val draggedSelection = hasStartedDragSelection
                     val previewSelectionRect = potentialDragSelectRect
                         ?.takeIf { potentialDragSelectSourceRect == currentSelectionRect }
                         ?.let { Rect(it) }
@@ -1110,7 +1112,7 @@ class PointerFloating(
                     highlightRectView.hidePotentialRect()
                     view.visibility = View.INVISIBLE
                     context.launch {
-                        val resolvedSelectionRect = if (!hasStartedDragSelection) {
+                        val resolvedSelectionRect = if (!draggedSelection) {
                             previewSelectionRect ?: resolveScreenContentRect(context, currentSelectionRect, allowRegion = false)
                         } else {
                             null
@@ -1127,8 +1129,11 @@ class PointerFloating(
                         }
                         val effectiveSide = triggerSide
                             ?: (if (newRect.centerX() < context.resources.displayMetrics.widthPixels / 2f) TriggerSide.LEFT else TriggerSide.RIGHT)
+                        val confirmSelection = draggedSelection &&
+                            context.settingsStore.readKey(KEY_ENABLE_POINTER_DRAG_MODE, false) &&
+                            context.settingsStore.readKey(KEY_POINTER_DRAG_DOUBLE_CHECK, false)
                         produceInspireEvent(
-                            InspireEvent(rect = newRect, side = effectiveSide)
+                            InspireEvent(rect = newRect, reSelect = confirmSelection, side = effectiveSide)
                         )
                     }
                 } else if (pendingHoverLongPress) {

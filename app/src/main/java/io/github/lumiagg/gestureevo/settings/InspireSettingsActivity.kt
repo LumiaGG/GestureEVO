@@ -89,6 +89,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val KEY_ALWAYS_SHOW_POINTER_TOUCH_AREA = "key_always_show_pointer_touch_area"
         const val KEY_POINTER_TOUCH_AREA_OFFSET_DP = "key_pointer_touch_area_offset_dp"
         const val KEY_ENABLE_POINTER_DRAG_MODE = "key_enable_pointer_drag_mode"
+        const val KEY_POINTER_DRAG_DOUBLE_CHECK = "key_pointer_drag_double_check"
         const val KEY_POINTER_HOVER_MENU = "key_pointer_hover_menu"
         const val KEY_POINTER_TOP_EDGE_PANELS = "key_pointer_top_edge_panels"
         const val KEY_PIN_POOL_DISPLAY_MODE = "key_pin_pool_display_mode"
@@ -219,6 +220,9 @@ class InspireSettingsActivity : AppCompatActivity() {
 
         binding.pointerDragModeSwitch.isChecked =
             settingsStore.readKey(KEY_ENABLE_POINTER_DRAG_MODE, false)
+        binding.pointerDragDoubleCheckSwitch.isChecked =
+            settingsStore.readKey(KEY_POINTER_DRAG_DOUBLE_CHECK, false)
+        updatePointerDragDoubleCheckVisibility(binding.pointerDragModeSwitch.isChecked)
         binding.pointerHoverMenuSwitch.isChecked = settingsStore.readKey(KEY_POINTER_HOVER_MENU, false)
         binding.pointerTopEdgePanelsSwitch.isChecked = settingsStore.readKey(KEY_POINTER_TOP_EDGE_PANELS, false)
         updatePointerHoverMenuSetting(binding.pointerHoverMenuSwitch.isChecked)
@@ -537,9 +541,14 @@ class InspireSettingsActivity : AppCompatActivity() {
         }
 
         binding.pointerDragModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            updatePointerDragDoubleCheckVisibility(isChecked)
             lifecycleScope.launch {
                 settingsStore.saveKey(KEY_ENABLE_POINTER_DRAG_MODE, isChecked)
             }
+        }
+
+        binding.pointerDragDoubleCheckSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch { settingsStore.saveKey(KEY_POINTER_DRAG_DOUBLE_CHECK, isChecked) }
         }
 
         binding.screenContentLinkRadarSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -1038,6 +1047,10 @@ class InspireSettingsActivity : AppCompatActivity() {
                 }
             }.show()
         }
+    }
+
+    private fun updatePointerDragDoubleCheckVisibility(dragModeEnabled: Boolean) {
+        binding.pointerDragDoubleCheckRow.visibility = if (dragModeEnabled) View.VISIBLE else View.GONE
     }
 
     private fun updatePointerHoverMenuSetting(enabled: Boolean) {
