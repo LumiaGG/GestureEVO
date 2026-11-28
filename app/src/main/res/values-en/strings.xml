@@ -451,6 +451,8 @@
     <string name="inspire_settings_ocr_priority_desc">Choose the preferred text acquisition method, Accessibility or OCR</string>
     <string name="inspire_settings_double_check">Double Confirmation After Frame Selection</string>
     <string name="inspire_settings_double_check_desc">Preview the selected area first, then enter tokenization after confirmation</string>
+    <string name="inspire_settings_highlight_selection_text">Highlight text after frame selection</string>
+    <string name="inspire_settings_highlight_selection_text_desc">Detect and highlight text in the selected area when confirming a Screen Content or pointer selection</string>
     <string name="inspire_settings_edge_back">Overlay Edge Swipe Back</string>
     <string name="inspire_settings_edge_back_desc">Swipe inward from either edge to close the screen content overlay. Turn off to select areas starting from the edges</string>
     <string name="inspire_settings_selection_vibrate">Vibrate when Entering Selection</string>
