@@ -27,6 +27,7 @@ import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.K
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_DEFAULT_SHARE_IMAGE_APP
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_SELECTION_VIBRATE
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_EDGE_BACK
+import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_INSPIRE_HIGHLIGHT_SELECTION_TEXT
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_SCREEN_CONTENT_LINK_RADAR
 import io.github.lumiagg.gestureevo.share.ImageShareLauncher
 import io.github.lumiagg.gestureevo.utils.ClipboardUtils
@@ -81,6 +82,7 @@ class InspireFloating(private val context: GestureService) :
     private var sessionTextBoxes: List<Rect>? = null
     private var previewSelectionRect: Rect? = null
     private var textBoxGeneration = 0L
+    private var highlightSelectionText = false
     private var textBoxPreviewEnabled = false
     private var textBoxPreviewUpdateScheduled = false
     private var sessionForceImageTextSelection = false
@@ -142,6 +144,7 @@ class InspireFloating(private val context: GestureService) :
             }
 
             override fun onSelectionStarted() {
+                if (!highlightSelectionText) return
                 textBoxPreviewEnabled = true
                 previewSelectionRect = null
                 startFullScreenTextBoxDetectionIfReady()
@@ -376,6 +379,7 @@ class InspireFloating(private val context: GestureService) :
     }
 
     private fun resetSessionCapture() {
+        highlightSelectionText = false
         invalidateSessionCapture()
         ocrSession?.close()
         ocrSession = null
@@ -398,6 +402,7 @@ class InspireFloating(private val context: GestureService) :
     }
 
     private fun requestTextBoxPreview(rect: Rect) {
+        if (!highlightSelectionText) return
         textBoxPreviewEnabled = true
         previewSelectionRect = rect.normalized()
         if (sessionTextBoxes != null) {
@@ -705,6 +710,7 @@ class InspireFloating(private val context: GestureService) :
 
     private suspend fun prepareVisibleInspireView() {
         inspireView.edgeBackEnabled = context.settingsStore.readKey(KEY_INSPIRE_EDGE_BACK, true)
+        highlightSelectionText = context.settingsStore.readKey(KEY_INSPIRE_HIGHLIGHT_SELECTION_TEXT, true)
         context.gestureManager?.setInteractionMode(InteractionMode.INSPIRE_SELECT)
         if (ScreenOcr.isSupported && ocrSession == null) ocrSession = ScreenOcr.openSession()
         ensureAttached()

@@ -67,6 +67,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         // Preference keys
         const val KEY_OCR_PRIORITY = "inspire_ocr_priority"
         const val KEY_INSPIRE_DOUBLE_CHECK = "key_inspire_double_check"
+        const val KEY_INSPIRE_HIGHLIGHT_SELECTION_TEXT = "key_inspire_highlight_selection_text"
         const val KEY_SCREEN_CONTENT_LINK_RADAR = "key_screen_content_link_radar"
         const val KEY_INSPIRE_SELECTION_VIBRATE = "key_inspire_selection_vibrate"
         const val KEY_INSPIRE_EDGE_BACK = "key_inspire_edge_back"
@@ -89,6 +90,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val KEY_ALWAYS_SHOW_POINTER_TOUCH_AREA = "key_always_show_pointer_touch_area"
         const val KEY_POINTER_TOUCH_AREA_OFFSET_DP = "key_pointer_touch_area_offset_dp"
         const val KEY_ENABLE_POINTER_DRAG_MODE = "key_enable_pointer_drag_mode"
+        const val KEY_POINTER_DRAG_DOUBLE_CHECK = "key_pointer_drag_double_check"
         const val KEY_POINTER_HOVER_MENU = "key_pointer_hover_menu"
         const val KEY_POINTER_TOP_EDGE_PANELS = "key_pointer_top_edge_panels"
         const val KEY_PIN_POOL_DISPLAY_MODE = "key_pin_pool_display_mode"
@@ -155,6 +157,9 @@ class InspireSettingsActivity : AppCompatActivity() {
 
         // Double confirmation
         binding.doubleCheckSwitch.isChecked = settingsStore.readKey(KEY_INSPIRE_DOUBLE_CHECK, false)
+        binding.highlightSelectionTextSwitch.isChecked =
+            settingsStore.readKey(KEY_INSPIRE_HIGHLIGHT_SELECTION_TEXT, true)
+        updateHighlightSelectionTextVisibility(binding.doubleCheckSwitch.isChecked)
 
         // Vibrate on selection enter
         binding.selectionVibrateSwitch.isChecked =
@@ -219,6 +224,9 @@ class InspireSettingsActivity : AppCompatActivity() {
 
         binding.pointerDragModeSwitch.isChecked =
             settingsStore.readKey(KEY_ENABLE_POINTER_DRAG_MODE, false)
+        binding.pointerDragDoubleCheckSwitch.isChecked =
+            settingsStore.readKey(KEY_POINTER_DRAG_DOUBLE_CHECK, false)
+        updatePointerDragDoubleCheckVisibility(binding.pointerDragModeSwitch.isChecked)
         binding.pointerHoverMenuSwitch.isChecked = settingsStore.readKey(KEY_POINTER_HOVER_MENU, false)
         binding.pointerTopEdgePanelsSwitch.isChecked = settingsStore.readKey(KEY_POINTER_TOP_EDGE_PANELS, false)
         updatePointerHoverMenuSetting(binding.pointerHoverMenuSwitch.isChecked)
@@ -298,9 +306,14 @@ class InspireSettingsActivity : AppCompatActivity() {
 
         // Double confirmation
         binding.doubleCheckSwitch.setOnCheckedChangeListener { _, isChecked ->
+            updateHighlightSelectionTextVisibility(isChecked)
             lifecycleScope.launch {
                 settingsStore.saveKey(KEY_INSPIRE_DOUBLE_CHECK, isChecked)
             }
+        }
+
+        binding.highlightSelectionTextSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch { settingsStore.saveKey(KEY_INSPIRE_HIGHLIGHT_SELECTION_TEXT, isChecked) }
         }
 
         // Vibrate on selection enter
@@ -537,9 +550,14 @@ class InspireSettingsActivity : AppCompatActivity() {
         }
 
         binding.pointerDragModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            updatePointerDragDoubleCheckVisibility(isChecked)
             lifecycleScope.launch {
                 settingsStore.saveKey(KEY_ENABLE_POINTER_DRAG_MODE, isChecked)
             }
+        }
+
+        binding.pointerDragDoubleCheckSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch { settingsStore.saveKey(KEY_POINTER_DRAG_DOUBLE_CHECK, isChecked) }
         }
 
         binding.screenContentLinkRadarSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -1042,6 +1060,14 @@ class InspireSettingsActivity : AppCompatActivity() {
                 }
             }.show()
         }
+    }
+
+    private fun updateHighlightSelectionTextVisibility(doubleCheckEnabled: Boolean) {
+        binding.highlightSelectionTextRow.visibility = if (doubleCheckEnabled) View.VISIBLE else View.GONE
+    }
+
+    private fun updatePointerDragDoubleCheckVisibility(dragModeEnabled: Boolean) {
+        binding.pointerDragDoubleCheckRow.visibility = if (dragModeEnabled) View.VISIBLE else View.GONE
     }
 
     private fun updatePointerHoverMenuSetting(enabled: Boolean) {

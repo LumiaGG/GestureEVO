@@ -52,6 +52,7 @@ import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companio
 import io.github.lumiagg.gestureevo.settings.AppearanceSettingsActivity.Companion.POINTER_SIZE_MIN
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_ALWAYS_SHOW_POINTER_TOUCH_AREA
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_ENABLE_POINTER_DRAG_MODE
+import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_POINTER_DRAG_DOUBLE_CHECK
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_POINTER_HOVER_MENU
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_POINTER_TOP_EDGE_PANELS
 import io.github.lumiagg.gestureevo.pointer.radar.LinkRegion
@@ -59,7 +60,6 @@ import android.view.accessibility.AccessibilityEvent
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_POINTER_TOUCH_AREA_OFFSET_DP
 import io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.Companion.KEY_SHOW_POINTER_TRAIL
 import io.github.lumiagg.gestureevo.utils.DynamicColorUtils
-import io.github.lumiagg.gestureevo.ocr.ScreenOcr
 import io.github.lumiagg.gestureevo.utils.Point
 import io.github.lumiagg.gestureevo.utils.ScreenUtil
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
@@ -872,10 +872,7 @@ class PointerFloating(
             clearPotentialDragSelection()
             hasStartedDragSelection = false
             context.gestureManager?.setInteractionMode(InteractionMode.POINTER_DRAG_SELECT)
-            context.launch(Dispatchers.IO) {
-                ScreenOcr.preload()
-                SmartSegmenter.prewarm(context.applicationContext)
-            }
+            SmartSegmenter.prewarm(context.applicationContext)
             VibratorUtils.vibrator(context, true)
             trailView.enable = false
             trailView.clearTrail()
@@ -1103,6 +1100,8 @@ class PointerFloating(
                 if (isDragMode) {
                     resetHoverLongPressHint()
                     val currentSelectionRect = highlightRectView.currentSelectionRect(computePosition())
+                    val draggedSelection = hasStartedDragSelection
+                    val selectionSide = triggerSide
                     val previewSelectionRect = potentialDragSelectRect
                         ?.takeIf { potentialDragSelectSourceRect == currentSelectionRect }
                         ?.let { Rect(it) }
@@ -1110,7 +1109,7 @@ class PointerFloating(
                     highlightRectView.hidePotentialRect()
                     view.visibility = View.INVISIBLE
                     context.launch {
-                        val resolvedSelectionRect = if (!hasStartedDragSelection) {
+                        val resolvedSelectionRect = if (!draggedSelection) {
                             previewSelectionRect ?: resolveScreenContentRect(context, currentSelectionRect, allowRegion = false)
                         } else {
                             null
@@ -1125,10 +1124,13 @@ class PointerFloating(
                                 max(it.top, it.bottom)
                             )
                         }
-                        val effectiveSide = triggerSide
+                        val effectiveSide = selectionSide
                             ?: (if (newRect.centerX() < context.resources.displayMetrics.widthPixels / 2f) TriggerSide.LEFT else TriggerSide.RIGHT)
+                        val confirmSelection = draggedSelection &&
+                            context.settingsStore.readKey(KEY_ENABLE_POINTER_DRAG_MODE, false) &&
+                            context.settingsStore.readKey(KEY_POINTER_DRAG_DOUBLE_CHECK, false)
                         produceInspireEvent(
-                            InspireEvent(rect = newRect, side = effectiveSide)
+                            InspireEvent(rect = newRect, reSelect = confirmSelection, side = effectiveSide)
                         )
                     }
                 } else if (pendingHoverLongPress) {

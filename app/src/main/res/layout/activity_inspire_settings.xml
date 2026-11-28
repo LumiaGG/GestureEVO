@@ -21,6 +21,9 @@
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_double_check" app:settingsRowSummary="@string/inspire_settings_double_check_desc">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/doubleCheckSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/highlight_selection_text_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:visibility="gone" app:settingsRowTitle="@string/inspire_settings_highlight_selection_text" app:settingsRowSummary="@string/inspire_settings_highlight_selection_text_desc">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/highlightSelectionTextSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_selection_vibrate" app:settingsRowSummary="@string/inspire_settings_selection_vibrate_desc">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/selectionVibrateSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
@@ -140,6 +143,9 @@
                     <TextView android:id="@+id/pointer_hover_menu_hint" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingHorizontal="14dp" android:paddingVertical="8dp" android:text="@string/pointer_hover_menu_overrides_drag" android:textAppearance="?attr/textAppearanceBodySmall" android:visibility="gone" />
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/pointer_drag_mode_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_pointer_drag_mode" app:settingsRowSummary="@string/inspire_settings_pointer_drag_mode_desc">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/pointerDragModeSwitch" android:checked="false" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:id="@+id/pointer_drag_double_check_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:visibility="gone" app:settingsRowTitle="@string/inspire_settings_double_check" app:settingsRowSummary="@string/inspire_settings_double_check_desc">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/pointerDragDoubleCheckSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                 </LinearLayout>
             </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>

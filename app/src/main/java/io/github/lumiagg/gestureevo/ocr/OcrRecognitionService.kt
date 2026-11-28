@@ -27,7 +27,6 @@ import java.util.zip.ZipFile
 internal const val OCR_MIN_API = 28
 internal const val OCR_PROCESS_SUFFIX = ":ocr"
 internal const val OCR_MAX_FRAME_BYTES = 64 * 1024 * 1024
-internal const val OCR_WARM = 1
 internal const val OCR_DETECT = 2
 internal const val OCR_RECOGNIZE = 3
 internal const val OCR_LINE = 4
@@ -102,14 +101,9 @@ class OcrRecognitionService : Service() {
             val result = Bundle()
             try {
                 request.use {
-                    frame.use {
+                    frame.use { image ->
                         request.ensureActive()
-                        if (frame == null) {
-                            check(operation == OCR_WARM)
-                            getPipeline().warmDetection(request)
-                        } else {
-                            processFrame(operation, frame, data, result, request)
-                        }
+                        processFrame(operation, checkNotNull(image), data, result, request)
                     }
                 }
             } catch (error: Exception) {

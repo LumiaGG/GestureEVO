@@ -658,6 +658,9 @@ class InspireView : ConstraintLayout {
     fun reSelect() {
         needDoubleCheck = true
         isDrawingPath = true
+        if (!dragSelectRect.isEmpty) {
+            inspireViewCallBack.onDragMove(Rect(dragSelectRect))
+        }
         showFunctionItem()
         invalidate()
         showScreenShotFab(VISIBLE)

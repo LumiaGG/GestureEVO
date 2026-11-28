@@ -29,7 +29,7 @@ import kotlin.math.ceil
 import kotlin.math.floor
 
 object ScreenOcr {
-    private const val PREWARM_IDLE_MS = 5_000L
+    private const val HANDOFF_TIMEOUT_MS = 5_000L
     private const val INTERACTION_IDLE_MS = 15_000L
     private const val REQUEST_TIMEOUT_MS = 60_000L
 
@@ -47,17 +47,6 @@ object ScreenOcr {
 
     val taskRunning: Boolean
         get() = running.get()
-
-    suspend fun preload() {
-        if (!isSupported) return
-        try {
-            execute(OCR_WARM)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Exception) {
-            // The user-initiated request can retry after a failed preload.
-        }
-    }
 
     fun trimMemory() {
         if (isSupported) {
@@ -91,7 +80,7 @@ object ScreenOcr {
             handoffs[token] = session
         }
         scope.launch {
-            delay(PREWARM_IDLE_MS)
+            delay(HANDOFF_TIMEOUT_MS)
             takeHandoff(token)?.close()
         }
         return token
@@ -149,7 +138,7 @@ object ScreenOcr {
         }
     }
 
-    private suspend fun execute(operation: Int, bitmap: Bitmap? = null, session: Session? = null): Bundle {
+    private suspend fun execute(operation: Int, bitmap: Bitmap, session: Session?): Bundle {
         if (Build.VERSION.SDK_INT < OCR_MIN_API) error("Screen OCR requires Android 9 or later")
         val result = executeSupported(operation, bitmap, session)
         if (session != null && synchronized(owners) { session !in owners }) {
@@ -159,7 +148,7 @@ object ScreenOcr {
     }
 
     @RequiresApi(OCR_MIN_API)
-    private suspend fun executeSupported(operation: Int, bitmap: Bitmap?, session: Session?): Bundle =
+    private suspend fun executeSupported(operation: Int, bitmap: Bitmap, session: Session?): Bundle =
         withContext(Dispatchers.IO) {
             val requestJob = currentCoroutineContext()[Job]
             mutex.withLock {
@@ -170,15 +159,12 @@ object ScreenOcr {
                     }
                 }
                 idleRelease?.cancel()
-                if (operation != OCR_WARM) running.set(true)
-                var completed = false
+                running.set(true)
                 try {
                     val service = client ?: OcrServiceClient(EvoApplication.application).also { client = it }
-                    val result = withTimeoutOrNull(REQUEST_TIMEOUT_MS) {
+                    withTimeoutOrNull(REQUEST_TIMEOUT_MS) {
                         service.request(operation, bitmap)
                     } ?: error("OCR request timed out")
-                    completed = true
-                    result
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Exception) {
@@ -189,10 +175,10 @@ object ScreenOcr {
                     if (session != null) synchronized(owners) { session.requestJob = null }
                     running.set(false)
                     if (client != null) {
-                        when {
-                            hasOwners() -> scheduleRelease(INTERACTION_IDLE_MS)
-                            operation == OCR_WARM && completed -> scheduleRelease(PREWARM_IDLE_MS)
-                            else -> closeClient()
+                        if (hasOwners()) {
+                            scheduleRelease(INTERACTION_IDLE_MS)
+                        } else {
+                            closeClient()
                         }
                     }
                 }
