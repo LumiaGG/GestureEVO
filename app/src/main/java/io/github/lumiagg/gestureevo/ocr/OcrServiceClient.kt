@@ -55,7 +55,7 @@ internal class OcrServiceClient(private val context: Context) : AutoCloseable {
         disconnected.completeExceptionally(failure)
     }
 
-    suspend fun request(operation: Int, bitmap: Bitmap? = null): Bundle {
+    suspend fun request(operation: Int, bitmap: Bitmap): Bundle {
         check(bound) { "Could not bind OCR service" }
         val service = connected.await()
         val response = CompletableDeferred<Bundle>()
@@ -71,11 +71,7 @@ internal class OcrServiceClient(private val context: Context) : AutoCloseable {
         }
         var sent = false
         try {
-            if (bitmap == null) {
-                service.send(request)
-            } else {
-                sendFrame(service, request, bitmap)
-            }
+            sendFrame(service, request, bitmap)
             sent = true
             return select {
                 disconnected.onAwait { it }

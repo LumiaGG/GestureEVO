@@ -78,10 +78,6 @@ final class OcrPipeline implements AutoCloseable {
         }
     }
 
-    void warmDetection(OcrRequest request) throws OrtException {
-        detection(request);
-    }
-
     private ModelSession detection(OcrRequest request) throws OrtException {
         request.ensureActive();
         if (detection == null) detection = new ModelSession(mapModel.apply("ch_PP-OCRv5_det_mobile.onnx"));

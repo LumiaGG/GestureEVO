@@ -44,7 +44,6 @@ class ScreenOcrTest {
         val session = ScreenOcr.openSession()
         val bitmap = Bitmap.createBitmap(420, 120, Bitmap.Config.ARGB_8888)
         try {
-            ScreenOcr.preload()
             bitmap.eraseColor(Color.WHITE)
             val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.BLACK
