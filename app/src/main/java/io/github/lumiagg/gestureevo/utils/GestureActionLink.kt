@@ -22,7 +22,8 @@ data class GestureActionLink(
     var isFreeform: Boolean = false,
     var isNewWindow: Boolean = false,
     var isTimeout: Boolean = false,
-    var userId: Long = 0
+    var userId: Long = 0,
+    var delayMs: Long = 0,
 ) {
     private val uriBuilder = Uri.Builder()
         .scheme("gesture-evo")
@@ -37,6 +38,9 @@ data class GestureActionLink(
             appendQueryParameter("newWindow", isNewWindow.toString())
             appendQueryParameter("timeout", isTimeout.toString())
             appendQueryParameter("userId", userId.toString())
+            if (delayMs in 1..MAX_ACTION_DELAY_MS) {
+                appendQueryParameter(ACTION_DELAY_PARAMETER, delayMs.toString())
+            }
         }.build().toString()
     }
 
@@ -47,7 +51,7 @@ data class GestureActionLink(
         actionType = uri.toGestureActionType()
         queryList.clear()
 
-        val excludeParams = setOf("freeform", "newWindow", "timeout", "userId")
+        val excludeParams = setOf("freeform", "newWindow", "timeout", "userId", ACTION_DELAY_PARAMETER)
         uri.queryParameterNames
             .filterNot { it in excludeParams }
             .forEach { name ->
@@ -60,6 +64,7 @@ data class GestureActionLink(
         isNewWindow = uri.getBooleanQueryParameter("newWindow", false)
         isTimeout = uri.getBooleanQueryParameter("timeout", false)
         userId = uri.getQueryParameter("userId")?.toLongOrNull() ?: 0
+        delayMs = parseActionDelayMs(uri.getQueryParameter(ACTION_DELAY_PARAMETER))
         return this
     }
 
@@ -73,3 +78,9 @@ data class GestureActionLink(
     val pkg: String?
         get() = queryList.find { it.first == "pkg" }?.second
 }
+
+internal const val ACTION_DELAY_PARAMETER = "delayMs"
+internal const val MAX_ACTION_DELAY_MS = 2_000L
+
+internal fun parseActionDelayMs(value: String?): Long =
+    value?.toLongOrNull()?.takeIf { it in 0..MAX_ACTION_DELAY_MS } ?: 0L
